@@ -44,6 +44,13 @@ jobs:
       - name: Landscape
         run: sed -i '0,/<activity/s//<activity android:screenOrientation="sensorLandscape"/' android/app/src/main/AndroidManifest.xml
 
+      - name: Immersive full screen
+        run: |
+          f=$(find android/app/src/main/java -name MainActivity.java)
+          test -n "$f"
+          cp android-config/MainActivity.java "$f"
+          grep -q hideSystemBars "$f"
+
       - name: Sync
         run: npx cap sync android
 
