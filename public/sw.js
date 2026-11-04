@@ -1,12 +1,28 @@
-// Cache-first for game assets so the game opens fast and works offline after the first visit.
-const CACHE='nilofar-v1';
-self.addEventListener('install',e=>self.skipWaiting());
-self.addEventListener('activate',e=>e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim())));
-self.addEventListener('fetch',e=>{
-  const u=new URL(e.request.url);
-  if(e.request.method!=='GET'||u.hostname.endsWith('supabase.co'))return;
-  const isAsset=/\/(models|sfx|icons|assets)\//.test(u.pathname)||/cdn\.jsdelivr\.net|fonts\.(googleapis|gstatic)\.com/.test(u.hostname);
-  if(isAsset){e.respondWith(caches.open(CACHE).then(async c=>{const hit=await c.match(e.request);if(hit)return hit;const r=await fetch(e.request);if(r.ok||r.type==='opaque')c.put(e.request,r.clone());return r}));return}
-  // pages: network first, fall back to cache
-  e.respondWith(fetch(e.request).then(r=>{const cp=r.clone();caches.open(CACHE).then(c=>c.put(e.request,cp));return r}).catch(()=>caches.match(e.request)));
+// Service worker for the installed web app (PWA).
+// - Pages (HTML) and config.js: always revalidated with the server, so an installed app never runs a stale
+//   page that points at build files which no longer exist (that showed an unstyled page after updates).
+// - Hashed build files (play/build/*): immutable, cache-first; models, sounds, icons: cache-first.
+// - Offline: falls back to whatever is cached.
+const CACHE = 'asrar-v2';
+
+self.addEventListener('install', () => self.skipWaiting());
+self.addEventListener('activate', e => e.waitUntil(
+  caches.keys().then(ks => Promise.all(ks.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim())
+));
+
+const cacheFirst = req => caches.open(CACHE).then(async c => {
+  const hit = await c.match(req); if (hit) return hit;
+  const r = await fetch(req); if (r.ok || r.type === 'opaque') c.put(req, r.clone()); return r;
+});
+
+const networkFirst = req => fetch(req, { cache: 'no-cache' })
+  .then(r => { if (r.ok) { const cp = r.clone(); caches.open(CACHE).then(c => c.put(req, cp)); } return r; })
+  .catch(() => caches.match(req));
+
+self.addEventListener('fetch', e => {
+  const req = e.request; if (req.method !== 'GET') return;
+  const u = new URL(req.url);
+  if (u.hostname.endsWith('supabase.co')) return;
+  if (/\/play\/build\//.test(u.pathname) || /\/(models|sfx|icons)\//.test(u.pathname)) { e.respondWith(cacheFirst(req)); return; }
+  e.respondWith(networkFirst(req));
 });

@@ -121,5 +121,7 @@
 
 <script type="module" src="../../src/main.ts"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../sw.js').catch(()=>{}))</script>
+<!-- Self-heal: a stale cached page whose CSS/JS no longer exist renders unstyled; reload once from the network. -->
+<script>addEventListener('load',()=>setTimeout(()=>{if(getComputedStyle(document.body).overflow!=='hidden'&&!sessionStorage.getItem('asrar.reloaded')){sessionStorage.setItem('asrar.reloaded','1');location.reload()}},1500))</script>
 </body>
 </html>
