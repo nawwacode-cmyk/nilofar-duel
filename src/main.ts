@@ -22,7 +22,8 @@ async function boot() {
   initMenus();
   const bar = $('bar').firstElementChild as HTMLElement;
   let done = 0; const total = ROSTER.length + CLIP_NAMES.length + 2;
-  const tick = () => { bar.style.width = (++done / total) * 100 + '%'; };
+  const pct = $('pct');
+  const tick = () => { const p = Math.round((++done / total) * 100); bar.style.width = p + '%'; pct.textContent = p + '%'; };
   try {
     await Promise.all([loadRosterModels(tick), loadClips(tick), loadCourt().then(tick), loadSounds().then(tick)]);
     makeTorches();

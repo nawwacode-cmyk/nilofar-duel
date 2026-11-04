@@ -51,7 +51,8 @@ function frame() {
   updateFx(dt);
   updateParticles(dt);
   if (S.CH[0]) updCamera(rdt);
-  composer.render();
+  // Title/select/online screens cover the canvas with the castle artwork, so skip the GPU work there.
+  if (!inMenus()) composer.render();
   requestAnimationFrame(frame);
 }
 

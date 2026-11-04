@@ -22,6 +22,8 @@ export const TXT = {
   muteOn: 'صامت',
   muteOff: 'صوت',
   stats: { hp: 'الصحة', speed: 'السرعة', power: 'القوة' },
+  abilitiesOf: (w: WizardDef) => (w.female ? 'قدراتها' : 'قدراته'),
+  abilityKeys: ['J', 'I', 'U'] as const,
   online: {
     disabled: 'اللعب عبر الإنترنت غير مفعّل في هذه النسخة.',
     badCode: 'يجب أن يتكوّن الرمز من 4 أحرف',

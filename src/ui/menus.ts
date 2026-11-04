@@ -12,9 +12,9 @@ import { $, V } from '../core/util';
 
 const portraits: string[] = [];
 
-/** Renders one lit head-and-shoulders portrait per wizard into data URLs (offscreen renderer, then disposed). */
+/** Renders one lit knees-up portrait per wizard (5:8 card) into data URLs (offscreen renderer, then disposed). */
 export function makePortraits() {
-  const W = 240, H = 300;
+  const W = 300, H = 480;
   const r2 = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
   r2.setSize(W, H); r2.outputColorSpace = THREE.SRGBColorSpace; r2.toneMapping = THREE.ACESFilmicToneMapping;
   const cam = new THREE.PerspectiveCamera(26, W / H, 0.05, 20);
@@ -27,7 +27,8 @@ export function makePortraits() {
     const fill = new THREE.PointLight(R.lc, 6, 4, 1.5); fill.position.set(0.4, 1.3, 0.8); sc.add(fill);
     m.updateMatrixWorld(true);
     const head = findBone(m, /Head$/); const hp = V(0, 1.55, 0); if (head) head.getWorldPosition(hp);
-    cam.position.set(hp.x - 0.25, hp.y - 0.05, hp.z + 1.55); cam.lookAt(hp.x, hp.y - 0.28, hp.z);
+    // Frame from about the knees to just above the head.
+    cam.position.set(hp.x - 0.35, hp.y - 0.35, hp.z + 3.1); cam.lookAt(hp.x, hp.y - 0.55, hp.z);
     r2.render(sc, cam); portraits[i] = r2.domElement.toDataURL('image/png'); mx.stopAllAction();
   });
   r2.dispose(); r2.forceContextLoss();
@@ -37,37 +38,43 @@ export function makePortraits() {
 export function buildRoster() {
   const roster = $('roster');
   roster.replaceChildren(...ROSTER.map((r, i) => {
-    const b = document.createElement('button');
-    b.className = 'cc' + (i === S.sel ? ' on' : ''); b.dataset.i = String(i); b.style.setProperty('--c', r.css);
-    const img = document.createElement('img'); img.alt = r.name; img.src = portraits[i] || '';
-    const name = document.createElement('b'); name.textContent = r.name;
-    b.append(img, name);
+    const b = el('button', 'wcard' + (i === S.sel ? ' on' : ''));
+    b.style.setProperty('--c', r.css); b.setAttribute('aria-pressed', String(i === S.sel)); b.setAttribute('aria-label', `${r.name}، ${r.elem}`);
+    const img = document.createElement('img'); img.alt = ''; img.src = portraits[i] || '';
+    const plate = el('span', 'plate'); plate.append(el('span', 'ic', r.icon), el('b', '', r.name));
+    b.append(img, el('span', 'gem'), plate);
     b.onclick = () => { unlock(); if (S.sel === i) return; S.sel = i; buildRoster(); showcase(); play(ROSTER[S.sel].ss, { vol: 0.5 }); };
     return b;
   }));
   const R = ROSTER[S.sel];
   $('detail').style.setProperty('--c', R.css);
+  $('dIcon').textContent = R.icon;
   $('dName').textContent = R.name; $('dElem').textContent = R.elem; $('dStory').textContent = R.story;
-  $('dStats').replaceChildren(...([[TXT.stats.hp, R.stat[0], String(R.hp)], [TXT.stats.speed, R.stat[1], R.speed.toFixed(1)], [TXT.stats.power, R.stat[2], '']] as const).flatMap(([n, v, t]) => {
-    const s = document.createElement('span'); s.textContent = n;
-    const i = document.createElement('i'); i.style.setProperty('--v', String(v));
-    const e = document.createElement('em'); e.textContent = t;
-    return [s, i, e];
+  const stats = [['favorite', TXT.stats.hp, R.stat[0], String(R.hp)], ['speed', TXT.stats.speed, R.stat[1], R.speed.toFixed(1)], ['bolt', TXT.stats.power, R.stat[2], '']] as const;
+  $('dStats').replaceChildren(...stats.flatMap(([ic, n, v, t]) => {
+    const bar = el('i'); bar.style.setProperty('--v', String(v));
+    return [el('span', 'ic', ic), el('span', '', n), bar, el('em', '', t)];
   }));
-  $('dAb').replaceChildren(...R.ab.map(([k, n, d]) => {
-    const row = document.createElement('div'); row.className = 'abl';
-    const kk = document.createElement('span'); kk.className = 'k'; kk.textContent = k;
-    const nn = document.createElement('b'); nn.textContent = n;
-    const dd = document.createElement('span'); dd.textContent = d;
-    row.append(kk, nn, dd); return row;
+  $('dAbT').textContent = TXT.abilitiesOf(R);
+  const abIcons = ['swords', 'auto_awesome', R.icon];
+  $('dAb').replaceChildren(...R.ab.map(([k, n, d], i) => {
+    const row = el('div', 'abl');
+    const name = el('b', '', n); name.append(el('small', '', `${k} · ${TXT.abilityKeys[i]}`));
+    row.append(el('span', 'ic', abIcons[i]), name, el('span', '', d));
+    return row;
   }));
   $('bSk').textContent = skillLabel(R);
+}
+
+function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: string) {
+  const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
 }
 
 export function initMenus() {
   $('mute').onclick = () => {
     unlock(); setMuted(!isMuted());
-    $('mute').textContent = isMuted() ? TXT.muteOn : TXT.muteOff;
+    $('mute').firstElementChild!.textContent = isMuted() ? 'volume_off' : 'volume_up';
+    $('mute').setAttribute('aria-label', isMuted() ? TXT.muteOn : TXT.muteOff);
     if (!isMuted() && S.state !== 'menu') musicOn();
   };
   $('enter').onclick = () => { unlock(); $('title').hidden = true; $('menu').hidden = false; S.state = 'menu'; showcase(); play('m_drums', { vol: 0.6 }); };
@@ -81,9 +88,9 @@ export function initMenus() {
     let o = (Math.random() * 3) | 0; if (o >= S.sel) o++;
     setupFighters(S.sel, o); startMatch();
   };
-  $('mOn').onclick = () => { unlock(); $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oErr').hidden = true; S.state = 'online'; };
+  $('mOn').onclick = () => { unlock(); $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; };
   $('oBack').onclick = () => { leaveNet(); $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; };
-  $('oCreate').onclick = async () => { unlock(); const c = code4(); $('oCode').textContent = c; $('oWait').hidden = false; $('oErr').hidden = true; await onlineStart(true, c); };
+  $('oCreate').onclick = async () => { unlock(); const c = code4(); $('oCode').textContent = c; $('oCreate').hidden = true; $('oWait').hidden = false; $('oErr').hidden = true; await onlineStart(true, c); };
   $('oJoin').onclick = async () => {
     unlock(); const c = $<HTMLInputElement>('code').value.trim().toUpperCase();
     if (c.length !== 4) { $('oErr').hidden = false; $('oErr').textContent = TXT.online.badCode; return; }

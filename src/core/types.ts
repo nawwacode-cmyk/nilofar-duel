@@ -37,6 +37,8 @@ export interface WizardDef {
   stat: readonly [number, number, number];
   story: string;
   ab: readonly [Ability, Ability, Ability];
+  /** Material Symbols ligature for the element. */
+  icon: string;
   skill: { k: SkillKind; cost: number; cd: number };
 }
 

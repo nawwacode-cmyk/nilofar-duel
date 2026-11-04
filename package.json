@@ -3,7 +3,7 @@
   "version": "1.1.0",
   "private": true,
   "type": "module",
-  "description": "مبارزة النيلوفر - 3D wizard duel",
+  "description": "أسرار الظلام - 3D wizard duel",
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc --noEmit",

@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { camera, renderer, composer, bloom, DPR } from '../render/stage';
 import { setParticleScale } from '../render/particles';
 import { S, ch, inMenus } from '../game/state';
-import { $, V, clamp, rnd, reduceMotion } from '../core/util';
+import { V, clamp, rnd, reduceMotion } from '../core/util';
 
 /**
  * Fixed side-on camera: always looks from +z, only pans and zooms to frame both wizards.
@@ -51,5 +51,4 @@ export function resize() {
   camera.aspect = w / h; camera.updateProjectionMatrix();
   bloom.resolution.set(w * 0.5, h * 0.5);
   setParticleScale((h * DPR) / (2 * Math.tan(THREE.MathUtils.degToRad(21))));
-  $('rot').hidden = w >= h;
 }

@@ -4,7 +4,7 @@ import { FIRE, ICE, SHADOW, LIGHT } from './palettes';
 /** The four wizards. Numbers are balance-critical; text is Modern Standard Arabic. */
 export const ROSTER: readonly WizardDef[] = [
   {
-    id: 'reem', name: 'ريم', female: true, file: 'arissa', elem: 'ساحرة النار',
+    id: 'reem', icon: 'local_fire_department', name: 'ريم', female: true, file: 'arissa', elem: 'ساحرة النار',
     hp: 240, speed: 2.9, pal: FIRE, css: '#ffb347', lc: 0xff8a3d,
     bolt: { kind: 'fire', cd: 0.42 }, spec: 'meteor', dodgeCost: 14,
     snd: 'fire', cs: 'm_fire_cast', ss: 'm_fire_swoosh', stat: [3, 3, 4],
@@ -17,7 +17,7 @@ export const ROSTER: readonly WizardDef[] = [
     skill: { k: 'portal', cost: 25, cd: 7 },
   },
   {
-    id: 'siraj', name: 'سراج', female: false, file: 'ganfaul', elem: 'ساحر الجليد',
+    id: 'siraj', icon: 'ac_unit', name: 'سراج', female: false, file: 'ganfaul', elem: 'ساحر الجليد',
     hp: 290, speed: 2.5, pal: ICE, css: '#a9e4ff', lc: 0x6fc6ff,
     bolt: { kind: 'ice', cd: 0.45 }, spec: 'spears', dodgeCost: 14,
     snd: 'ice', cs: 'm_ice_thin', ss: 'm_ice', stat: [5, 2, 3],
@@ -30,7 +30,7 @@ export const ROSTER: readonly WizardDef[] = [
     skill: { k: 'wall', cost: 30, cd: 9 },
   },
   {
-    id: 'layla', name: 'ليلى', female: true, file: 'nightshade', elem: 'ساحرة الظل',
+    id: 'layla', icon: 'dark_mode', name: 'ليلى', female: true, file: 'nightshade', elem: 'ساحرة الظل',
     hp: 210, speed: 3.4, pal: SHADOW, css: '#d49bff', lc: 0xb46bff,
     bolt: { kind: 'shadow', cd: 0.33 }, spec: 'curse', dodgeCost: 9,
     snd: 'shadow', cs: 'm_fastmagic', ss: 'm_arcane', stat: [2, 5, 3],
@@ -43,7 +43,7 @@ export const ROSTER: readonly WizardDef[] = [
     skill: { k: 'clones', cost: 35, cd: 10 },
   },
   {
-    id: 'qasem', name: 'قاسم', female: false, file: 'pelegrini', elem: 'ساحر البرق',
+    id: 'qasem', icon: 'bolt', name: 'قاسم', female: false, file: 'pelegrini', elem: 'ساحر البرق',
     hp: 255, speed: 2.8, pal: LIGHT, css: '#fff3a0', lc: 0xfff0a0,
     bolt: { kind: 'spark', cd: 0.38 }, spec: 'thunder', dodgeCost: 14,
     snd: 'bolt', cs: 'm_shock', ss: 'm_cast_long', stat: [3, 3, 4],
