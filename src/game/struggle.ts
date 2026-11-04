@@ -21,7 +21,7 @@ import type { Palette, Projectile } from '../core/types';
  * difficulty-based rate; online the host integrates both mash counters and broadcasts the result.
  */
 interface Beam { a: { core: THREE.Mesh; glow: THREE.Mesh }; b: { core: THREE.Mesh; glow: THREE.Mesh }; s: number }
-interface Struggle { s: number; ai: number; acc: number; id: number; my: number; mySeen: number; oppSeen: number }
+interface Struggle { s: number; ai: number; acc: number; acc0: number; id: number; my: number; mySeen: number; oppSeen: number }
 
 let beam: Beam | null = null;
 let strug: Struggle | null = null;
@@ -47,7 +47,7 @@ export function startStruggle(pa: Projectile | null, pb: Projectile | null, sid?
   strikes.length = 0; S.slowmo = 1;
   S.CH.forEach(c => { if (!c) return; setShield(c, false); anim(c, 'beam', { force: true }); c.castT = 0; });
   beam = { a: beamMesh(ch(0).pal), b: beamMesh(ch(1).pal), s: 0 };
-  strug = { s: 0, ai: AI_LEVELS[S.diff].struggle + Math.random() * 1.5, acc: 0, id: sid || ((Math.random() * 1e9) | 0), my: 0, mySeen: 0, oppSeen: 0 };
+  strug = { s: 0, ai: AI_LEVELS[S.diff].struggle + Math.random() * 1.5, acc: 0, acc0: 0, id: sid || ((Math.random() * 1e9) | 0), my: 0, mySeen: 0, oppSeen: 0 };
   if (S.mode === 'online' && net.me === 0) { net.sg = strug.id; net.sr = null; }
   banner(''); $('sTitle').textContent = TXT.struggle;
   $('sWrap').hidden = false; $('ctl').hidden = true;
@@ -71,6 +71,12 @@ export function updStruggle(dt: number) {
   if (S.mode === 'ai') {
     strug.acc += dt * strug.ai * (1 + Math.sin(S.stateT * 3) * 0.25);
     while (strug.acc >= 1) { strug.acc -= 1; strug.s = clamp(strug.s + (me().idx === 0 ? -0.05 : 0.05), -1, 1); }
+    // Simulator: side 0 is the computer too and mashes at the same average rate (button-mashing skill is
+    // the human's, not the wizard's, so it should not tilt the balance numbers).
+    if (S.sim) {
+      strug.acc0 += dt * strug.ai * (1 + Math.sin(S.stateT * 2.3 + 1) * 0.25);
+      while (strug.acc0 >= 1) { strug.acc0 -= 1; strug.s = clamp(strug.s + 0.05, -1, 1); }
+    }
   } else if (net.me === 0) {
     const md = strug.my - strug.mySeen; strug.mySeen = strug.my;
     const oc = net.oppMcId === strug.id ? net.oppMc : 0;

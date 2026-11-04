@@ -17,6 +17,7 @@ import { updateFx } from '../fx/effects';
 import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';
 import { TXT } from '../data/text';
+import { runScheduled } from './schedule';
 import { timeScale, updateImpactFx } from '../fx/impact';
 import { updateLights } from '../render/lights';
 import { monitorFps } from '../render/quality';
@@ -24,11 +25,14 @@ import { monitorFps } from '../render/quality';
 const clock = new THREE.Clock();
 let netAcc = 0;
 
-/** One frame: state machine, simulation, effects, camera, render. dt is capped at 50 ms. */
-function frame() {
-  const rdt = Math.min(0.05, clock.getDelta());
+/**
+ * One step of game logic (state machine, input/AI, fighters, spells). Shared by the real frame loop and the
+ * balance simulator (sim/sim.ts), which calls it with a fixed step and no rendering. Returns the scaled dt.
+ */
+export function tick(rdt: number) {
   const dt = rdt * S.slowmo * timeScale(rdt);
   S.T += dt; S.stateT += rdt;
+  runScheduled();
   if (S.CH[0]) {
     if (S.state === 'intro' && S.stateT > 1.8) {
       S.state = 'fight'; banner(TXT.fight); play('m_epic', { vol: 0.6 });
@@ -39,8 +43,8 @@ function frame() {
       if (S.CH.some(c => c && c.wins >= 2)) endMatch(); else { banner(''); newRound(); }
     }
     if (S.state === 'fight' || S.state === 'intro') {
-      const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz;
-      if (atkHeld && S.state === 'fight') castBolt(m);
+      if (S.sim) { if (S.state === 'fight') aiThink(ch(0), dt); }
+      else { const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz; if (atkHeld && S.state === 'fight') castBolt(m); }
       if (S.mode === 'ai' && S.state === 'fight') aiThink(ch(1), dt);
     }
     if (S.state === 'struggle') updStruggle(rdt);
@@ -52,6 +56,14 @@ function frame() {
     if (S.mode === 'online' && (netAcc > 0.05 || (net.urgent && netAcc > 0.025))) { netAcc = 0; netSend(); }
     if (S.mode === 'online') expirePredictions(ch(1 - net.me));
   }
+  return dt;
+}
+
+/** One rendered frame: game logic, effects, camera, render. dt is capped at 50 ms. */
+function frame() {
+  const rdt = Math.min(0.05, clock.getDelta());
+  if (S.sim) { requestAnimationFrame(frame); return; } // the simulator drives tick() itself
+  const dt = tick(rdt);
   updateAmbience(rdt);
   updateFx(dt);
   updateLights(dt);

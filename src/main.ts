@@ -12,6 +12,7 @@ import { initQuality } from './render/quality';
 import { initInput } from './input/input';
 import { initMenus, buildRoster } from './ui/menus';
 import { startLoop } from './game/loop';
+import { runBalance, trace } from './sim/sim';
 import { ROSTER } from './data/roster';
 import { TXT } from './data/text';
 import { $ } from './core/util';
@@ -43,7 +44,7 @@ async function boot() {
     onDownloadProgress(null); resetDownloadProgress();
     S.state = 'title'; buildRoster();
     // ?debug exposes internals for manual inspection and automated browser checks.
-    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact } });
+    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, balance: runBalance, simTrace: trace } });
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
     void preload();

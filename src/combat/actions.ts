@@ -8,6 +8,7 @@ import { SKFX, spawnStrike } from './skills';
 import { G } from '../data/rules';
 import { V, C, rnd, pick, clamp } from '../core/util';
 import type { CastOrder, Fighter, ProjKind } from '../core/types';
+import { after } from '../game/schedule';
 
 /**
  * Executes a cast locally and queues it for the peer when online.
@@ -45,12 +46,12 @@ export function castBolt(c: Fighter) {
   c.cdA = c.R.bolt.cd; c.mana -= G.boltCost; c.castT = 0.36;
   anim(c, 'bolt', { once: true, speed: 1.7, force: true });
   play(c.R.cs, { vol: 0.45, x: c.x, dur: 1.1 });
-  setTimeout(() => {
+  after(0.17, () => {
     if (c.dead || S.state !== 'fight') return;
     const [s, d] = aimAt(c);
     fire(c, { kind: c.R.bolt.kind, x: s.x, y: s.y, z: s.z, dx: d.x, dy: d.y, dz: d.z }); flash(c, 8);
     for (let i = 0; i < 8; i++) emit(s.x, s.y, s.z, rnd(1) + d.x * 0.1, rnd(1), rnd(1) + d.z * 0.1, pick(c.pal), 0.18, 0.25, { t: 'spark' });
-  }, 170);
+  });
 }
 
 export function castSpecial(c: Fighter) {
@@ -60,7 +61,7 @@ export function castSpecial(c: Fighter) {
   const p = chest(c);
   for (let i = 0; i < 30; i++) emit(p.x + rnd(0.5), 0.1 + Math.random() * 1.8, p.z + rnd(0.5), rnd(0.3), 1.2, rnd(0.3), pick(c.pal), 0.25, 0.7, { t: 'magic' });
   emit(c.x, 0.05, c.z, 0, 0, 0, c.pal[1], 0.5, 0.8, { t: 'rune', spin: 1.5, grow: 3 });
-  setTimeout(() => {
+  after(0.48, () => {
     if (c.dead || S.state !== 'fight') return;
     const [s, d] = aimAt(c); const o = opp(c);
     switch (c.R.spec) {
@@ -76,7 +77,7 @@ export function castSpecial(c: Fighter) {
       case 'thunder': fire(c, { kind: 'thunder', x: o.x, y: 0, z: o.z, dx: 0, dy: 0, dz: 0 }); break;
     }
     flash(c, 22); S.shake = Math.max(S.shake, 0.05);
-  }, 480);
+  });
 }
 
 /** Dash along input (or sideways relative to the opponent when standing still). */

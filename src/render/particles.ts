@@ -80,6 +80,6 @@ export function explosion(p: THREE.Vector3, pal: Palette, big = 1) {
   for (let i = 0; i < 14 * big; i++) { const v = V().randomDirection().multiplyScalar(1.5 * big); emit(p.x, p.y, p.z, v.x, v.y * 0.6 + 0.5, v.z, pick(pal), 0.3 * big + Math.random() * 0.25, 0.45 + Math.random() * 0.3, { t: 'flame', drag: 3, grow: 0.5 }); }
   for (let i = 0; i < 8 * big; i++) { const v = V().randomDirection().multiplyScalar(0.8); emit(p.x, p.y, p.z, v.x, v.y * 0.3 + 0.6, v.z, C(0.12, 0.12, 0.16), 0.8 * big, 1.4 + Math.random(), { t: 'smoke', smoke: 1, drag: 1.2, grow: 1, a: 0.55, spin: rnd(0.6) }); }
   burst(p, pal, 50 * big, 5 * big, 0.6, 0.18);
-  emit(p.x, p.y, p.z, 0, 0, 0, pal[2], 0.8 * big, 0.2, { t: 'flare', spin: 0 });
-  emit(p.x, 0.05, p.z, 0, 0, 0, pal[1], 0.4, 0.35, { t: 'ring', spin: 0, grow: 4 * big });
+  emit(p.x, p.y, p.z, 0, 0, 0, pal[pal.length - 1], 0.8 * big, 0.2, { t: 'flare', spin: 0 });
+  emit(p.x, 0.05, p.z, 0, 0, 0, pal[Math.min(1, pal.length - 1)], 0.4, 0.35, { t: 'ring', spin: 0, grow: 4 * big });
 }

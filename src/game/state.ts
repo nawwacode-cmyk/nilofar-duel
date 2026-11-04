@@ -17,6 +17,8 @@ export const S = {
   strugReady: 0,
   projId: 0,
   CH: [null, null] as [Fighter | null, Fighter | null],
+  /** Balance simulator running: the computer plays both sides, nothing is rendered. */
+  sim: false,
 };
 
 /** Network session data (kept here so gameplay code can read it without importing the network layer). */

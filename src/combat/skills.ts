@@ -13,14 +13,15 @@ import { G, DMG } from '../data/rules';
 import { ICE, SHADOW, LIGHT } from '../data/palettes';
 import { V, C, rnd, pick, clamp } from '../core/util';
 import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types';
+import { after } from '../game/schedule';
 
 /** Visual + gameplay side of each skill. `o.remote` means it was cast on the other device. */
 export const SKFX: Record<'portal' | 'blink' | 'wall' | 'clones', (c: Fighter, o: CastOrder) => void> = {
   portal(c, o) {
     portalRing(o.x, o.z, c.pal);
-    setTimeout(() => portalRing(o.dx, o.dz, c.pal), 250);
+    after(0.25, () => portalRing(o.dx, o.dz, c.pal));
     play('m_fire_swoosh', { vol: 0.7, x: o.x });
-    setTimeout(() => play('m_whoosh', { vol: 0.6, x: o.dx }), 300);
+    after(0.3, () => play('m_whoosh', { vol: 0.6, x: o.dx }));
     c.warpT = 0.75; c.invT = 0.75;
     // The opponent loses track while she is inside the portal and for a moment after she steps out behind them.
     opp(c).turnLockT = 0.75 + G.portalBlind;
@@ -133,11 +134,11 @@ export function updClones(dt: number) {
     if (cl.fireT <= 0 && S.state === 'fight') {
       cl.fireT = 1.1 + Math.random() * 0.6;
       cl.act.bolt.reset().setLoop(THREE.LoopOnce, 1).play();
-      if (cl.owned) setTimeout(() => {
+      if (cl.owned) after(0.17, () => {
         if (!clones.includes(cl) || S.state !== 'fight') return;
         const s = V(cl.x, 1.4, cl.z); const d = chest(tg).sub(s); d.y *= 0.5;
         fire(own, { kind: 'shmini', x: s.x, y: s.y, z: s.z, dx: d.x, dy: d.y, dz: d.z });
-      }, 170);
+      });
     }
     if (cl.t <= 0 || S.state === 'ko') killClone(cl);
   }
