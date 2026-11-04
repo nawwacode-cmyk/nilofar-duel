@@ -1,4 +1,4 @@
-import { S, ch } from '../game/state';
+import { S, ch, net } from '../game/state';
 import { anim, chest } from '../fighters/fighter';
 import { play } from '../audio/audio';
 import { emit, burst } from '../render/particles';
@@ -60,6 +60,7 @@ function breakShield(c: Fighter) {
 export function applyDmg(c: Fighter, d: number, att: Fighter) {
   if (c.dead || S.state !== 'fight') return;
   c.hp = Math.max(0, c.hp - d); dmgText(c, '−' + d, att.hex); c.hitT = 0.35;
+  if (S.mode === 'online' && c.idx === net.me) net.urgent = true;
   S.shake = Math.max(S.shake, d > 15 ? 0.15 : 0.06); flash(c, 12);
   if (c.castT <= 0 && !c.shieldOn && c.dodgeT <= 0) anim(c, 'hit', { once: true, speed: 1.4, force: true });
   impact(c, att, c.hp <= 0 ? 1 : clamp(d / 40, 0.15, 0.9));

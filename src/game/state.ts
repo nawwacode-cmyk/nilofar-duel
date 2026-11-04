@@ -30,6 +30,8 @@ export const net = {
   myId: Math.random().toString(36).slice(2, 10),
   /** Struggle sync: host id/result, guest mash counter. */
   sg: 0, sr: null as [number, number] | null, lastSg: 0, hostS: 0, oppMc: 0, oppMcId: 0,
+  /** Something important happened (a cast, our HP changed): send state now instead of at the next tick. */
+  urgent: false,
 };
 
 export const projs: Projectile[] = [];

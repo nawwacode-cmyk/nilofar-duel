@@ -11,7 +11,8 @@ import { banner } from '../ui/hud';
 import { TXT } from '../data/text';
 import { $ } from '../core/util';
 import { impact } from '../fx/impact';
-import { CLIP_NAMES, type CastKind, type ProjKind } from '../core/types';
+import { CLIP_NAMES, type CastKind, type Fighter, type ProjKind, type Projectile } from '../core/types';
+import { G } from '../data/rules';
 
 /**
  * Online duels over Supabase Realtime (broadcast + presence, no tables).
@@ -87,7 +88,53 @@ export function netSend() {
     st: [+c.x.toFixed(2), +c.z.toFixed(2), +c.ry.toFixed(2), c.curName ? CLIP_NAMES.indexOf(c.curName) : -1, c.shieldOn ? 1 : 0, Math.round(c.hp), Math.round(c.mana), c.dodgeT > 0 ? 1 : 0],
     cs: net.casts, sg: net.sg || 0, ss: strug ? +strug.s.toFixed(3) : 0, sr: net.sr || null, mc: strug ? strug.my : 0, mcid: strug ? strug.id : 0,
   };
+  net.urgent = false;
   channel.send({ type: 'broadcast', event: 'st', payload }).catch(() => { /* dropped packets are fine at 20 Hz */ });
+}
+
+/* ---------- hit prediction on the attacker's side ---------- */
+const PREDICT_MS = 600;
+const sev = (d: number, isKo: boolean) => (isKo ? 1 : Math.min(0.9, Math.max(0.15, d / 40)));
+
+/**
+ * Our projectile reached the remote fighter: show the hit now instead of after a network round trip.
+ * The damage stays "pending" until the victim's device confirms it (its HP drops); if it never does
+ * (they blocked or dodged on their screen) it expires and the bar returns to the authoritative value.
+ */
+export function predictHit(o: Fighter, p: Projectile) {
+  if (S.state !== 'fight' || o.dead) return;
+  if (o.shieldOn) { o.shield?.hit(); return; }
+  const vl = Math.hypot(p.vel.x, p.vel.z) || 1;
+  const back = (p.vel.x * Math.sin(o.ry) + p.vel.z * Math.cos(o.ry)) / vl > G.backDot;
+  const d = Math.round(p.dmg * (back ? G.backstabMult : 1));
+  o.pend.push({ d, t: performance.now() });
+  o.hp = Math.max(0, o.hp - d);
+  if (back) dmgText(o, TXT.backstab, '#ff8a5c');
+  dmgText(o, '−' + d, ch(net.me).hex); flash(o, 12); impact(o, ch(net.me), sev(d, false));
+}
+
+/** Applies the victim's authoritative HP: confirms predicted hits, shows unpredicted damage, drops stale guesses. */
+function reconcileHp(o: Fighter, auth: number) {
+  let drop = o.authHp - auth;
+  o.authHp = auth;
+  if (drop > 0 && S.state === 'fight') {
+    while (drop > 0.5 && o.pend.length) {
+      const q = o.pend[0];
+      if (q.d <= drop + 0.5) { drop -= q.d; o.pend.shift(); } else { q.d -= drop; drop = 0; }
+    }
+    // Damage we did not predict (thunder strike, area damage, beam struggle, clones): show it now.
+    if (drop > 0.5) { const d = Math.round(drop); dmgText(o, '−' + d, ch(net.me).hex); flash(o, 12); impact(o, ch(net.me), sev(d, auth <= 0)); }
+  }
+  expirePredictions(o);
+  if (auth <= 0 && !o.dead && S.state === 'fight') ko(o);
+}
+
+/** Drops guesses the victim never confirmed (also called every frame, so a silent peer cannot freeze them). */
+export function expirePredictions(o: Fighter) {
+  if (!o.pend.length) return;
+  const now = performance.now();
+  o.pend = o.pend.filter(q => now - q.t < PREDICT_MS);
+  o.hp = Math.max(0, o.authHp - o.pend.reduce((a, q) => a + q.d, 0));
 }
 
 const ONE_SHOT = ['bolt', 'special', 'hit', 'death', 'evade'];
@@ -100,10 +147,7 @@ function netRecv(pp: Packet) {
   if (an && an !== o.curName && !o.dead) anim(o, an, { once: ONE_SHOT.includes(an), force: true, speed: an === 'bolt' ? 1.7 : an === 'evade' ? 1.9 : 1 });
   if (st[4] && !o.shieldOn) { o.shieldOn = true; o.shieldT = S.T; o.shield = shieldMesh(o); play('shield', { vol: 0.4, x: o.x }); }
   else if (!st[4] && o.shieldOn) { o.shieldOn = false; o.shield?.off(); o.shield = null; }
-  if (st[5] < o.hp && S.state === 'fight') {
-    const d = o.hp - st[5]; o.hp = st[5]; dmgText(o, '−' + d, ch(net.me).hex); flash(o, 12); impact(o, ch(net.me), o.hp <= 0 ? 1 : Math.min(0.9, Math.max(0.15, d / 40)));
-    if (o.hp <= 0) ko(o);
-  } else o.hp = st[5];
+  reconcileHp(o, st[5]);
   o.mana = st[6]; o.dodgeT = st[7] ? 0.3 : 0;
 
   if (net.me === 1) {

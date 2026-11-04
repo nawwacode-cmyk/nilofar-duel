@@ -9,7 +9,7 @@ import { castBolt } from '../combat/actions';
 import { updProjs } from '../combat/projectiles';
 import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
-import { netSend } from '../net/online';
+import { netSend, expirePredictions } from '../net/online';
 import { atkHeld, readMove } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/arena';
@@ -48,7 +48,9 @@ function frame() {
     updProjs(dt); updStrikes(dt); updWalls(dt); updClones(dt);
     if (!inMenus()) { hud(); updateButtons(); }
     netAcc += rdt;
-    if (S.mode === 'online' && netAcc > 0.05) { netAcc = 0; netSend(); }
+    // 20 Hz state, plus an immediate send (capped at 40 Hz) for casts and HP changes.
+    if (S.mode === 'online' && (netAcc > 0.05 || (net.urgent && netAcc > 0.025))) { netAcc = 0; netSend(); }
+    if (S.mode === 'online') expirePredictions(ch(1 - net.me));
   }
   updateAmbience(rdt);
   updateFx(dt);

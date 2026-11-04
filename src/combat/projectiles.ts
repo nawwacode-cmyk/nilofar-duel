@@ -7,6 +7,7 @@ import { play, pr } from '../audio/audio';
 import { takeHit, applyDmg } from './damage';
 import { wallHit, killClone } from './skills';
 import { startStruggle } from '../game/struggle';
+import { predictHit } from '../net/online';
 import { G, PSPEC, DMG } from '../data/rules';
 import { ICE, WHITE } from '../data/palettes';
 import { V, C, rnd, pick } from '../core/util';
@@ -78,7 +79,7 @@ export function updProjs(dt: number) {
     const tgt = ch(1 - p.owner);
     if (!tgt.dead && S.state === 'fight' && Math.hypot(p.pos.x - tgt.x, p.pos.z - tgt.z) < p.r + (tgt.shieldOn ? 0.8 : 0.38) && p.pos.y < 2.1) {
       if (isLocal(tgt)) { const r = takeHit(tgt, p); if (r === 'miss') continue; killProj(p, r !== 'parry'); }
-      else { if (tgt.dodgeT > 0) continue; killProj(p); }
+      else { if (tgt.dodgeT > 0) continue; predictHit(tgt, p); killProj(p); }
     }
   }
   // Two enemy projectiles meeting mid-air: start a beam struggle (host decides online) or cancel by power.

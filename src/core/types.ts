@@ -62,6 +62,8 @@ export interface Fighter {
   hitFlash: number; knockT: number; mats: THREE.MeshPhongMaterial[];
   /** Lost track of the opponent (e.g. they vanished into a portal): cannot turn while > 0. */
   turnLockT: number;
+  /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
+  authHp: number; pend: { d: number; t: number }[];
   /** Finger bones curled around the wand every frame (after the animation mixer). */
   grip: { bone: THREE.Bone; q: THREE.Quaternion }[];
   /** Network-interpolation targets for the remote fighter. */

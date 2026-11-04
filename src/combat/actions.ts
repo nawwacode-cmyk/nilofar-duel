@@ -20,6 +20,7 @@ export function fire(c: Fighter, o: CastOrder) {
   if (S.mode === 'online' && c.idx === net.me) {
     net.casts.push([o.id ?? ++S.projId, o.kind, +o.x.toFixed(3), +o.y.toFixed(3), +o.z.toFixed(3), +o.dx.toFixed(3), +o.dy.toFixed(3), +o.dz.toFixed(3)]);
     if (net.casts.length > 8) net.casts.shift();
+    net.urgent = true;
   }
 }
 
