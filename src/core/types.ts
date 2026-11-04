@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 
 export type Palette = readonly THREE.Color[];
-export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end';
+export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end' | 'cine' | 'finish';
 export type Mode = 'ai' | 'online';
 
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark';
@@ -9,7 +9,7 @@ export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini';
 export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder';
 export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink';
 /** Everything that can travel over the network as a "cast". */
-export type CastKind = ProjKind | SkillKind | 'thunder';
+export type CastKind = ProjKind | SkillKind | 'thunder' | 'fatal' | 'fatality';
 
 export const CLIP_NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR'] as const;
 export type ClipName = typeof CLIP_NAMES[number];
@@ -62,6 +62,8 @@ export interface Fighter {
   hitFlash: number; knockT: number; mats: THREE.MeshPhongMaterial[];
   /** Lost track of the opponent (e.g. they vanished into a portal): cannot turn while > 0. */
   turnLockT: number;
+  /** Fatal Blow: used this match / cooldown after a miss. */
+  fbUsed: boolean; fbCd: number;
   /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
   authHp: number; pend: { d: number; t: number }[];
   /** Finger bones curled around the wand every frame (after the animation mixer). */

@@ -16,7 +16,8 @@ import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types'
 import { after } from '../game/schedule';
 
 /** Visual + gameplay side of each skill. `o.remote` means it was cast on the other device. */
-export const SKFX: Record<'portal' | 'blink' | 'wall' | 'clones', (c: Fighter, o: CastOrder) => void> = {
+/** Skills (and finishers, registered by combat/finisher.ts) replayed by cast kind on both devices. */
+export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   portal(c, o) {
     portalRing(o.x, o.z, c.pal);
     after(0.25, () => portalRing(o.dx, o.dz, c.pal));

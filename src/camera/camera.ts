@@ -3,6 +3,7 @@ import { camera, renderer, composer, bloom } from '../render/stage';
 import { setParticleScale } from '../render/particles';
 import { bloomScale } from '../render/quality';
 import { fovPunch } from '../fx/impact';
+import { getCine } from '../combat/finisher';
 import { S, ch, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
 import { viewSize, updateRotation } from '../core/view';
@@ -38,6 +39,13 @@ export function updCamera(dt: number) {
       const sd = clamp(spanX * 0.5 + 1.8, 2.6, 4.6);
       tp.set(mx, portrait ? 1.6 : 1.0, Math.min(LIM, mz + (portrait ? sd * 1.7 : sd))); tl.set(mx, 1.25, mz); camera.fov = portrait ? 66 : 40;
     }
+    // Cinematics are the one exception to the fixed camera: a slow orbit around the victim, then back.
+    const cn = getCine();
+    if (S.state === 'cine' && cn) {
+      const a = -0.6 + S.stateT * 0.5, r = 2.8;
+      tp.set(cn.vic.x + Math.sin(a) * r, 1.5, cn.vic.z + Math.cos(a) * r); tl.set(cn.vic.x, 1.1, cn.vic.z); camera.fov = 38;
+    }
+    if (S.state === 'finish') { const l = S.CH.find(c => c && c.wins < 2) || a; tp.set(l.x * 0.8, 1.3, Math.min(LIM, l.z + 3.2)); tl.set(l.x, 1.0, l.z); }
     if (S.state === 'ko') { const d = S.CH.find(c => c?.dead) || a; tp.set(d.x * 0.8, 1.2, Math.min(LIM, d.z + 3.4)); tl.set(d.x, 0.6, d.z); }
     camera.updateProjectionMatrix();
   }

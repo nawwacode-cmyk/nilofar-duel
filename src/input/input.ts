@@ -3,11 +3,12 @@ import { me } from '../game/state';
 import { unlock } from '../audio/audio';
 import { castBolt, castSpecial, castSkill, dodge } from '../combat/actions';
 import { mash } from '../game/struggle';
+import { useFinisher } from '../combat/finisher';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
-type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk';
+type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'fb';
 
 const input = { x: 0, z: 0, keys: {} as Record<string, boolean> };
 export let atkHeld = false;
@@ -16,6 +17,7 @@ export function press(a: Action, on: boolean) {
   if (!S.CH[0]) return;
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
+  if (a === 'fb') { if (on) useFinisher(c); return; }
   if (a === 'atk') { atkHeld = on; if (on && S.state === 'fight') castBolt(c); }
   if (a === 'sh') c.wantShield = on;
   if (a === 'dg' && on && S.state === 'fight') dodge(c);
@@ -23,7 +25,7 @@ export function press(a: Action, on: boolean) {
   if (a === 'sk' && on && S.state === 'fight') castSkill(c);
 }
 
-const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk' };
+const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk', KeyO: 'fb', KeyF: 'fb' };
 
 /** Normalised movement vector from stick + WASD/arrows. */
 export function readMove(): [number, number] {

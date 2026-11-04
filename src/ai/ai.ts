@@ -4,6 +4,7 @@ import { G, AI_LEVELS } from '../data/rules';
 import { V } from '../core/util';
 import type { Fighter, Projectile } from '../core/types';
 import { after } from '../game/schedule';
+import { fatalReady, useFinisher } from '../combat/finisher';
 
 /** Computer opponent: keeps a preferred range, strafes, reacts to incoming spells, uses skills. */
 type AiState = { t: number; strafe: number; nextAtk: number; shieldUntil: number; skT: number };
@@ -55,6 +56,8 @@ export function aiThink(c: Fighter, dt: number) {
     else if (K === 'portal' && (dist > 6 || Math.random() < 0.3)) { castSkill(c); ai.skT = 3; after(0.9, () => { if (!c.dead) castBolt(c); }); }
     else if (K === 'clones') { castSkill(c); ai.skT = 3; }
   }
+  // Fatal Blow under the same rules as the player (own health under 30 %, once per match), in range.
+  if (fatalReady(c) && dist < 6.5 && Math.random() < dt * 0.9) useFinisher(c);
   ai.nextAtk -= dt;
   if (ai.nextAtk <= 0 && !c.shieldOn) {
     ai.nextAtk = (0.5 + Math.random()) / D.rate;

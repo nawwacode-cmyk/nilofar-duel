@@ -34,6 +34,8 @@ export const net = {
   sg: 0, sr: null as [number, number] | null, lastSg: 0, hostS: 0, oppMc: 0, oppMcId: 0,
   /** Something important happened (a cast, our HP changed): send state now instead of at the next tick. */
   urgent: false,
+  /** Fatal Blow hits confirmed by our device as the victim (sent to the attacker) / last one we applied. */
+  fb: 0, lastFb: 0,
 };
 
 export const projs: Projectile[] = [];
