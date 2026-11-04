@@ -1,7 +1,7 @@
 import type { WizardDef } from '../core/types';
-import { FIRE, ICE, SHADOW, LIGHT } from './palettes';
+import { FIRE, ICE, SHADOW, LIGHT, ARCH } from './palettes';
 
-/** The four wizards. Numbers are balance-critical; text is Modern Standard Arabic. */
+/** The wizards. Numbers are balance-critical; text is Modern Standard Arabic. */
 export const ROSTER: readonly WizardDef[] = [
   {
     id: 'reem', icon: 'local_fire_department', name: 'ريم', female: true, file: 'arissa', elem: 'ساحرة النار',
@@ -54,6 +54,19 @@ export const ROSTER: readonly WizardDef[] = [
       ['مهارة', 'ومضة البرق', 'ينتقل فورًا أربعة أمتار ولا يصيبه شيء أثناءها'],
     ],
     skill: { k: 'blink', cost: 15, cd: 4 },
+  },
+  {
+    id: 'ehab', icon: 'auto_awesome', name: 'إيهاب', female: false, file: 'ehab', rig: 'tripo', elem: 'كبير السحرة',
+    hp: 300, speed: 3.0, pal: ARCH, css: '#f0c46a', lc: 0xffc860,
+    bolt: { kind: 'gold', cd: 0.36 }, spec: 'orbs', dodgeCost: 11,
+    snd: 'shadow', cs: 'm_light', ss: 'm_epic', stat: [5, 4, 5],
+    story: 'كبير السحرة وأقوى من حمل عصًا في تاريخ أكاديمية النيلوفر. جمع أسرار النار والجليد والظل والبرق، ثم تجاوزها جميعًا إلى سحرٍ ذهبيٍّ لا يعرف أحدٌ أصله. لا يُرى إلا حين يريد أن يُرى؛ فالخداع عنده فنٌّ قبل أن يكون سلاحًا، ومن يظنّ أنه يقاتله يكتشف أنه كان يقاتل وهمًا.',
+    ab: [
+      ['هجوم', 'سهم الذهب', 'تعويذة سريعة وقوية لا تُخطئ طريقها'],
+      ['خاصة', 'حكم الذهب', 'خمس كرات ذهبية تنتشر ثم تلاحق الخصم'],
+      ['مهارة', 'حجاب الخداع', 'يختفي عن الأنظار ويترك وهمًا مكانه، وأول ضربةٍ من الخفاء أشدّ'],
+    ],
+    skill: { k: 'veil', cost: 30, cd: 9 },
   },
 ];
 

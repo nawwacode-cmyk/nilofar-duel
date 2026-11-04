@@ -1,4 +1,5 @@
-import { S, opp } from '../game/state';
+import type * as THREE from 'three';
+import { S, opp, me } from '../game/state';
 import { anim, tipPos, headPos, applyGrip, applyGroundContact } from './fighter';
 import { floorAt } from '../world/arena';
 import { setShield } from '../combat/actions';
@@ -9,13 +10,23 @@ import { GOLD, ICE } from '../data/palettes';
 import { V, C, clamp, rnd, pick, angleDelta } from '../core/util';
 import type { Fighter } from '../core/types';
 
+function setAlpha(c: Fighter, a: number) {
+  c.alpha = a;
+  c.model.traverse(o => {
+    const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) { m.transparent = a < 1; m.opacity = a; m.depthWrite = a >= 1; }
+    mesh.castShadow = a >= 1;
+  });
+  c.wand.visible = c.blob.visible = a > 0;
+}
+
 /** Floor dust kicked up by feet, landings and knock-back slides. */
 function dust(c: Fighter, n: number, sp: number) {
   for (let i = 0; i < n; i++) emit(c.x + rnd(0.25), 0.05, c.z + rnd(0.25), rnd(sp), 0.15 + Math.random() * 0.25, rnd(sp), DUST, 0.22 + Math.random() * 0.2, 0.7 + Math.random() * 0.5, { t: 'smoke', smoke: 1, grow: 0.7, a: 0.28, drag: 2.5 });
 }
 const DUST = C(0.32, 0.34, 0.42);
 
-const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT', 'turnLockT', 'fbCd'] as const;
+const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT', 'turnLockT', 'fbCd', 'veilT'] as const;
 const fwd = V(), right = V();
 
 /**
@@ -85,7 +96,11 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
   applyGrip(c);
   tipPos(c, c.light.position);
   c.light.intensity *= Math.pow(0.12, dt); c.light.intensity = Math.max(c.light.intensity, 1.4);
-  if (!c.dead && Math.random() < 0.5) { const p = c.light.position; emit(p.x, p.y, p.z, rnd(0.05), 0.15, rnd(0.05), pick(c.pal), 0.08, 0.4, { t: Math.random() < 0.5 ? 'magic' : 'spark' }); }
+  // Veil: gone for the opponent, a faint ghost for his own player so they know where they are.
+  const alpha = c.veilT > 0 ? (c === me() ? 0.28 : 0) : 1;
+  if (alpha !== (c.alpha ?? 1)) setAlpha(c, alpha);
+  if (alpha === 0) c.light.intensity = 0;
+  else if (!c.dead && Math.random() < 0.5) { const p = c.light.position; emit(p.x, p.y, p.z, rnd(0.05), 0.15, rnd(0.05), pick(c.pal), 0.08, 0.4, { t: Math.random() < 0.5 ? 'magic' : 'spark' }); }
   if (c.stunT > 0 && Math.random() < 0.6) { const h = headPos(c); const a = S.T * 8; emit(h.x + Math.cos(a) * 0.25, h.y - 0.1, h.z + Math.sin(a) * 0.25, 0, 0, 0, GOLD[0], 0.1, 0.25, { t: 'star' }); }
   if (c.slowT > 0 && Math.random() < 0.5) emit(c.x + rnd(0.3), 0.2 + Math.random() * 1.4, c.z + rnd(0.3), 0, -0.2, 0, pick(ICE), 0.15, 0.6, { t: 'star' });
 }

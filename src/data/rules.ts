@@ -13,6 +13,8 @@ export const G = {
   castCone: 0.26,
   /** A hit from behind (projectile travelling along the victim's facing) ignores the shield and hurts more. */
   backDot: 0.35, backstabMult: 1.5,
+  /** Ehab's veil: seconds unseen; the first spell cast out of it hurts this much more. */
+  veilT: 3, veilMult: 1.4,
 } as const;
 
 export const PSPEC: Record<ProjKind, ProjSpec> = {
@@ -24,6 +26,8 @@ export const PSPEC: Record<ProjKind, ProjSpec> = {
   spear: { r: 0.13, dmg: 13, sp: 17, pw: 2, trail: 'spark', slow: 2 },
   curse: { r: 0.15, dmg: 28, sp: 5, pw: 2, trail: 'twirl', home: 2.4, life: 4.5 },
   shmini: { r: 0.09, dmg: 5, sp: 13, pw: 1, trail: 'twirl' },
+  gold: { r: 0.13, dmg: 11, sp: 19, pw: 1, trail: 'magic' },
+  orb: { r: 0.14, dmg: 9, sp: 10, pw: 2, trail: 'magic', home: 3.2, life: 3 },
 };
 
 /** Fixed damage numbers outside PSPEC. */

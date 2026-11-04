@@ -114,6 +114,10 @@ function cineFx(c: Cine, dt: number) {
     for (let i = 0; i < 4; i++) { const ang = Math.random() * 6.28, r = 1.4 - c.t * 0.45; emit(c.vic.x + Math.cos(ang) * r, 0.1, c.vic.z + Math.sin(ang) * r, 0, 2.5 + Math.random() * 2, 0, pick(pal), 0.2, 0.5, { t: 'star', grav: -4 }); }
   } else if (el === 'layla') { // shadow tendrils spiralling up
     for (let i = 0; i < 6; i++) { const ang = c.t * 7 + i * 1.05, r = 0.7; emit(c.vic.x + Math.cos(ang) * r, 0.1 + c.t * 0.6, c.vic.z + Math.sin(ang) * r, 0, 1.2, 0, pick(pal), 0.3, 0.7, { t: 'twirl', drag: 1 }); }
+  } else if (el === 'ehab') { // the archmage's judgement: a ring of golden runes closing in, then pillars of light
+    for (let i = 0; i < 8; i++) { const ang = c.t * 2.5 + i * 0.785, r = Math.max(0.35, 1.6 - c.t * 0.5); emit(c.vic.x + Math.cos(ang) * r, 0.15 + (i % 2) * 1.2, c.vic.z + Math.sin(ang) * r, 0, 0.2, 0, pick(pal), 0.22, 0.35, { t: 'magic' }); }
+    if (Math.random() < dt * 3) emit(c.vic.x, 0.05, c.vic.z, 0, 0, 0, pal[1], 0.6, 0.8, { t: 'rune', spin: 2, grow: 3 });
+    if (Math.random() < dt * 6) { const x = c.vic.x + rnd(0.6), z = c.vic.z + rnd(0.6); for (let y = 0; y < 7; y += 0.35) emit(x, y, z, 0, 0, 0, pick(pal), 0.35, 0.3, { t: 'glow', spin: 0, a: 0.6 }); lightFlash(x, 2, z, pal, 20, 0.2); }
   } else { // lightning storm
     if (Math.random() < dt * 14) { const x = c.vic.x + rnd(0.8), z = c.vic.z + rnd(0.8); for (let y = 0; y < 8; y += 0.3) emit(x + rnd(0.1), y, z + rnd(0.1), 0, 0, 0, pick(pal), 0.45, 0.2, { t: 'spark' }); lightFlash(x, 2, z, pal, 22, 0.15); play('bolt' + (1 + ((Math.random() * 5) | 0)), { vol: 0.4, x }); }
   }

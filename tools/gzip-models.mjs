@@ -3,7 +3,8 @@
 // Run: node tools/gzip-models.mjs
 import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
-for (const f of readdirSync('assets-src/models')) {
+// GLB characters are slimmed first (tools/slim-glb.mjs) and gzipped by hand, so they are skipped here.
+for (const f of readdirSync('assets-src/models').filter(f => !f.endsWith('.glb'))) {
   const src = readFileSync(`assets-src/models/${f}`);
   const gz = gzipSync(src, { level: 9 });
   writeFileSync(`public/play/models/${f}.gz`, gz);

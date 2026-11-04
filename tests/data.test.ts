@@ -4,23 +4,28 @@ import { G, PSPEC, DMG, AI_LEVELS } from '../src/data/rules';
 import { TXT } from '../src/data/text';
 
 describe('roster', () => {
-  it('has the four original wizards with their original balance numbers', () => {
+  it('keeps the four original wizards\' balance numbers, then Ehab', () => {
     expect(ROSTER.map(r => [r.id, r.hp, r.speed, r.bolt.kind, r.bolt.cd, r.spec, r.dodgeCost, r.skill.k, r.skill.cost, r.skill.cd])).toEqual([
       ['reem', 240, 2.9, 'fire', 0.42, 'meteor', 14, 'portal', 25, 7],
       ['siraj', 290, 2.5, 'ice', 0.45, 'spears', 14, 'wall', 30, 9],
       ['layla', 210, 3.4, 'shadow', 0.33, 'curse', 9, 'clones', 35, 10],
       ['qasem', 255, 2.8, 'spark', 0.38, 'thunder', 14, 'blink', 15, 4],
+      ['ehab', 300, 3.0, 'gold', 0.36, 'orbs', 11, 'veil', 30, 9],
     ]);
   });
   it('every skill is affordable from a full mana bar', () => {
     for (const r of ROSTER) expect(r.skill.cost).toBeLessThanOrEqual(100);
     expect(G.spCost).toBeLessThanOrEqual(100);
   });
+  it('Ehab is the strongest wizard (highest health and power)', () => {
+    const e = ROSTER.find(r => r.id === 'ehab')!;
+    for (const r of ROSTER) if (r !== e) { expect(e.hp).toBeGreaterThan(r.hp); expect(e.stat[2]).toBeGreaterThanOrEqual(r.stat[2]); }
+  });
   it('every basic bolt kind has a projectile spec', () => {
     for (const r of ROSTER) expect(PSPEC[r.bolt.kind]).toBeDefined();
   });
   it('skill button labels are single words', () => {
-    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة']);
+    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة', 'حجاب']);
   });
 });
 

@@ -1,5 +1,6 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { CLIP_NAMES, type ClipName } from '../core/types';
 import { fetchBytes, fetchJson } from './net';
 
@@ -11,6 +12,13 @@ export const getBytes = fetchBytes;
 export async function loadFbx(url: string, expect = 0) {
   const b = await fetchBytes(url, expect);
   return loader.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer, '');
+}
+
+/** A (gzipped) binary glTF; returns its scene. */
+export async function loadGlb(url: string, expect = 0): Promise<THREE.Object3D> {
+  const b = await fetchBytes(url, expect);
+  const gltf = await new GLTFLoader().parseAsync(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer, '');
+  return gltf.scene;
 }
 
 /** Shared animation clips (Mixamo), loaded once and retargeted per fighter. */

@@ -67,7 +67,7 @@ export function initMenus() {
   markArena();
   $('mAI').onclick = () => {
     unlock(); S.mode = 'ai'; $('menu').hidden = true;
-    let o = (Math.random() * 3) | 0; if (o >= S.sel) o++;
+    let o = (Math.random() * (ROSTER.length - 1)) | 0; if (o >= S.sel) o++;
     void startWhenLoaded([S.sel, o], () => { setupFighters(S.sel, o); startMatch(); });
   };
   $('mOn').onclick = () => { unlock(); $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; };

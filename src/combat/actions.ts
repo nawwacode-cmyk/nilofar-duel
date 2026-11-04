@@ -4,7 +4,7 @@ import { play } from '../audio/audio';
 import { emit } from '../render/particles';
 import { flash, shieldMesh } from '../fx/effects';
 import { spawnProj } from './projectiles';
-import { SKFX, spawnStrike } from './skills';
+import { SKFX, spawnStrike, unveilCast } from './skills';
 import { G } from '../data/rules';
 import { V, C, rnd, pick, clamp } from '../core/util';
 import type { CastOrder, Fighter, ProjKind } from '../core/types';
@@ -15,9 +15,9 @@ import { after } from '../game/schedule';
  * Casts are replayed on the other device by netRecv with remote=true.
  */
 export function fire(c: Fighter, o: CastOrder) {
-  if (o.kind === 'thunder') spawnStrike(c.idx, o.x, o.z);
-  else if (o.kind in SKFX) SKFX[o.kind as keyof typeof SKFX](c, o);
-  else { const p = spawnProj({ ...o, kind: o.kind as ProjKind, owner: c.idx }); o.id = p.id; }
+  if (o.kind === 'thunder') { unveilCast(c); spawnStrike(c.idx, o.x, o.z); }
+  else if (o.kind in SKFX) { if (o.kind !== 'veil') unveilCast(c); SKFX[o.kind as keyof typeof SKFX](c, o); }
+  else { const p = spawnProj({ ...o, kind: o.kind as ProjKind, owner: c.idx }); o.id = p.id; unveilCast(c, p); }
   if (S.mode === 'online' && c.idx === net.me) {
     net.casts.push([o.id ?? ++S.projId, o.kind, +o.x.toFixed(3), +o.y.toFixed(3), +o.z.toFixed(3), +o.dx.toFixed(3), +o.dy.toFixed(3), +o.dz.toFixed(3)]);
     if (net.casts.length > 8) net.casts.shift();
@@ -31,7 +31,11 @@ function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
   let t = chest(opp(c));
   if (S.mode === 'ai' && c.idx === 1) {
     const cs = clones.filter(k => k.owner !== c.idx);
-    if (cs.length && Math.random() < 0.6) { const k = pick(cs); t = V(k.x, 1.3, k.z); }
+    const decoy = cs.find(k => k.decoy);
+    // The computer cannot see a veiled Ehab: it attacks his illusion (or guesses).
+    if (decoy) t = V(decoy.x, 1.3, decoy.z);
+    else if (opp(c).veilT > 0) t.set(t.x + rnd(2.5), 1.3, t.z + rnd(2.5));
+    else if (cs.length && Math.random() < 0.6) { const k = pick(cs); t = V(k.x, 1.3, k.z); }
   }
   const d = t.sub(s); d.y *= 0.55;
   // Wizards cast where they face: with the target outside the cone (e.g. right after a portal behind them)
@@ -75,6 +79,13 @@ export function castSpecial(c: Fighter) {
       }
       case 'curse': fire(c, { kind: 'curse', x: s.x, y: s.y + 0.2, z: s.z, dx: d.x, dy: 0.3, dz: d.z }); break;
       case 'thunder': fire(c, { kind: 'thunder', x: o.x, y: 0, z: o.z, dx: 0, dy: 0, dz: 0 }); break;
+      case 'orbs': {
+        // Five golden orbs fan out wide, then curve in on the opponent from every side.
+        const b = Math.atan2(d.x, d.z);
+        for (const a of [-0.6, -0.3, 0, 0.3, 0.6]) fire(c, { kind: 'orb', x: s.x, y: s.y + 0.1, z: s.z, dx: Math.sin(b + a), dy: 0.15, dz: Math.cos(b + a) });
+        play('m_epic', { vol: 0.5, x: c.x, dur: 1.5 });
+        break;
+      }
     }
     flash(c, 22); S.shake = Math.max(S.shake, 0.05);
   });
@@ -124,4 +135,5 @@ export function castSkill(c: Fighter) {
   }
   if (K.k === 'wall') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'wall', x: c.x + d.x * 1.5, y: Math.atan2(d.x, d.z), z: c.z + d.z * 1.5, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'clones') fire(c, { kind: 'clones', x: c.x, y: (Math.random() * 1e5) | 0, z: c.z, dx: 0, dy: 0, dz: 0 });
+  if (K.k === 'veil') fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: 0, dy: 0, dz: 0 });
 }

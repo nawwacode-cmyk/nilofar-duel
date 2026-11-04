@@ -4,7 +4,7 @@ import { anim, ensureModels } from '../fighters/fighter';
 import { play } from '../audio/audio';
 import { dmgText, flash, shieldMesh } from '../fx/effects';
 import { spawnProj } from '../combat/projectiles';
-import { SKFX, spawnStrike } from '../combat/skills';
+import { SKFX, spawnStrike, unveilCast } from '../combat/skills';
 import { getStruggle, startStruggle, endStruggle } from '../game/struggle';
 import { setupFighters, startMatch, ko, toMenu } from '../game/flow';
 import { banner } from '../ui/hud';
@@ -224,9 +224,9 @@ function netRecv(pp: Packet) {
     const [id, kind, x, y, z, dx, dy, dz] = k as [number, CastKind, number, number, number, number, number, number];
     if (net.seen.has(id)) continue;
     net.seen.add(id);
-    if (kind === 'thunder') spawnStrike(o.idx, x, z, true);
-    else if (kind in SKFX) SKFX[kind as keyof typeof SKFX](o, { kind, x, y, z, dx, dy, dz, remote: true });
-    else spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id });
+    if (kind === 'thunder') { unveilCast(o); spawnStrike(o.idx, x, z, true); }
+    else if (kind in SKFX) { if (kind !== 'veil') unveilCast(o); SKFX[kind as keyof typeof SKFX](o, { kind, x, y, z, dx, dy, dz, remote: true }); }
+    else unveilCast(o, spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id }));
     play(o.R.snd === 'bolt' ? 'cast3' : 'cast2', { vol: 0.35, x: o.x, rate: 1.3 });
   }
 }

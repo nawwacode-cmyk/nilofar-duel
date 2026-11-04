@@ -1,7 +1,8 @@
 import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene, BLOB } from '../render/stage';
-import { clips, findBone, loadFbx, retarget } from '../assets/loader';
+import { clips, findBone, loadFbx, loadGlb, retarget } from '../assets/loader';
+import { faceForward, renameTripoBones, retargetClips } from '../assets/retarget';
 import { ROSTER } from '../data/roster';
 import { V } from '../core/util';
 import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
@@ -10,8 +11,37 @@ import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 export const base: THREE.Object3D[] = [];
 
 /** Approximate gzipped sizes, for the progress bar before the server answers. */
-const MODEL_BYTES: Record<string, number> = { arissa: 2_280_000, ganfaul: 1_270_000, nightshade: 1_220_000, pelegrini: 985_000 };
+const MODEL_BYTES: Record<string, number> = { arissa: 2_280_000, ganfaul: 1_270_000, nightshade: 1_220_000, pelegrini: 985_000, ehab: 530_000 };
+/** Mixamo model whose skeleton drives the retargeting of Tripo rigs (Qasem: a man of similar build). */
+const RETARGET_SRC = 3;
+/** Clips baked for models with their own skeleton (Tripo); others use the shared clips renamed. */
+const ownClips: Partial<Record<number, Record<ClipName, THREE.AnimationClip>>> = {};
+
+/** Clip for any clone of roster model ri. */
+export function clipFor(ri: number, k: ClipName, model: THREE.Object3D) {
+  return ownClips[ri]?.[k] ?? retarget(k, model);
+}
 const pending: Promise<void>[] = [];
+
+/** Wand transform in the right hand's space for retargeted rigs (copied from the source model's fist). */
+const wandXf: Partial<Record<number, { q: THREE.Quaternion; p: THREE.Vector3; s: number }>> = {};
+
+/**
+ * Retargeted hands turn exactly like the source's (same change of world rotation from rest), so a wand fixed
+ * in the same world-space relation to the hand at rest stays right in every animation.
+ */
+function wandFrom(ri: number, src: THREE.Object3D, tgt: THREE.Object3D) {
+  src.updateMatrixWorld(true); tgt.updateMatrixWorld(true);
+  const sh = findBone(src, /RightHand$/), th = findBone(tgt, /RightHand$/); if (!sh || !th) return;
+  const tmp = new THREE.Group();
+  attachWand({ hand: sh, model: src, grip: [] } as unknown as Fighter, tmp);
+  const tS = th.getWorldScale(V()).x;
+  const rel = th.getWorldQuaternion(new THREE.Quaternion()).invert().multiply(sh.getWorldQuaternion(new THREE.Quaternion()));
+  const q = rel.clone().multiply(tmp.quaternion);
+  // Hands differ in size, so the grip point is this hand's own palm: ~6 cm past the wrist along the forearm line.
+  const palm = th.worldToLocal(th.parent!.getWorldPosition(V())).normalize().multiplyScalar(-0.06 / tS);
+  wandXf[ri] = { q, p: palm.addScaledVector(V(0, 1, 0).applyQuaternion(q), -0.06 / tS), s: 1 / tS };
+}
 
 /**
  * Loads one roster model on demand (gzipped FBX), once. The menus use static portraits,
@@ -19,7 +49,14 @@ const pending: Promise<void>[] = [];
  */
 export function ensureModel(i: number): Promise<void> {
   const r = ROSTER[i];
-  pending[i] ??= loadFbx(`models/${r.file}.fbx.gz`, MODEL_BYTES[r.file]).then(m => prepBase(i, m));
+  pending[i] ??= r.rig === 'tripo'
+    ? Promise.all([loadGlb(`models/${r.file}.glb.gz`, MODEL_BYTES[r.file]), ensureModel(RETARGET_SRC)]).then(([m]) => {
+      renameTripoBones(m); faceForward(m); prepBase(i, m);
+      const src = SkeletonUtils.clone(base[RETARGET_SRC]);
+      wandFrom(i, src, m);
+      ownClips[i] = retargetClips(src, Object.fromEntries(CLIP_NAMES.map(k => [k, retarget(k, src)])) as Record<ClipName, THREE.AnimationClip>, m);
+    })
+    : loadFbx(`models/${r.file}.fbx.gz`, MODEL_BYTES[r.file]).then(m => prepBase(i, m));
   return pending[i];
 }
 export const modelReady = (i: number) => !!base[i];
@@ -36,7 +73,9 @@ function prepBase(i: number, m: THREE.Object3D) {
       if (p.specular) p.specular.multiplyScalar(0.4);
     });
   });
-  const box = new THREE.Box3().setFromObject(m);
+  // Skinned GLBs keep their vertices in bind space, so measure the posed (precise) bounds for them.
+  m.updateMatrixWorld(true);
+  const box = new THREE.Box3().setFromObject(m, ROSTER[i].rig === 'tripo');
   const h = box.max.y - box.min.y || 170;
   m.scale.setScalar(1.78 / h);
   base[i] = m;
@@ -62,7 +101,7 @@ export function makeFighter(ri: number, side: 0 | 1): Fighter {
   const g = new THREE.Group(); g.add(m); scene.add(g);
   const mixer = new THREE.AnimationMixer(m);
   const actions: Fighter['actions'] = {};
-  for (const k of CLIP_NAMES) if (clips[k]) actions[k] = mixer.clipAction(retarget(k, m));
+  for (const k of CLIP_NAMES) if (clips[k]) actions[k] = mixer.clipAction(clipFor(ri, k, m));
   const wand = makeWand(R.lc);
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 1.4), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false }));
   blob.rotation.x = -Math.PI / 2; scene.add(blob);
@@ -102,6 +141,21 @@ function attachWand(c: Fighter, wand: THREE.Group) {
   const ws = hand.getWorldScale(V()).x || c.model.scale.x;
   const bone = (n: string) => findBone(hand, new RegExp(`RightHand${n}$`));
   const mid = bone('Middle1'), idx = bone('Index1');
+  const xf = wandXf[c.ri];
+  if (xf) { wand.quaternion.copy(xf.q); wand.position.copy(xf.p); wand.scale.setScalar(xf.s); hand.add(wand); return; }
+  if (!mid) {
+    // No finger bones (Tripo rigs): the wand leaves the palm along the forearm's line, tilted towards the
+    // front of the body (measured in the rest pose, where the model faces +Z).
+    const fore = hand.parent as THREE.Object3D;
+    const dir = hand.worldToLocal(fore.getWorldPosition(V())).normalize().negate();
+    const front = hand.worldToLocal(hand.getWorldPosition(V()).add(V(0, 0, 1))).normalize();
+    const axis = dir.clone().addScaledVector(front, 0.6).normalize();
+    wand.scale.setScalar(1 / ws);
+    wand.quaternion.setFromUnitVectors(V(0, 1, 0), axis);
+    wand.position.copy(dir).multiplyScalar(0.07 / ws).addScaledVector(axis, -0.06 / ws);
+    hand.add(wand);
+    return;
+  }
   const root = mid ? mid.position.clone() : V(0, 0.09 / ws, 0);
   const fingerLen = (bone('Middle2')?.position.y ?? 0.04 / ws);
   const tipSide = idx && mid && idx.position.x < mid.position.x ? -1 : 1; // thumb side along X
@@ -184,7 +238,7 @@ export function resetChar(c: Fighter) {
   Object.assign(c, {
     x: i === 0 ? -3 : 3, z: -0.6, vx: 0, vz: 0, ry: i === 0 ? Math.PI / 2 : -Math.PI / 2, hp: c.R.hp, mana: 60,
     cdA: 0, cdD: 0, shieldT: -1, shieldOn: false, dodgeT: 0, dodgeDir: V(), castT: 0, hitT: 0, slowT: 0, stunT: 0, cdS: 0, shHP: 0,
-    cdK: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, fbCd: 0, authHp: c.R.hp, pend: [],
+    cdK: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, fbCd: 0, authHp: c.R.hp, pend: [],
   });
   if (c.shield) { c.shield.off(); c.shield = null; }
   anim(c, 'idle', { force: true });

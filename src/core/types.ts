@@ -4,10 +4,10 @@ export type Palette = readonly THREE.Color[];
 export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end' | 'cine' | 'finish';
 export type Mode = 'ai' | 'online';
 
-export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark';
-export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini';
-export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder';
-export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink';
+export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
+export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb';
+export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs';
+export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil';
 /** Everything that can travel over the network as a "cast". */
 export type CastKind = ProjKind | SkillKind | 'thunder' | 'fatal' | 'fatality';
 
@@ -18,7 +18,7 @@ export type ClipName = typeof CLIP_NAMES[number];
 export type Ability = readonly [string, string, string];
 
 export interface WizardDef {
-  id: 'reem' | 'siraj' | 'layla' | 'qasem';
+  id: 'reem' | 'siraj' | 'layla' | 'qasem' | 'ehab';
   name: string;
   female: boolean;
   file: string;
@@ -40,6 +40,8 @@ export interface WizardDef {
   /** Material Symbols ligature for the element. */
   icon: string;
   skill: { k: SkillKind; cost: number; cd: number };
+  /** Model format: Mixamo FBX (default) or a Tripo-rigged GLB whose animations are retargeted at load. */
+  rig?: 'tripo';
 }
 
 export interface ShieldFx { hit(): void; off(): void }
@@ -62,6 +64,8 @@ export interface Fighter {
   hitFlash: number; knockT: number; mats: THREE.MeshPhongMaterial[];
   /** Lost track of the opponent (e.g. they vanished into a portal): cannot turn while > 0. */
   turnLockT: number;
+  /** Ehab's veil: invisible to the opponent while > 0 (broken by casting). */
+  veilT: number; alpha?: number;
   /** Fatal Blow: used this match / cooldown after a miss. */
   fbUsed: boolean; fbCd: number;
   /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
@@ -90,6 +94,8 @@ export interface Wall { owner: 0 | 1; x: number; z: number; ry: number; g: THREE
 export interface Clone {
   owner: 0 | 1; g: THREE.Group; mx: THREE.AnimationMixer; act: Record<'idle' | 'walkL' | 'walkR' | 'bolt', THREE.AnimationAction>;
   x: number; z: number; ox: number; oz: number; sgn: number; t: number; fireT: number; owned: boolean; ph: number;
+  /** A still illusion of its owner (Ehab's veil) instead of a moving, firing shadow clone. */
+  decoy?: boolean;
 }
 
 /** A per-frame effect; return false to remove it. */

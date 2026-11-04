@@ -3,15 +3,14 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
 import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
-import { base, chest } from '../fighters/fighter';
-import { retarget } from '../assets/loader';
+import { base, chest, clipFor } from '../fighters/fighter';
 import { play, pr } from '../audio/audio';
 import { portalRing } from '../fx/effects';
 import { applyDmg } from './damage';
 import { fire } from './actions';
 import { G, DMG } from '../data/rules';
-import { ICE, SHADOW, LIGHT } from '../data/palettes';
-import { V, C, rnd, pick, clamp } from '../core/util';
+import { ICE, SHADOW, LIGHT, ARCH } from '../data/palettes';
+import { V, C, rnd, pick, clamp, angleDelta } from '../core/util';
 import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types';
 import { after } from '../game/schedule';
 
@@ -41,7 +40,41 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   },
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
+  veil(c, o) {
+    // Ehab fades out where he stands and leaves a perfect illusion of himself in his place.
+    c.veilT = G.veilT;
+    spawnDecoy(c, o.x, o.z, o.y);
+    for (let i = 0; i < 40; i++) emit(o.x + rnd(0.5), 0.1 + Math.random() * 1.8, o.z + rnd(0.5), rnd(0.8), 0.6, rnd(0.8), pick(ARCH), 0.16, 0.8, { t: 'twirl' });
+    emit(o.x, 0.05, o.z, 0, 0, 0, ARCH[1], 0.6, 0.7, { t: 'rune', spin: 2, grow: 2.5 });
+    play('m_arcane', { vol: 0.7, x: o.x }); play('m_sparkle', { vol: 0.5, x: o.x, dur: 1.2 });
+    opp(c).turnLockT = Math.max(opp(c).turnLockT, 0.35);
+  },
 };
+
+/**
+ * Leaving the veil: any spell cast while hidden reveals Ehab, and that first spell hits harder.
+ * Called for local and replayed casts alike, so both devices agree on the damage.
+ */
+export function unveilCast(c: Fighter, p?: Projectile) {
+  if (c.veilT <= 0) return;
+  c.veilT = 0;
+  if (p) p.dmg = Math.round(p.dmg * G.veilMult);
+  for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl);
+  for (let i = 0; i < 24; i++) emit(c.x + rnd(0.4), 0.1 + Math.random() * 1.8, c.z + rnd(0.4), rnd(0.6), 0.4, rnd(0.6), pick(ARCH), 0.14, 0.5, { t: 'spark' });
+  play('m_light', { vol: 0.5, x: c.x, dur: 1 });
+}
+
+/* ---------- Ehab's decoy ---------- */
+function spawnDecoy(c: Fighter, x: number, z: number, ry: number) {
+  for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl, false);
+  const m = SkeletonUtils.clone(base[c.ri]);
+  const g = new THREE.Group(); g.add(m); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
+  m.position.y = c.model.position.y;
+  const mx = new THREE.AnimationMixer(m);
+  const act = { idle: mx.clipAction(clipFor(c.ri, 'idle', m)), walkL: mx.clipAction(clipFor(c.ri, 'walkL', m)), walkR: mx.clipAction(clipFor(c.ri, 'walkR', m)), bolt: mx.clipAction(clipFor(c.ri, 'bolt', m)) };
+  act.idle.play();
+  clones.push({ owner: c.idx, g, mx, act, x, z, ox: x, oz: z, sgn: 1, t: G.veilT, fireT: 99, owned: true, ph: 0, decoy: true });
+}
 
 /* ---------- ice wall ---------- */
 function spawnWall(owner: 0 | 1, x: number, z: number, ry: number) {
@@ -100,7 +133,7 @@ function spawnClones(c: Fighter, x: number, z: number, seed: number, owned: bool
     });
     const g = new THREE.Group(); g.add(m); scene.add(g);
     const mx = new THREE.AnimationMixer(m);
-    const act = { idle: mx.clipAction(retarget('idle', m)), walkL: mx.clipAction(retarget('walkL', m)), walkR: mx.clipAction(retarget('walkR', m)), bolt: mx.clipAction(retarget('bolt', m)) };
+    const act = { idle: mx.clipAction(clipFor(c.ri, 'idle', m)), walkL: mx.clipAction(clipFor(c.ri, 'walkL', m)), walkR: mx.clipAction(clipFor(c.ri, 'walkR', m)), bolt: mx.clipAction(clipFor(c.ri, 'bolt', m)) };
     act.walkL.play();
     const sgn = k ? 1 : -1;
     clones.push({ owner: c.idx, g, mx, act, x, z, ox: x, oz: z, sgn, t: 6.5, fireT: 0.9 + k * 0.5 + ((seed >> k) % 5) * 0.1, owned, ph: (seed % 100) / 10 + k * 2 });
@@ -113,7 +146,8 @@ export function killClone(cl: Clone, puff = true) {
   const i = clones.indexOf(cl); if (i < 0) return;
   clones.splice(i, 1); scene.remove(cl.g); cl.mx.stopAllAction();
   if (puff) {
-    for (let k = 0; k < 30; k++) emit(cl.x + rnd(0.3), 0.2 + Math.random() * 1.5, cl.z + rnd(0.3), rnd(1), 0.6, rnd(1), pick(SHADOW), 0.25, 0.6, { t: 'twirl' });
+    const pal = cl.decoy ? ARCH : SHADOW;
+    for (let k = 0; k < 30; k++) emit(cl.x + rnd(0.3), 0.2 + Math.random() * 1.5, cl.z + rnd(0.3), rnd(1), 0.6, rnd(1), pick(pal), 0.25, 0.6, { t: 'twirl' });
     for (let k = 0; k < 6; k++) emit(cl.x, 0.8, cl.z, rnd(0.4), 0.3, rnd(0.4), C(0.08, 0.04, 0.12), 0.8, 1.2, { t: 'smoke', smoke: 1, grow: 0.6, a: 0.5 });
     play('m_fastmagic', { vol: 0.4, x: cl.x, rate: 0.7, dur: 1 });
   }
@@ -125,6 +159,13 @@ export function updClones(dt: number) {
     cl.t -= dt;
     const own = S.CH[cl.owner], tg = S.CH[1 - cl.owner];
     if (!own || !tg) { killClone(cl, false); continue; }
+    if (cl.decoy) {
+      // The illusion stands its ground, keeps facing the enemy and dissolves when the veil ends.
+      cl.g.rotation.y += angleDelta(cl.g.rotation.y, Math.atan2(tg.x - cl.x, tg.z - cl.z)) * Math.min(1, dt * 4);
+      cl.mx.update(dt);
+      if (cl.t <= 0 || own.veilT <= 0 || S.state === 'ko') killClone(cl);
+      continue;
+    }
     const ax = tg.x - cl.x, az = tg.z - cl.z, L = Math.hypot(ax, az) || 1;
     const tx = clamp(cl.ox + cl.sgn * (1.8 + Math.sin(S.T * 1.3 + cl.ph) * 0.8) * (-az / L), -G.bx, G.bx);
     const tz = clamp(cl.oz + cl.sgn * (1.8 + Math.sin(S.T * 1.1 + cl.ph) * 0.8) * (ax / L), G.zMin, G.zMax);

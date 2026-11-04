@@ -55,6 +55,8 @@ export function aiThink(c: Fighter, dt: number) {
     else if (K === 'blink' && threat && tmin < 0.45) { castSkill(c); ai.skT = 1; }
     else if (K === 'portal' && (dist > 6 || Math.random() < 0.3)) { castSkill(c); ai.skT = 3; after(0.9, () => { if (!c.dead) castBolt(c); }); }
     else if (K === 'clones') { castSkill(c); ai.skT = 3; }
+    // Vanish when something is incoming or at random, slip aside, then strike from hiding.
+    else if (K === 'veil' && (threat || Math.random() < 0.25)) { castSkill(c); ai.skT = 4; ai.strafe *= -1; after(1.2 + Math.random(), () => { if (!c.dead) castBolt(c); }); }
   }
   // Fatal Blow under the same rules as the player (own health under 30 %, once per match), in range.
   if (fatalReady(c) && dist < 6.5 && Math.random() < dt * 0.9) useFinisher(c);
