@@ -6,10 +6,14 @@ cpSync('dist/play', 'www', { recursive: true });
 cpSync('public/config.js', 'www/config.js');
 let html = readFileSync('www/index.html', 'utf8');
 html = html.replace('../config.js', './config.js')
+  // Vite links assets as ../play/build/... (page lives in /play/); inside the app the page is at the root.
+  .replaceAll('../play/build/', './build/')
   .replace(/<link rel="manifest"[^>]*>\n?/, '')
   .replace(/<link rel="apple-touch-icon"[^>]*>\n?/, '')
   .replace(/<link rel="icon"[^>]*>\n?/, '')
-  .replace(/<script>if\('serviceWorker'[^<]*<\/script>\n?/, '')
-  .replace(/<a class="btn ghost" href="\.\.\/"[^>]*>[^<]*<\/a>/, '');
+  .replace(/<script>if\('serviceWorker'[^<]*<\/script>\n?/, '');
+// Guard: nothing inside the app may reference files above its root (that broke the APK once).
+const outside = html.match(/(?:src|href)="\.\.\/[^"]*"/);
+if (outside) throw new Error('www/index.html still links outside the app: ' + outside[0]);
 writeFileSync('www/index.html', html);
 console.log('www ready');
