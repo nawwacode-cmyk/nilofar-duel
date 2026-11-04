@@ -6,7 +6,6 @@ import { dmgText, flash } from '../fx/effects';
 import { setShield, fire } from './actions';
 import { ko } from '../game/flow';
 import { impact } from '../fx/impact';
-import { crowdReact } from '../world/crowd';
 import { opp } from '../game/state';
 import { G, DMG } from '../data/rules';
 import { GOLD } from '../data/palettes';
@@ -47,7 +46,6 @@ function breakShield(c: Fighter) {
   for (let i = 0; i < 70; i++) { const v = V().randomDirection(); emit(p.x + v.x * 0.8, p.y + v.y, p.z + v.z * 0.8, v.x * 4, v.y * 3 + 1, v.z * 4, pick(c.pal), 0.12, 0.8, { t: 'star', grav: -6, drag: 1 }); }
   dmgText(c, TXT.shieldBroken, '#fff'); anim(c, 'hit', { once: true, speed: 0.9, force: true });
   impact(c, opp(c), 0.6);
-  crowdReact('gasp', 0.5);
 }
 
 export function applyDmg(c: Fighter, d: number, att: Fighter) {

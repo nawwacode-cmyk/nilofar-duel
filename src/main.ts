@@ -4,7 +4,6 @@ import { S } from './game/state';
 import { loadClips } from './assets/loader';
 import { loadRosterModels } from './fighters/fighter';
 import { loadCourt, makeTorches } from './world/court';
-import { buildCrowd } from './world/crowd';
 import { loadSounds } from './audio/audio';
 import { resize, setDebugCamera } from './camera/camera';
 import { initLights } from './render/lights';
@@ -34,7 +33,6 @@ async function boot() {
   try {
     await Promise.all([loadRosterModels(tick), loadClips(tick), loadCourt().then(tick), loadSounds().then(tick)]);
     makeTorches();
-    buildCrowd();
     makePortraits();
     S.state = 'title'; buildRoster(); showcase();
     // ?debug exposes internals for manual inspection and automated browser checks.

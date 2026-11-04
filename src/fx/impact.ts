@@ -4,7 +4,6 @@ import { grade } from '../render/stage';
 import { lightFlash } from '../render/lights';
 import { chest } from '../fighters/fighter';
 import { reduceMotion } from '../core/util';
-import { crowdReact } from '../world/crowd';
 import type { Fighter } from '../core/types';
 
 /**
@@ -21,8 +20,6 @@ export function impact(victim: Fighter, attacker: Fighter, severity: number) {
   punch = Math.max(punch, severity);
   if (severity >= 0.6 && !reduceMotion) flashScreen = Math.max(flashScreen, 0.12 * severity);
   victim.hitFlash = 1;
-  if (severity >= 1) crowdReact('cheer', 0.95);
-  else if (severity >= 0.6) crowdReact('cheer', 0.45);
   const p = chest(victim);
   lightFlash(p.x, p.y, p.z, attacker.pal, 10 + 18 * severity, 0.18 + 0.2 * severity);
   if (isLocal(victim) && !victim.dead) {

@@ -13,7 +13,6 @@ import { netSend } from '../net/online';
 import { atkHeld, readMove } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/court';
-import { updateCrowd } from '../world/crowd';
 import { updateFx } from '../fx/effects';
 import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';
@@ -52,7 +51,6 @@ function frame() {
     if (S.mode === 'online' && netAcc > 0.05) { netAcc = 0; netSend(); }
   }
   updateAmbience(rdt);
-  if (!inMenus()) updateCrowd(rdt);
   updateFx(dt);
   updateLights(dt);
   updateImpactFx(rdt, S.CH[0] ? me() : null);

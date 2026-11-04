@@ -31,7 +31,7 @@ export async function loadCourt() {
   tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const mat = new THREE.MeshLambertMaterial({ map: tex, color: 0x7d8bb4, side: THREE.DoubleSide });
   const m = new THREE.Mesh(g, mat);
-  m.frustumCulled = false; m.receiveShadow = true; scene.add(m); courtMesh = m;
+  m.frustumCulled = false; m.receiveShadow = true; scene.add(m);
   patchFloorHole(m, mat);
 }
 
@@ -78,10 +78,6 @@ function patchFloorHole(court: THREE.Mesh, courtMat: THREE.MeshLambertMaterial) 
   patch.position.set(HOLE.x, 0.02, HOLE.z); patch.renderOrder = 1;
   scene.add(patch);
 }
-
-let courtMesh: THREE.Mesh | null = null;
-/** The scanned courtyard mesh (for floor-height ray casts). */
-export const getCourtMesh = () => courtMesh;
 
 const torches: { g: THREE.Group; L: THREE.PointLight; s: number }[] = [];
 
