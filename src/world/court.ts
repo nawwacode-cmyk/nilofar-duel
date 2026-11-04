@@ -32,7 +32,7 @@ export async function loadCourt() {
   g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
   g.setAttribute('uv', new THREE.BufferAttribute(uv, 2));
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
-  const tex = await new THREE.TextureLoader().loadAsync(renderer.capabilities.maxTextureSize >= 8192 ? 'models/court4k.jpg' : 'models/court2k.jpg');
+  const tex = await new THREE.TextureLoader().loadAsync(renderer.capabilities.maxTextureSize >= 8192 && !matchMedia('(pointer: coarse)').matches ? 'models/court4k.webp' : 'models/court2k.webp');
   tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
   const mat = new THREE.MeshLambertMaterial({ map: tex, color: 0x7d8bb4, side: THREE.DoubleSide });
   const m = new THREE.Mesh(g, mat);

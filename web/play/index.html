@@ -13,6 +13,8 @@
 <link rel="apple-touch-icon" href="../icons/icon-180.png">
 <link rel="icon" href="../icons/icon-192.png">
 <script src="../config.js"></script>
+<!-- Rotate before anything renders (same rule as core/view.ts) so even the loading screen is landscape on slow networks. -->
+<script>(function(){var d=document.documentElement;function f(){var r=innerHeight>innerWidth&&(matchMedia('(pointer: coarse)').matches||/[?&]rot/.test(location.search));d.classList.toggle('rot',r);var h=r?innerWidth:innerHeight,w=r?innerHeight:innerWidth;d.classList.toggle('compact',h<=460);d.classList.toggle('tall',h>=700&&w/h>=4/3)}f();addEventListener('resize',f)})()</script>
 </head>
 <body>
 <canvas id="c"></canvas>
@@ -27,13 +29,12 @@
   <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
   <div id="btns">
     <button class="b" id="bAtk" data-a="atk">هجوم</button>
-    <button class="b" id="bSh" data-a="sh">درع<small>باستمرار</small></button>
+    <button class="b" id="bSh" data-a="sh">درع</button>
     <button class="b" id="bDg" data-a="dg">مراوغة</button>
     <button class="b" id="bSp" data-a="sp">خاصة</button>
     <button class="b" id="bSk" data-a="sk">مهارة</button>
   </div>
 </div>
-<div id="keys" hidden>WASD للحركة · J هجوم · K درع · L مراوغة · I الضربة الخاصة · U المهارة</div>
 <button id="mute" aria-label="الصوت"><span class="ic">volume_up</span></button>
 
 <!-- loading -->
@@ -116,8 +117,6 @@
   <div class="btns"><button class="gbtn big" id="again"><span class="ic">swords</span> مبارزة جديدة</button><button class="gbtn dark" id="toMenu">القائمة</button></div>
 </div>
 
-<!-- landscape-only notice -->
-<div class="ov scene" id="rotate"><div class="phone"></div><h2 class="gtext">أدِر جهازك</h2><p>هذه اللعبة تُلعب بالوضع الأفقي فقط.</p></div>
 
 <script type="module" src="../../src/main.ts"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../sw.js').catch(()=>{}))</script>

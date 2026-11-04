@@ -3,11 +3,11 @@ import { scene } from './stage';
 import { V, C, rnd, pick } from '../core/util';
 import type { Palette } from '../core/types';
 
-/** Tiles in the Kenney 8x3 particle atlas (models/fx.png). */
+/** Tiles in the Kenney 8x3 particle atlas (models/fx.webp). */
 const TILE = { flame: [0, 1, 2, 3], smoke: [4, 5, 6], spark: [7, 8, 9], star: [10, 11], magic: [12, 13, 19], twirl: [14, 21], glow: [15, 23], ring: [16], flare: [17], scorch: [18], trace: [20], rune: [22] } as const;
 export type Tile = keyof typeof TILE;
 
-const fxTex = new THREE.TextureLoader().load('models/fx.png');
+const fxTex = new THREE.TextureLoader().load('models/fx.webp');
 
 interface ParticleSystem {
   max: number; g: THREE.BufferGeometry; m: THREE.ShaderMaterial;

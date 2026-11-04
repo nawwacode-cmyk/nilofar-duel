@@ -4,6 +4,7 @@ import { unlock } from '../audio/audio';
 import { castBolt, castSpecial, castSkill, dodge } from '../combat/actions';
 import { mash } from '../game/struggle';
 import { $ } from '../core/util';
+import { toLocal, localRect } from '../core/view';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
 type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk';
@@ -39,14 +40,16 @@ export function initInput() {
   const stickZone = $('stickZone'), stick = $('stick'), knob = $('knob');
   let stickId: number | null = null, stickC = { x: 0, y: 0 };
   const moveStick = (e: PointerEvent) => {
-    let dx = e.clientX - stickC.x, dy = e.clientY - stickC.y; const L = Math.hypot(dx, dy), M = 50;
+    const p = toLocal(e.clientX, e.clientY);
+    let dx = p.x - stickC.x, dy = p.y - stickC.y; const L = Math.hypot(dx, dy), M = 50;
     if (L > M) { dx *= M / L; dy *= M / L; }
     knob.style.transform = `translate(${dx}px,${dy}px)`; input.x = dx / M; input.z = dy / M;
   };
   stickZone.addEventListener('pointerdown', e => {
-    unlock(); stickId = e.pointerId; stickZone.setPointerCapture(e.pointerId);
-    const r = stickZone.getBoundingClientRect(); stickC = { x: e.clientX, y: e.clientY };
-    stick.style.left = e.clientX - r.left + 'px'; stick.style.top = e.clientY - r.top + 'px'; moveStick(e);
+    unlock(); stickId = e.pointerId;
+    try { stickZone.setPointerCapture(e.pointerId); } catch { /* some browsers refuse capture; plain move events still work */ }
+    const r = localRect(stickZone); stickC = toLocal(e.clientX, e.clientY);
+    stick.style.left = stickC.x - r.left + 'px'; stick.style.top = stickC.y - r.top + 'px'; moveStick(e);
   });
   stickZone.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
   const stickEnd = (e: PointerEvent) => { if (e.pointerId !== stickId) return; stickId = null; input.x = input.z = 0; knob.style.transform = ''; };

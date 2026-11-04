@@ -45,6 +45,9 @@ export async function setArena(id: ArenaId) {
 export async function loadArenas(onLoaded: () => void) {
   await setArena(current);
   onLoaded();
+  // On slow or data-saving connections the other arena is only fetched when it is actually chosen.
+  const net = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+  if (net?.saveData || /(^|-)2g|3g/.test(net?.effectiveType ?? '')) return;
   const other: ArenaId = current === 'court' ? 'terrace' : 'court';
   setTimeout(() => { void ensure(other).then(() => { ARENAS[other].root.visible = current === other; }); }, 1500);
 }

@@ -4,6 +4,7 @@ import { emit } from '../render/particles';
 import { fx } from '../game/state';
 import { headPos } from '../fighters/fighter';
 import { rnd, pick } from '../core/util';
+import { viewSize } from '../core/view';
 import type { Fighter, Palette, ShieldFx } from '../core/types';
 
 /** Boosts the fighter's wand light (decays every frame in updChar). */
@@ -13,7 +14,8 @@ export function flash(c: Fighter, a: number) { c.light.intensity = Math.max(c.li
 export function dmgText(c: Fighter, txt: string, col: string) {
   const p = headPos(c).project(camera);
   const el = document.createElement('div'); el.className = 'dmg'; el.style.color = col; el.textContent = txt;
-  el.style.left = ((p.x + 1) / 2) * innerWidth + 'px'; el.style.top = ((1 - p.y) / 2) * innerHeight + 'px';
+  const { w, h } = viewSize();
+  el.style.left = ((p.x + 1) / 2) * w + 'px'; el.style.top = ((1 - p.y) / 2) * h + 'px';
   document.body.appendChild(el); setTimeout(() => el.remove(), 1200);
 }
 

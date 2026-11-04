@@ -15,18 +15,21 @@ export const loadFbx = async (url: string) => loader.parse((await getBytes(url))
 /** Shared animation clips (Mixamo), loaded once and retargeted per fighter. */
 export const clips = {} as Record<ClipName, THREE.AnimationClip>;
 
-/** Keeps rotations + vertical hip motion only, so animations never move the fighter on the floor. */
-function cleanClip(clip: THREE.AnimationClip) {
-  clip.tracks = clip.tracks.filter(t => t.name.endsWith('.quaternion') || /Hips\.position$/.test(t.name));
-  for (const t of clip.tracks) if (/Hips\.position$/.test(t.name)) {
-    const v = t.values, x0 = v[0], z0 = v[2];
-    for (let i = 0; i < v.length; i += 3) { v[i] = x0; v[i + 2] = z0; }
-  }
-  return clip;
-}
+/** anims.json (built by tools/pack-anims.mjs): per clip a duration and [trackName, 'q'|'v', times, values]. */
+type PackedClips = Record<ClipName, { d: number; t: [string, 'q' | 'v', number[], number[]][] }>;
 
+/**
+ * Loads all animation clips from one packed file (~0.3 MB over the network instead of ~7 MB of FBX).
+ * The packing already keeps rotations + vertical hip motion only, so animations never move fighters on the floor.
+ */
 export async function loadClips(onEach: () => void) {
-  await Promise.all(CLIP_NAMES.map(k => loadFbx(`models/${k}.fbx`).then(o => { clips[k] = cleanClip(o.animations[0]); onEach(); })));
+  const packed = await (await fetch('models/anims.json')).json() as PackedClips;
+  for (const k of CLIP_NAMES) {
+    const c = packed[k];
+    clips[k] = new THREE.AnimationClip(k, c.d, c.t.map(([name, kind, times, values]) =>
+      kind === 'q' ? new THREE.QuaternionKeyframeTrack(name, times, values) : new THREE.VectorKeyframeTrack(name, times, values)));
+    onEach();
+  }
 }
 
 export function findBone(root: THREE.Object3D, re: RegExp): THREE.Bone | null {

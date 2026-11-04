@@ -5,6 +5,7 @@ import { bloomScale } from '../render/quality';
 import { fovPunch } from '../fx/impact';
 import { S, ch, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
+import { viewSize, updateRotation } from '../core/view';
 
 /**
  * Fixed side-on camera: always looks from +z, only pans and zooms to frame both wizards.
@@ -15,11 +16,12 @@ const tp = V(), tl = V();
 const LIM = 5.5;
 
 export function updCamera(dt: number) {
-  const portrait = innerWidth / innerHeight < 1;
+  const { w: vw, h: vh } = viewSize();
+  const portrait = vw / vh < 1;
   if (S.state === 'menu' || S.state === 'online' || S.state === 'load' || S.state === 'title') {
     const c = ch(0); const a = S.T * 0.15;
     if (S.state === 'title') { tp.set(Math.sin(S.T * 0.07) * 2.2, 2.2, 4.6); tl.set(0, 1.4, -2); }
-    else if (innerWidth < innerHeight) { tp.set(c.x + Math.sin(a) * 0.3, 1.15, c.z + 3.4); tl.set(c.x, 0.55, c.z); }
+    else if (vw < vh) { tp.set(c.x + Math.sin(a) * 0.3, 1.15, c.z + 3.4); tl.set(c.x, 0.55, c.z); }
     else { tp.set(c.x + 0.95 + Math.sin(a) * 0.3, 1.35, c.z + 2.9); tl.set(c.x + 0.95, 1.15, c.z); }
   } else {
     const a = ch(0), b = ch(1);
@@ -50,7 +52,8 @@ export function updCamera(dt: number) {
 }
 
 export function resize() {
-  const w = innerWidth, h = innerHeight;
+  updateRotation();
+  const { w, h } = viewSize();
   renderer.setSize(w, h, false); composer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   bloom.resolution.set(w * bloomScale(), h * bloomScale());

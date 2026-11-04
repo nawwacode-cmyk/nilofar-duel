@@ -20,7 +20,7 @@ const loader = new THREE.TextureLoader();
 const aniso = () => Math.min(8, renderer.capabilities.getMaxAnisotropy());
 
 async function pbr(name: string, repeat: [number, number]) {
-  const [map, normalMap, roughnessMap] = await Promise.all(['diff', 'nor', 'rough'].map(k => loader.loadAsync(`${DIR}${name}_${k}.jpg`)));
+  const [map, normalMap, roughnessMap] = await Promise.all(['diff', 'nor', 'rough'].map(k => loader.loadAsync(`${DIR}${name}_${k}.${k === 'nor' ? 'jpg' : 'webp'}`)));
   map.colorSpace = THREE.SRGBColorSpace;
   for (const t of [map, normalMap, roughnessMap]) { t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...repeat); t.anisotropy = aniso(); }
   return { map, normalMap, roughnessMap };
@@ -33,7 +33,7 @@ export async function loadTerrace() {
   const [floorTex, stoneTex, backTex] = await Promise.all([
     pbr('cobblestone_pavement', [FLOOR.w / 2.4, FLOOR.d / 2.4]),
     pbr('castle_wall_slates', [1, 1]),
-    loader.loadAsync(DIR + 'backdrop.jpg'),
+    loader.loadAsync(DIR + 'backdrop.webp'),
   ]);
 
   // Wet flagstones: low roughness so braziers and spells leave bright streaks, cool moonlit tint.

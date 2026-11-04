@@ -26,7 +26,7 @@ function clearArena() {
 export function startMatch() {
   S.CH.forEach(c => { if (c) c.wins = 0; });
   S.round = 0;
-  $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false; $('keys').hidden = false;
+  $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false;
   $('bSk').textContent = skillLabel(me().R);
   walls.slice().forEach(killWall); clones.slice().forEach(c => killClone(c, false));
   S.CH.forEach((c, i) => {
@@ -79,7 +79,7 @@ export function showcase() {
 
 export function toMenu() {
   S.state = 'menu'; musicOff();
-  ['end', 'hud', 'ctl', 'keys', 'sWrap'].forEach(id => { $(id).hidden = true; });
+  ['end', 'hud', 'ctl', 'sWrap'].forEach(id => { $(id).hidden = true; });
   banner(''); clearProjectiles(); strikes.length = 0;
   leaveNet(); S.mode = 'ai'; showcase(); $('menu').hidden = false;
 }

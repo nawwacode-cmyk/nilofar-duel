@@ -3,7 +3,8 @@
 /* ============ أسرار الظلام — landscape-only UI ============
    Theme: obsidian panels framed in antique gold over the moonlit castle backdrop.
    Sizing rules: every font size comes from the --fs scale, every gap from the --g scale,
-   and no two interactive elements are closer than --g2 (10px). Portrait shows a "rotate" notice. */
+   and no two interactive elements are closer than --g2 (10px). There is no portrait layout: a phone held upright
+   gets the whole game rotated (html.rot). */
 :root{
   --night:#05070d; --ink:#f3e8d0; --muted:#b2aac2;
   --gold:#e0b45a; --gold-hi:#fbe3a2; --gold-lo:#8d6428;
@@ -67,15 +68,15 @@ a.gbtn{text-decoration:none}
   padding:var(--safe-t) var(--safe-r) var(--safe-b) var(--safe-l);overflow:hidden;z-index:5;background:radial-gradient(ellipse at 50% 40%,#0b1430d9,#03050bf2)}
 .ov p{margin:0;color:var(--muted);line-height:1.6;font-size:var(--fs-md);max-width:44em}
 .ov h2{font-family:var(--display);font-weight:700;font-size:var(--fs-2xl);margin:0;line-height:1.2}
-.scene{background:url('./img/bg.jpg') center/cover no-repeat,#05070d}
-@media (max-width:1100px){.scene{background-image:url('./img/bg-sm.jpg')}}
+.scene{background:url('./img/bg.webp') center/cover no-repeat,#05070d}
+@media (max-width:1100px){.scene{background-image:url('./img/bg-sm.webp')}}
 .scene::before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(ellipse 70% 60% at 50% 45%,#05070d00 0%,#05070d55 60%,#05070dcc 100%),linear-gradient(180deg,#05070d66,#05070d00 30%,#05070d00 60%,#05070dcc)}
 .scene>*{position:relative}
 .ov.clear{background:linear-gradient(180deg,#03050b55,#03050be0)}
 
 /* loading: duel artwork, title and gold progress bar along the bottom */
-#load{justify-content:flex-end;background:url('./img/load.jpg') center/cover no-repeat,#05070d;z-index:20}
-@media (max-width:1100px){#load{background-image:url('./img/load-sm.jpg')}}
+#load{justify-content:flex-end;background:url('./img/load.webp') center/cover no-repeat,#05070d;z-index:20}
+@media (max-width:1100px){#load{background-image:url('./img/load-sm.webp')}}
 #load::before{content:"";position:absolute;inset:0;background:linear-gradient(180deg,#05070d00 45%,#05070dcc 78%,#05070df2)}
 .lbottom{position:relative;display:flex;flex-direction:column;align-items:center;gap:var(--g1);width:100%}
 #load .logo{font-size:calc(var(--fs-logo) * .8)}
@@ -98,7 +99,8 @@ a.gbtn{text-decoration:none}
 .mhead .crest{grid-column:2;grid-row:1;display:flex;flex-direction:column;align-items:center;gap:var(--g2)}
 .mhead .logo{font-size:var(--fs-2xl)}
 .mbody{display:grid;grid-template-columns:minmax(0,1.3fr) minmax(0,1fr);gap:var(--g4);min-height:0}
-@media (min-height:700px) and (min-aspect-ratio:4/3){.mbody{grid-template-columns:1fr;grid-template-rows:minmax(0,1.35fr) minmax(0,1fr);gap:var(--g3)}}
+/* Size classes are set from the game's own (possibly rotated) viewport in core/view.ts, not from media queries. */
+html.tall .mbody{grid-template-columns:1fr;grid-template-rows:minmax(0,1.35fr) minmax(0,1fr);gap:var(--g3)}
 
 .cards{container-type:size;display:flex;gap:var(--g3);justify-content:center;align-items:center;min-height:0;direction:rtl;padding-top:var(--g2)}
 .wcard{--w:min(calc((100cqw - 3 * var(--g3)) / 4),calc((100cqh - 14px) * .625));position:relative;width:var(--w);aspect-ratio:5/8;padding:0;border:none;border-radius:6px;cursor:pointer;
@@ -138,15 +140,13 @@ a.gbtn{text-decoration:none}
 .diffbox{display:flex;align-items:center;justify-content:flex-end;gap:var(--g2)}
 .mset{display:flex;flex-direction:column;gap:var(--g2);align-items:stretch}
 
-@media (max-height:460px){
-  :root{--g3:12px;--g4:18px;--btn-h:34px;--btn-h-lg:38px}
-  #menu{gap:var(--g2)}
-  .mhead .logo{display:none}
-  .gbtn small{display:none}
-  #dStory{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
-  .abl{padding:4px 0}.abl span:last-child{display:none}
-  .info{padding:var(--g2) var(--g3)}
-}
+html.compact{--g3:12px;--g4:18px;--btn-h:34px;--btn-h-lg:38px}
+html.compact #menu{gap:var(--g2)}
+html.compact .mhead .logo{display:none}
+html.compact .gbtn small{display:none}
+html.compact #dStory{display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+html.compact .abl{padding:4px 0}html.compact .abl span:last-child{display:none}
+html.compact .info{padding:var(--g2) var(--g3)}
 
 /* ---------- online: create | join side by side ---------- */
 #online .onl{display:flex;flex-direction:column;align-items:center;gap:var(--g2);padding:var(--g3) clamp(var(--g3),4vw,36px);width:min(680px,94vw);max-height:100%}
@@ -161,18 +161,16 @@ a.gbtn{text-decoration:none}
 .ofoot{display:flex;align-items:center;justify-content:center;gap:var(--g3);margin-top:var(--g1)}
 input#code{height:var(--btn-h);font-family:var(--display);font-weight:700;font-size:var(--fs-xl);letter-spacing:6px;text-align:center;width:130px;padding:0 4px;border-radius:6px;border:none;box-shadow:inset 0 0 0 1px var(--gold-lo);background:#0006;color:var(--gold-hi);text-transform:uppercase;direction:ltr}
 .codebig{font-family:var(--display);font-weight:700;font-size:clamp(28px,8vh,40px);line-height:1.15;letter-spacing:10px;direction:ltr;background:var(--gold-text);-webkit-background-clip:text;background-clip:text;color:transparent}
-@media (max-height:460px){.ofoot .lbl{display:none}}
+html.compact .ofoot .lbl{display:none}
 
 /* ---------- end ---------- */
 #end .logo{font-size:calc(var(--fs-logo) * .75)}
 #end .btns{margin-top:var(--g2)}
 
-/* ---------- rotate notice (landscape-only game) ---------- */
-#rotate{z-index:50;display:none;gap:var(--g3)}
-#rotate .phone{width:40px;height:68px;border-radius:8px;box-shadow:inset 0 0 0 3px var(--gold);animation:turn 2.4s ease-in-out infinite}
-@keyframes turn{0%,20%{transform:rotate(0)}50%,80%{transform:rotate(-90deg)}100%{transform:rotate(0)}}
-@media (orientation:portrait){#rotate{display:flex}}
-@media (prefers-reduced-motion:reduce){#rotate .phone{animation:none;transform:rotate(-90deg)}}
+/* ---------- forced landscape: phone held upright (or rotation-locked) -> rotate the whole game 90deg ---------- */
+html.rot body{position:fixed;top:0;left:0;width:100vh;height:100vw;width:100dvh;height:100dvw;transform-origin:top left;transform:translateX(100vw) rotate(90deg)}
+/* Screen edges move with the rotation: game-left = screen-top, game-top = screen-right, game-right = screen-bottom. */
+html.rot{--safe-l:max(var(--g3),env(safe-area-inset-top,0px));--safe-t:max(var(--g2),env(safe-area-inset-right,0px));--safe-r:max(var(--g3),env(safe-area-inset-bottom,0px));--safe-b:max(var(--g2),env(safe-area-inset-left,0px))}
 
 /* ============ in-match HUD ============ */
 .wrap{position:fixed;left:0;right:0;padding-left:var(--safe-l);padding-right:var(--safe-r);pointer-events:none}
@@ -199,8 +197,6 @@ input#code{height:var(--btn-h);font-family:var(--display);font-weight:700;font-s
 /* mute: top-centre between the health bars in a match, top corner on menu screens */
 #mute{position:fixed;top:var(--safe-t);left:50%;margin-left:-16px;width:32px;height:32px;padding:0;border-radius:50%;border:none;box-shadow:inset 0 0 0 1px var(--gold-lo);background:#0b0912cc;color:var(--gold);font-size:14px;z-index:6;cursor:pointer;display:grid;place-items:center}
 body:has(#title:not([hidden])) #mute,body:has(#menu:not([hidden])) #mute,body:has(#online:not([hidden])) #mute{left:auto;margin-left:0;right:var(--safe-r)}
-#keys{position:fixed;bottom:var(--safe-b);left:50%;transform:translateX(-50%);font-size:var(--fs-xs);color:var(--muted);direction:rtl;pointer-events:none;z-index:2;text-shadow:0 1px 4px #000;white-space:nowrap}
-@media (hover:none){#keys{display:none}}
 
 /* touch controls.
    Attack (72px) sits in the corner; dodge, special and shield (52px) ring it at 82px centre distance,
