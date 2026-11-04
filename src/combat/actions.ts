@@ -32,6 +32,10 @@ function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
     if (cs.length && Math.random() < 0.6) { const k = pick(cs); t = V(k.x, 1.3, k.z); }
   }
   const d = t.sub(s); d.y *= 0.55;
+  // Wizards cast where they face: with the target outside the cone (e.g. right after a portal behind them)
+  // the spell flies straight ahead and misses until they have turned around.
+  const fx = Math.sin(c.ry), fz = Math.cos(c.ry), h = Math.hypot(d.x, d.z) || 1;
+  if ((d.x * fx + d.z * fz) / h < G.castCone) { d.x = fx * h; d.z = fz * h; }
   return [s, d];
 }
 

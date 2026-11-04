@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { S } from './game/state';
 import { loadClips } from './assets/loader';
 import { onDownloadProgress, resetDownloadProgress } from './assets/net';
-import { ensureModel } from './fighters/fighter';
+import { ensureModel, ensureModels, makeFighter, dropFighter, anim, applyGroundContact } from './fighters/fighter';
 import { loadArenas } from './world/arena';
 import { loadSounds } from './audio/audio';
 import { resize, setDebugCamera } from './camera/camera';
@@ -43,7 +43,7 @@ async function boot() {
     onDownloadProgress(null); resetDownloadProgress();
     S.state = 'title'; buildRoster();
     // ?debug exposes internals for manual inspection and automated browser checks.
-    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, scene, camera, renderer, THREE, camAt: setDebugCamera } });
+    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact } });
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
     void preload();

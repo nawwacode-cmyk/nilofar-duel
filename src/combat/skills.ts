@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
-import { S, ch, clones, walls, strikes, isLocal } from '../game/state';
+import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
 import { base, chest } from '../fighters/fighter';
 import { retarget } from '../assets/loader';
 import { play, pr } from '../audio/audio';
@@ -22,6 +22,8 @@ export const SKFX: Record<'portal' | 'blink' | 'wall' | 'clones', (c: Fighter, o
     play('m_fire_swoosh', { vol: 0.7, x: o.x });
     setTimeout(() => play('m_whoosh', { vol: 0.6, x: o.dx }), 300);
     c.warpT = 0.75; c.invT = 0.75;
+    // The opponent loses track while she is inside the portal and for a moment after she steps out behind them.
+    opp(c).turnLockT = 0.75 + G.portalBlind;
     if (!o.remote) c.warpTo = [o.dx, o.dz];
   },
   blink(c, o) {
@@ -32,7 +34,7 @@ export const SKFX: Record<'portal' | 'blink' | 'wall' | 'clones', (c: Fighter, o
     }
     explosion(V(o.dx, 0.9, o.dz), LIGHT, 0.5);
     play('m_shock', { vol: 0.6, x: o.dx, dur: 1 });
-    if (!o.remote) { c.x = o.dx; c.z = o.dz; c.invT = 0.25; c.vx = c.vz = 0; }
+    if (!o.remote) { c.x = o.dx; c.z = o.dz; c.invT = 0.25; c.vx = c.vz = 0; const t = opp(c); c.ry = Math.atan2(t.x - c.x, t.z - c.z); }
     c.light.intensity = 30;
   },
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },

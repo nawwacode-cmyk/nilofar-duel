@@ -1,5 +1,6 @@
 import { S, opp } from '../game/state';
-import { anim, tipPos, headPos, applyGrip } from './fighter';
+import { anim, tipPos, headPos, applyGrip, applyGroundContact } from './fighter';
+import { floorAt } from '../world/arena';
 import { setShield } from '../combat/actions';
 import { play } from '../audio/audio';
 import { emit } from '../render/particles';
@@ -14,7 +15,7 @@ function dust(c: Fighter, n: number, sp: number) {
 }
 const DUST = C(0.32, 0.34, 0.42);
 
-const TIMERS =['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT'] as const;
+const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT', 'turnLockT'] as const;
 const fwd = V(), right = V();
 
 /**
@@ -27,7 +28,8 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
   if (c.warpT > 0) {
     c.warpT -= dt; const w = c.warpT;
     c.root.visible = !(w > 0.12 && w < 0.6);
-    if (local && c.warpTo && w < 0.45) { c.x = c.warpTo[0]; c.z = c.warpTo[1]; c.vx = c.vz = 0; c.warpTo = null; }
+    // Portal exit: arrive already facing the opponent (that is the edge the portal buys).
+    if (local && c.warpTo && w < 0.45) { c.x = c.warpTo[0]; c.z = c.warpTo[1]; c.vx = c.vz = 0; c.warpTo = null; c.ry = Math.atan2(o.x - c.x, o.z - c.z); }
     if (c.warpT <= 0) c.root.visible = true;
   }
   if (local) {
@@ -54,7 +56,10 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
       if (dd < 1.1 && dd > 0) { c.x += (dx / dd) * (1.1 - dd) * 0.5; c.z += (dz / dd) * (1.1 - dd) * 0.5; }
     } else { c.vx *= 0.8; c.vz *= 0.8; c.dodgeT = Math.max(0, c.dodgeT - dt); }
     if (S.state === 'fight' || S.state === 'intro' || S.state === 'ko' || S.state === 'struggle') {
-      c.ry += angleDelta(c.ry, Math.atan2(o.x - c.x, o.z - c.z)) * Math.min(1, dt * 10);
+      const turn = angleDelta(c.ry, Math.atan2(o.x - c.x, o.z - c.z));
+      // In a fight turning is rate-limited (so teleporting behind someone pays off); elsewhere it stays snappy.
+      if (S.state !== 'fight') c.ry += turn * Math.min(1, dt * 10);
+      else if (c.turnLockT <= 0) c.ry += clamp(turn, -G.turnRate * dt, G.turnRate * dt);
     }
     if (!c.dead && c.dodgeT <= 0 && c.castT <= 0 && c.hitT <= 0 && S.state !== 'struggle') {
       if (c.shieldOn) anim(c, 'block');
@@ -73,8 +78,10 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
     c.x += (c.nx - c.x) * Math.min(1, dt * 14); c.z += (c.nz - c.z) * Math.min(1, dt * 14);
     c.ry += angleDelta(c.ry, c.nry) * Math.min(1, dt * 14);
   }
-  c.root.position.set(c.x, 0, c.z); c.root.rotation.y = c.ry; c.blob.position.set(c.x, 0.012, c.z);
+  const fy = floorAt(c.x, c.z);
+  c.root.position.set(c.x, fy, c.z); c.root.rotation.y = c.ry; c.blob.position.set(c.x, fy + 0.012, c.z);
   c.mixer.update(dt);
+  applyGroundContact(c);
   applyGrip(c);
   tipPos(c, c.light.position);
   c.light.intensity *= Math.pow(0.12, dt); c.light.intensity = Math.max(c.light.intensity, 1.4);

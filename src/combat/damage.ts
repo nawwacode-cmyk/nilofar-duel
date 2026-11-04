@@ -22,6 +22,15 @@ export type HitResult = 'miss' | 'parry' | 'block' | 'hit';
 export function takeHit(c: Fighter, p: Projectile): HitResult {
   const att = ch(p.owner);
   if (c.dodgeT > 0.08 || c.invT > 0) return 'miss';
+  // From behind: the projectile travels the same way the victim faces.
+  const vl = Math.hypot(p.vel.x, p.vel.z) || 1;
+  const back = (p.vel.x * Math.sin(c.ry) + p.vel.z * Math.cos(c.ry)) / vl > G.backDot;
+  if (back) {
+    dmgText(c, TXT.backstab, '#ff8a5c');
+    applyDmg(c, Math.round(p.dmg * G.backstabMult), att);
+    if (p.slow) c.slowT = Math.max(c.slowT, p.slow);
+    return 'hit';
+  }
   if (c.shieldOn) {
     if (S.T - c.shieldT < G.parryWin && p.kind !== 'meteor') {
       c.shield?.hit(); play('parry', { vol: 0.7, x: c.x }); play('m_light', { vol: 0.6, x: c.x });

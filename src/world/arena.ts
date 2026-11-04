@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { scene, moon, rim } from '../render/stage';
-import { loadCourt, courtRoot, COURT_ENV, updateCourtAmbience } from './court';
+import { loadCourt, courtRoot, COURT_ENV, updateCourtAmbience, courtFloorAt } from './court';
 import { loadTerrace, terraceRoot, TERRACE_ENV, updateTerraceAmbience } from './terrace';
 
 /** Lighting and atmosphere that belong to an arena. */
@@ -53,3 +53,6 @@ export async function loadArenas(onLoaded: () => void) {
 }
 
 export function updateAmbience(rdt: number) { ARENAS[current].ambience(rdt); }
+
+/** Floor height under a point of the current arena (the terrace is flat). */
+export function floorAt(x: number, z: number) { return current === 'court' ? courtFloorAt(x, z) : 0; }

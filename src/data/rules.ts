@@ -5,6 +5,14 @@ export const G = {
   boltCost: 6, spCost: 55, dodgeCd: 0.8, regen: 13, shieldDrain: 14, parryWin: 0.22,
   bx: 4.6, bz: 4.3, zMin: -4.3, zMax: 2.4,
   shMax: 1.5, shCd: 3, shHP: 40, strugCd: 7,
+  /** Max turning speed in a fight (rad/s): a half turn takes ~0.55 s, so getting behind someone matters. */
+  turnRate: 5.7,
+  /** Seconds the opponent cannot turn after Reem steps out of her portal. */
+  portalBlind: 0.6,
+  /** Spells only leave within this cone of the facing direction (cos of the half-angle, 75°). */
+  castCone: 0.26,
+  /** A hit from behind (projectile travelling along the victim's facing) ignores the shield and hurts more. */
+  backDot: 0.35, backstabMult: 1.5,
 } as const;
 
 export const PSPEC: Record<ProjKind, ProjSpec> = {

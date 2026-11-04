@@ -60,6 +60,8 @@ export interface Fighter {
   wins: number; warpTo: [number, number] | null;
   /** Hit feel: material flash 0..1, knock-back time left, per-fighter cloned materials. */
   hitFlash: number; knockT: number; mats: THREE.MeshPhongMaterial[];
+  /** Lost track of the opponent (e.g. they vanished into a portal): cannot turn while > 0. */
+  turnLockT: number;
   /** Finger bones curled around the wand every frame (after the animation mixer). */
   grip: { bone: THREE.Bone; q: THREE.Quaternion }[];
   /** Network-interpolation targets for the remote fighter. */

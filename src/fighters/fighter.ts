@@ -85,6 +85,7 @@ export function makeFighter(ri: number, side: 0 | 1): Fighter {
     mesh.material = mats.length === 1 ? mats[0] : mats;
   });
   g.updateMatrixWorld(true);
+  footCorr[ri] ??= measureFootCorrection(c);
   if (c.hand) attachWand(c, wand); else { wand.position.set(0.3, 1.2, 0.3); g.add(wand); }
   resetChar(c);
   return c;
@@ -124,6 +125,47 @@ function attachWand(c: Fighter, wand: THREE.Group) {
   for (const [n, a] of CURL) { const b = bone(n); if (b) c.grip.push({ bone: b, q: new THREE.Quaternion().setFromEuler(new THREE.Euler(a, 0, 0)) }); }
 }
 
+/**
+ * Ground contact. The Mixamo clips were authored on bodies of different proportions, so their hip height
+ * puts some wizards' feet ~20 cm under the floor (idle, casting) or ~25 cm above it (Reem walking).
+ * For every model and clip we sample the pose once and store the vertical shift that brings the lowest bone
+ * (plus a sole thickness) to y = 0; at runtime the shifts of the playing clips are blended by their weights.
+ */
+const footCorr: Partial<Record<number, Partial<Record<ClipName, number>>>> = {};
+const SOLE = 0.02;
+
+function measureFootCorrection(c: Fighter): Partial<Record<ClipName, number>> {
+  const out: Partial<Record<ClipName, number>> = {};
+  const bones: THREE.Bone[] = [];
+  c.model.traverse(o => { if ((o as THREE.Bone).isBone) bones.push(o as THREE.Bone); });
+  const v = V(), rootY = c.root.position.y;
+  for (const k of CLIP_NAMES) {
+    const a = c.actions[k]; if (!a) continue;
+    c.mixer.stopAllAction(); a.reset().play();
+    const dur = a.getClip().duration; let low = Infinity;
+    for (let s = 0; s <= 12; s++) {
+      a.time = (dur * s) / 12; c.mixer.update(0); c.root.updateMatrixWorld(true);
+      for (const b of bones) { b.getWorldPosition(v); if (v.y < low) low = v.y; }
+    }
+    out[k] = Number.isFinite(low) ? SOLE - (low - rootY) : 0;
+  }
+  c.mixer.stopAllAction();
+  return out;
+}
+
+/** Weighted vertical shift of the currently playing clips (call after mixer.update). */
+export function applyGroundContact(c: Fighter) {
+  const corr = footCorr[c.ri]; if (!corr) return;
+  let s = 0, w = 0;
+  for (const k of CLIP_NAMES) {
+    const a = c.actions[k];
+    if (!a || !a.isRunning()) continue;
+    const ew = a.getEffectiveWeight(); if (ew <= 0) continue;
+    s += ew * (corr[k] ?? 0); w += ew;
+  }
+  c.model.position.y = w > 0 ? s / w : 0;
+}
+
 /** Overrides the animated finger pose with the fist (call after mixer.update). */
 export function applyGrip(c: Fighter) {
   for (const g of c.grip) g.bone.quaternion.slerp(g.q, 0.9);
@@ -142,7 +184,7 @@ export function resetChar(c: Fighter) {
   Object.assign(c, {
     x: i === 0 ? -3 : 3, z: -0.6, vx: 0, vz: 0, ry: i === 0 ? Math.PI / 2 : -Math.PI / 2, hp: c.R.hp, mana: 60,
     cdA: 0, cdD: 0, shieldT: -1, shieldOn: false, dodgeT: 0, dodgeDir: V(), castT: 0, hitT: 0, slowT: 0, stunT: 0, cdS: 0, shHP: 0,
-    cdK: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0,
+    cdK: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0,
   });
   if (c.shield) { c.shield.off(); c.shield = null; }
   anim(c, 'idle', { force: true });

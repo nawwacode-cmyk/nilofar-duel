@@ -38,6 +38,7 @@ export async function loadCourt() {
   const m = new THREE.Mesh(g, mat);
   m.frustumCulled = false; m.receiveShadow = true; courtRoot.add(m);
   patchFloorHole(m, mat);
+  buildHeightGrid(m);
   makeTorches();
   scene.add(courtRoot);
 }
@@ -84,6 +85,35 @@ function patchFloorHole(court: THREE.Mesh, courtMat: THREE.MeshLambertMaterial) 
   mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -2;
   patch.position.set(HOLE.x, 0.02, HOLE.z); patch.renderOrder = 1;
   courtRoot.add(patch);
+}
+
+/**
+ * The scanned floor is not flat (±15 cm). Its height is sampled once on a 25 cm grid over the duel area
+ * (ray casts against the 200k-triangle scan are too slow per frame) and read back bilinearly.
+ * The centre well opening is covered by the floor patch at y ≈ 0.02.
+ */
+const GRID = { x0: -5.5, z0: -5, step: 0.25, nx: 45, nz: 33 };
+let heights: Float32Array | null = null;
+
+function buildHeightGrid(court: THREE.Mesh) {
+  const rc = new THREE.Raycaster(); const down = new THREE.Vector3(0, -1, 0); const o = new THREE.Vector3();
+  court.updateMatrixWorld(true);
+  heights = new Float32Array(GRID.nx * GRID.nz);
+  for (let j = 0; j < GRID.nz; j++) for (let i = 0; i < GRID.nx; i++) {
+    o.set(GRID.x0 + i * GRID.step, 1.2, GRID.z0 + j * GRID.step); rc.set(o, down);
+    const h = rc.intersectObject(court, false)[0];
+    // Missing hits (the well) and outliers are clamped to a sane range around the floor.
+    heights[j * GRID.nx + i] = h ? Math.max(-0.12, Math.min(0.18, h.point.y)) : 0.02;
+  }
+}
+
+/** Floor height of the stone courtyard at (x, z). */
+export function courtFloorAt(x: number, z: number) {
+  if (!heights) return 0;
+  const fx = Math.max(0, Math.min(GRID.nx - 1.001, (x - GRID.x0) / GRID.step)), fz = Math.max(0, Math.min(GRID.nz - 1.001, (z - GRID.z0) / GRID.step));
+  const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, n = GRID.nx;
+  const a = heights[j * n + i], b = heights[j * n + i + 1], c = heights[(j + 1) * n + i], d = heights[(j + 1) * n + i + 1];
+  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
 }
 
 const torches: { g: THREE.Group; L: THREE.PointLight; s: number }[] = [];
