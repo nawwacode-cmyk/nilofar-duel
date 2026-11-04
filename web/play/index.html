@@ -13,6 +13,8 @@
 <link rel="apple-touch-icon" href="../icons/icon-180.png">
 <link rel="icon" href="../icons/icon-192.png">
 <script src="../config.js"></script>
+<!-- Any startup error is printed on the loading screen, so a player can send a screenshot of it. -->
+<script>(function(){function show(m){var t=document.getElementById('loadTxt');var l=document.getElementById('load');if(t&&l&&!l.hidden)t.textContent='خطأ: '+m}addEventListener('error',function(e){show((e.message||'')+' '+(e.filename||'').split('/').pop()+':'+(e.lineno||''))});addEventListener('unhandledrejection',function(e){show(String(e.reason&&e.reason.message||e.reason))})})()</script>
 <!-- Rotate before anything renders (same rule as core/view.ts) so even the loading screen is landscape on slow networks. -->
 <script>(function(){var d=document.documentElement;function f(){var r=innerHeight>innerWidth&&(matchMedia('(pointer: coarse)').matches||/[?&]rot/.test(location.search));d.classList.toggle('rot',r);var h=r?innerWidth:innerHeight,w=r?innerHeight:innerWidth;d.classList.toggle('compact',h<=460);d.classList.toggle('tall',h>=700&&w/h>=4/3)}f();addEventListener('resize',f)})()</script>
 </head>

@@ -15,7 +15,7 @@ export const COURT_ENV: ArenaEnv = { moon: [-4, 12, 3], moonColor: 0x9db4ff, moo
  * [u32 header length][JSON header][pad to 4][u16 positions][u16 uvs][i8 normals].
  */
 export async function loadCourt() {
-  const bin = await getBytes('models/court.bin');
+  const bin = await getBytes('models/court.bin.gz');
   const dv = new DataView(bin.buffer); const hl = dv.getUint32(0, true);
   const h = JSON.parse(new TextDecoder().decode(bin.subarray(4, 4 + hl))) as { n: number; lo: number[]; sc: number[] };
   let o = 4 + hl; o += (4 - (o % 4)) % 4; const n = h.n;

@@ -9,10 +9,21 @@ import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 /** Prepared base models, one per roster entry; fighters are skeleton clones of these. */
 export const base: THREE.Object3D[] = [];
 
-export async function loadRosterModels(onEach: () => void) {
-  const models = await Promise.all(ROSTER.map(r => loadFbx(`models/${r.file}.fbx`).then(m => { onEach(); return m; })));
-  models.forEach((m, i) => prepBase(i, m));
+/** Approximate gzipped sizes, for the progress bar before the server answers. */
+const MODEL_BYTES: Record<string, number> = { arissa: 2_280_000, ganfaul: 1_270_000, nightshade: 1_220_000, pelegrini: 985_000 };
+const pending: Promise<void>[] = [];
+
+/**
+ * Loads one roster model on demand (gzipped FBX), once. The menus use static portraits,
+ * so the title screen never waits for the 3D characters; matches await only the two fighters they need.
+ */
+export function ensureModel(i: number): Promise<void> {
+  const r = ROSTER[i];
+  pending[i] ??= loadFbx(`models/${r.file}.fbx.gz`, MODEL_BYTES[r.file]).then(m => prepBase(i, m));
+  return pending[i];
 }
+export const modelReady = (i: number) => !!base[i];
+export const ensureModels = (ids: number[]) => Promise.all(ids.map(ensureModel)).then(() => undefined);
 
 /** Tones down Mixamo's glossy materials and scales every model to 1.78 m. */
 function prepBase(i: number, m: THREE.Object3D) {

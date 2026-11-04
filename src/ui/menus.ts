@@ -1,39 +1,16 @@
-import * as THREE from 'three';
-import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { S, inMenus } from '../game/state';
-import { base } from '../fighters/fighter';
-import { findBone, retarget } from '../assets/loader';
+import { ensureModel, ensureModels } from '../fighters/fighter';
 import { play, unlock, isMuted, setMuted, musicOn } from '../audio/audio';
-import { setupFighters, startMatch, showcase, toMenu } from '../game/flow';
+import { setupFighters, startMatch, toMenu } from '../game/flow';
 import { code4, leaveNet, onlineStart } from '../net/online';
+import { onDownloadProgress } from '../assets/net';
 import { ROSTER, skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
-import { $, V } from '../core/util';
+import { $ } from '../core/util';
 import { getArena, setArena, type ArenaId } from '../world/arena';
 
-const portraits: string[] = [];
-
-/** Renders one lit knees-up portrait per wizard (5:8 card) into data URLs (offscreen renderer, then disposed). */
-export function makePortraits() {
-  const W = 300, H = 480;
-  const r2 = new THREE.WebGLRenderer({ antialias: true, alpha: true, preserveDrawingBuffer: true });
-  r2.setSize(W, H); r2.outputColorSpace = THREE.SRGBColorSpace; r2.toneMapping = THREE.ACESFilmicToneMapping;
-  const cam = new THREE.PerspectiveCamera(26, W / H, 0.05, 20);
-  ROSTER.forEach((R, i) => {
-    const sc = new THREE.Scene(); const m = SkeletonUtils.clone(base[i]); m.rotation.y = -0.35; sc.add(m);
-    const mx = new THREE.AnimationMixer(m); mx.clipAction(retarget('idle', m)).play(); mx.update(1.2);
-    sc.add(new THREE.HemisphereLight(0x8090c0, 0x101018, 1.4));
-    const key = new THREE.DirectionalLight(R.lc, 3.2); key.position.set(-1.5, 2, 1.5); sc.add(key);
-    const rim = new THREE.DirectionalLight(0x9db4ff, 2.2); rim.position.set(1.5, 2, -1.5); sc.add(rim);
-    const fill = new THREE.PointLight(R.lc, 6, 4, 1.5); fill.position.set(0.4, 1.3, 0.8); sc.add(fill);
-    m.updateMatrixWorld(true);
-    const head = findBone(m, /Head$/); const hp = V(0, 1.55, 0); if (head) head.getWorldPosition(hp);
-    // Frame from about the knees to just above the head.
-    cam.position.set(hp.x - 0.35, hp.y - 0.35, hp.z + 3.1); cam.lookAt(hp.x, hp.y - 0.55, hp.z);
-    r2.render(sc, cam); portraits[i] = r2.domElement.toDataURL('image/png'); mx.stopAllAction();
-  });
-  r2.dispose(); r2.forceContextLoss();
-}
+/** Portraits are pre-rendered images (public/play/models/portraits), so menus never wait for 3D models. */
+const portrait = (i: number) => `models/portraits/${ROSTER[i].id}.webp`;
 
 /** Character select: portrait grid + story, stats and abilities of the selected wizard. */
 export function buildRoster() {
@@ -41,10 +18,10 @@ export function buildRoster() {
   roster.replaceChildren(...ROSTER.map((r, i) => {
     const b = el('button', 'wcard' + (i === S.sel ? ' on' : ''));
     b.style.setProperty('--c', r.css); b.setAttribute('aria-pressed', String(i === S.sel)); b.setAttribute('aria-label', `${r.name}، ${r.elem}`);
-    const img = document.createElement('img'); img.alt = ''; img.src = portraits[i] || '';
+    const img = document.createElement('img'); img.alt = ''; img.src = portrait(i); img.decoding = 'async';
     const plate = el('span', 'plate'); plate.append(el('span', 'ic', r.icon), el('b', '', r.name));
     b.append(img, el('span', 'gem'), plate);
-    b.onclick = () => { unlock(); if (S.sel === i) return; S.sel = i; buildRoster(); showcase(); play(ROSTER[S.sel].ss, { vol: 0.5 }); };
+    b.onclick = () => { unlock(); if (S.sel === i) return; S.sel = i; buildRoster(); void ensureModel(i); play(ROSTER[S.sel].ss, { vol: 0.5 }); };
     return b;
   }));
   const R = ROSTER[S.sel];
@@ -78,7 +55,7 @@ export function initMenus() {
     $('mute').setAttribute('aria-label', isMuted() ? TXT.muteOn : TXT.muteOff);
     if (!isMuted() && S.state !== 'menu') musicOn();
   };
-  $('enter').onclick = () => { unlock(); $('title').hidden = true; $('menu').hidden = false; S.state = 'menu'; showcase(); play('m_drums', { vol: 0.6 }); };
+  $('enter').onclick = () => { unlock(); $('title').hidden = true; $('menu').hidden = false; S.state = 'menu'; play('m_drums', { vol: 0.6 }); };
   $('backTitle').onclick = () => { $('menu').hidden = true; $('title').hidden = false; S.state = 'title'; };
   $('diff').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.onclick = () => {
     S.diff = +(b.dataset.d || 1);
@@ -91,7 +68,7 @@ export function initMenus() {
   $('mAI').onclick = () => {
     unlock(); S.mode = 'ai'; $('menu').hidden = true;
     let o = (Math.random() * 3) | 0; if (o >= S.sel) o++;
-    setupFighters(S.sel, o); startMatch();
+    void startWhenLoaded([S.sel, o], () => { setupFighters(S.sel, o); startMatch(); });
   };
   $('mOn').onclick = () => { unlock(); $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; };
   $('oBack').onclick = () => { leaveNet(); $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; };
@@ -105,4 +82,18 @@ export function initMenus() {
   $('toMenu').onclick = toMenu;
 }
 
-export { inMenus };
+
+/**
+ * Runs a match once both fighters' models are downloaded. On slow connections the start button shows the
+ * download progress meanwhile (the menu stays usable until then).
+ */
+export async function startWhenLoaded(ids: number[], go: () => void) {
+  const btn = $<HTMLButtonElement>('mAI'), label = btn.querySelector('.col');
+  const old = label?.innerHTML ?? '';
+  let shown = false;
+  const t = setTimeout(() => { shown = true; btn.disabled = true; }, 150);
+  onDownloadProgress((l, tot) => { if (shown && label) label.textContent = TXT.loadingFighters(Math.round((l / Math.max(1, tot)) * 100)); });
+  try { await ensureModels(ids); }
+  finally { clearTimeout(t); onDownloadProgress(null); btn.disabled = false; if (label) label.innerHTML = old; }
+  if (inMenus()) go();
+}

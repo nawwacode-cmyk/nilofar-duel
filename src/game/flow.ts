@@ -1,15 +1,15 @@
 import { S, net, ch, me, opp, strikes, walls, clones } from './state';
 import { makeFighter, dropFighter, resetChar, anim, chest } from '../fighters/fighter';
 import { play, musicOn, musicOff } from '../audio/audio';
-import { emit, explosion } from '../render/particles';
+import { explosion } from '../render/particles';
 import { setShield } from '../combat/actions';
 import { clearProjectiles } from '../combat/projectiles';
 import { killWall, killClone } from '../combat/skills';
 import { leaveNet } from '../net/online';
 import { banner, hud } from '../ui/hud';
-import { ROSTER, skillLabel } from '../data/roster';
+import { skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
-import { $, rnd, pick } from '../core/util';
+import { $ } from '../core/util';
 import type { Fighter } from '../core/types';
 
 /** Match = best of three rounds. States: intro -> fight -> ko -> (next round | end). */
@@ -65,21 +65,15 @@ export function endMatch() {
   $('end').hidden = false; $('ctl').hidden = true;
 }
 
-/** Character-select backdrop: the chosen wizard posing; the second fighter exists (hidden) for camera math. */
-export function showcase() {
+/** Menus cover the canvas, so no fighters are kept on stage there (also frees their GPU memory). */
+export function clearFighters() {
   dropFighter(S.CH[0]); dropFighter(S.CH[1]);
-  const c = makeFighter(S.sel, 0); c.x = 0; c.z = 0; c.ry = 0;
-  const o = makeFighter((S.sel + 1) % 4, 1); o.x = 2.5; o.z = -3; o.root.visible = false;
-  S.CH = [c, o];
-  const R = ROSTER[S.sel];
-  document.documentElement.style.setProperty('--p0', R.css);
-  emit(0, 0.05, 0, 0, 0, 0, R.pal[1], 0.4, 0.9, { t: 'rune', spin: 1.5, grow: 3 });
-  for (let i = 0; i < 30; i++) emit(rnd(0.4), 0.1 + Math.random() * 1.6, rnd(0.4), rnd(0.4), 1, rnd(0.4), pick(R.pal), 0.1, 0.7, { t: 'spark' });
+  S.CH = [null, null];
 }
 
 export function toMenu() {
   S.state = 'menu'; musicOff();
   ['end', 'hud', 'ctl', 'sWrap'].forEach(id => { $(id).hidden = true; });
   banner(''); clearProjectiles(); strikes.length = 0;
-  leaveNet(); S.mode = 'ai'; showcase(); $('menu').hidden = false;
+  leaveNet(); S.mode = 'ai'; clearFighters(); $('menu').hidden = false;
 }

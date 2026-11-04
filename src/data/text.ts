@@ -19,6 +19,7 @@ export const TXT = {
   parry: 'ارتداد!',
   shieldBroken: 'انكسر الدرع!',
   struggle: 'صراع الشعاع! اضغط أسرع من خصمك',
+  loadingFighters: (p: number) => `جارٍ تحميل الساحرَين… ${p}%`,
   muteOn: 'صامت',
   muteOff: 'صوت',
   stats: { hp: 'الصحة', speed: 'السرعة', power: 'القوة' },

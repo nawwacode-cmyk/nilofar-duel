@@ -1,6 +1,6 @@
-import { createClient, type SupabaseClient, type RealtimeChannel } from '@supabase/supabase-js';
+import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import { S, net, ch, isLocal } from '../game/state';
-import { anim } from '../fighters/fighter';
+import { anim, ensureModels } from '../fighters/fighter';
 import { play } from '../audio/audio';
 import { dmgText, flash, shieldMesh } from '../fx/effects';
 import { spawnProj } from '../combat/projectiles';
@@ -23,10 +23,12 @@ declare global { interface Window { NILOFAR_CONFIG?: { supabaseUrl?: string; sup
 let sb: SupabaseClient | null = null;
 let channel: RealtimeChannel | null = null;
 
-function getClient() {
+/** The Supabase library is only downloaded when someone opens online play (keeps the first load small). */
+async function getClient() {
   if (sb) return sb;
   const C = window.NILOFAR_CONFIG || {};
   if (!C.supabaseUrl || !C.supabaseKey) return null;
+  const { createClient } = await import('@supabase/supabase-js');
   sb = createClient(C.supabaseUrl, C.supabaseKey, { realtime: { params: { eventsPerSecond: 40 } } });
   return sb;
 }
@@ -46,7 +48,7 @@ export function code4() {
 const showError = (msg: string) => { $('oErr').hidden = false; $('oErr').textContent = msg; };
 
 export async function onlineStart(host: boolean, code: string) {
-  const client = getClient();
+  const client = await getClient();
   if (!client) { showError(TXT.online.disabled); return; }
   leaveNet();
   net.code = code; net.me = host ? 0 : 1; net.seen.clear(); net.casts = []; net.peer = null;
@@ -57,7 +59,9 @@ export async function onlineStart(host: boolean, code: string) {
     const peer = others.find(p => p.role === (host ? 'g' : 'h'));
     if (peer && !net.peer && (S.state === 'menu' || S.state === 'online')) {
       net.peer = peer.key; net.oppRi = +(peer.ch ?? 0) || 0; $('online').hidden = true; S.mode = 'online';
-      setupFighters(net.me === 0 ? S.sel : net.oppRi, net.me === 0 ? net.oppRi : S.sel); startMatch();
+      const a = net.me === 0 ? S.sel : net.oppRi, b = net.me === 0 ? net.oppRi : S.sel;
+      $('onTxt').textContent = TXT.loadingFighters(0);
+      void ensureModels([a, b]).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
     }
     if (net.peer && !others.some(p => p.key === net.peer)) {
       net.peer = null;

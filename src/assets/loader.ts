@@ -1,16 +1,17 @@
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { CLIP_NAMES, type ClipName } from '../core/types';
+import { fetchBytes, fetchJson } from './net';
 
 const loader = new FBXLoader();
 
-export async function getBytes(url: string) {
-  const r = await fetch(url);
-  if (!r.ok) throw new Error(url + ' ' + r.status);
-  return new Uint8Array(await r.arrayBuffer());
-}
+/** Bytes of a (possibly gzipped) file, with progress and retries — see net.ts. */
+export const getBytes = fetchBytes;
 
-export const loadFbx = async (url: string) => loader.parse((await getBytes(url)).buffer as ArrayBuffer, '');
+export async function loadFbx(url: string, expect = 0) {
+  const b = await fetchBytes(url, expect);
+  return loader.parse(b.buffer.slice(b.byteOffset, b.byteOffset + b.byteLength) as ArrayBuffer, '');
+}
 
 /** Shared animation clips (Mixamo), loaded once and retargeted per fighter. */
 export const clips = {} as Record<ClipName, THREE.AnimationClip>;
@@ -22,13 +23,12 @@ type PackedClips = Record<ClipName, { d: number; t: [string, 'q' | 'v', number[]
  * Loads all animation clips from one packed file (~0.3 MB over the network instead of ~7 MB of FBX).
  * The packing already keeps rotations + vertical hip motion only, so animations never move fighters on the floor.
  */
-export async function loadClips(onEach: () => void) {
-  const packed = await (await fetch('models/anims.json')).json() as PackedClips;
+export async function loadClips() {
+  const packed = await fetchJson<PackedClips>('models/anims.json', 300_000);
   for (const k of CLIP_NAMES) {
     const c = packed[k];
     clips[k] = new THREE.AnimationClip(k, c.d, c.t.map(([name, kind, times, values]) =>
       kind === 'q' ? new THREE.QuaternionKeyframeTrack(name, times, values) : new THREE.VectorKeyframeTrack(name, times, values)));
-    onEach();
   }
 }
 

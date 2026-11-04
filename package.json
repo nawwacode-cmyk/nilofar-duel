@@ -16,6 +16,7 @@
     "@capacitor/android": "6.1.2",
     "@capacitor/core": "6.1.2",
     "@supabase/supabase-js": "2.45.4",
+    "fflate": "^0.8.2",
     "three": "0.160.0"
   },
   "devDependencies": {
