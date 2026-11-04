@@ -1,0 +1,17 @@
+{
+  "name": "nilofar-duel",
+  "version": "1.0.0",
+  "private": true,
+  "description": "مبارزة النيلوفر - 3D wizard duel",
+  "scripts": {
+    "build:www": "node scripts/build-www.mjs"
+  },
+  "dependencies": {
+    "@capacitor/android": "6.1.2",
+    "@capacitor/core": "6.1.2"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "3.0.5",
+    "@capacitor/cli": "6.1.2"
+  }
+}
