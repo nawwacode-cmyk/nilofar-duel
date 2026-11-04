@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<title>مبارزة النيلوفر</title>
+<meta name="theme-color" content="#05080f">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="النيلوفر">
+<link rel="manifest" href="../manifest.webmanifest">
+<link rel="apple-touch-icon" href="../icons/icon-180.png">
+<link rel="icon" href="../icons/icon-192.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lalezar&family=IBM+Plex+Sans+Arabic:wght@400;600;700&display=swap">
+<script src="../config.js"></script>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div class="wrap" id="hud" hidden>
+  <div class="side l"><div class="nmrow"><span class="nm" id="n0"></span><span class="el" id="e0"></span><span class="pips" id="pw0"><i></i><i></i></span></div><div class="bar hp"><i id="hp0"></i><span class="num" id="hn0"></span></div><div class="bar mp"><i id="mp0"></i></div></div>
+  <div class="side r"><div class="nmrow"><span class="nm" id="n1"></span><span class="el" id="e1"></span><span class="pips" id="pw1"><i></i><i></i></span></div><div class="bar hp"><i id="hp1"></i><span class="num" id="hn1"></span></div><div class="bar mp"><i id="mp1"></i></div></div>
+</div>
+<div id="banner"></div>
+<div id="ctl" hidden>
+  <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
+  <div id="btns">
+    <button class="b" id="bAtk" data-a="atk">هجوم</button>
+    <button class="b" id="bSh" data-a="sh">درع<small>باستمرار</small></button>
+    <button class="b" id="bDg" data-a="dg">مراوغة</button>
+    <button class="b" id="bSp" data-a="sp">خاصة</button>
+    <button class="b" id="bSk" data-a="sk">مهارة</button>
+  </div>
+</div>
+<div id="keys" hidden>WASD للحركة · J هجوم · K درع · L مراوغة · I الضربة الخاصة · U المهارة</div>
+<button id="mute" aria-label="الصوت">صوت</button>
+
+<div class="ov" id="load">
+  <h1>مبارزة النيلوفر</h1>
+  <p id="loadTxt">جارٍ تجهيز الساحة والسحرة…</p>
+  <div id="bar"><i></i></div>
+</div>
+
+<div class="ov" id="title" hidden>
+  <h1>مبارزة النيلوفر</h1>
+  <p class="tag">في ساحةٍ حجريةٍ عتيقة بطرطوشة، تحت ضوء المشاعل، يتواجه أربعة سحرة. ولن يخرج منها إلا منتصرٌ واحد.</p>
+  <div class="btns"><button class="btn big" id="enter">ادخل الساحة</button><a class="btn ghost" href="../" style="text-decoration:none">عن اللعبة</a></div>
+  <p id="rot" hidden>أدِر هاتفك أفقيًا لترى الساحة كاملة</p>
+  <p class="credit">الساحة: Reials Col·legis، طرطوشة، مسح Giravolt (CC BY 4.0) · الشخصيات والحركات: Mixamo · المؤثرات: Kenney (CC0) · الأصوات: Mixkit، Kenney، lentikula · الموسيقى: Heavy Combat من Cosme Leites</p>
+</div>
+
+<div class="ov sel" id="menu" hidden>
+  <div class="panel">
+    <div class="ptop"><button class="btn ghost sm" id="backTitle">رجوع</button><h2>اختر ساحرك</h2></div>
+    <div id="roster"></div>
+    <div id="detail">
+      <div class="dhead"><b id="dName"></b><span id="dElem"></span></div>
+      <p id="dStory"></p>
+      <div class="dstats" id="dStats"></div>
+      <div id="dAb"></div>
+    </div>
+    <div class="pfoot">
+      <div class="btns"><span class="lbl">مستوى الخصم</span><div class="seg" id="diff"><button data-d="0">سهل</button><button data-d="1" class="on">متوسط</button><button data-d="2">صعب</button></div></div>
+      <div class="btns"><button class="btn" id="mAI">ضد الحاسوب</button><button class="btn ice" id="mOn">عبر الإنترنت مع صديقك</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="ov" id="online" hidden>
+  <h2>مبارزة عبر الإنترنت</h2>
+  <p id="onTxt">يُنشئ أحدكما مبارزةً ويرسل رمزها إلى صديقه، ثم يُدخل الآخر الرمز. يلعب كلٌّ منكما بالساحر الذي اختاره.</p>
+  <div class="btns"><button class="btn" id="oCreate">أنشئ مبارزة</button></div>
+  <div class="btns"><input id="code" maxlength="4" placeholder="الرمز" autocomplete="off" aria-label="رمز المبارزة"><button class="btn ice" id="oJoin">انضم</button></div>
+  <div id="oWait" hidden><p>رمز مبارزتك:</p><div class="codebig" id="oCode"></div><p>بانتظار دخول صديقك…</p></div>
+  <p id="oErr" style="color:#ff9b8a" hidden></p>
+  <p style="font-size:12px">يلعب كلٌّ منكما من جهازه، ويلزم الاتصال بالإنترنت.</p>
+  <div class="btns"><button class="btn ghost" id="oBack">رجوع</button></div>
+</div>
+
+<div id="sWrap" hidden><div id="sTitle">صراع الشعاع!</div><button id="sMash">اضغط بسرعة!</button><div id="sMeter"><i id="sI"></i></div></div>
+
+<div class="ov clear" id="end" hidden>
+  <h1 id="endT"></h1>
+  <p id="endP"></p>
+  <div class="btns"><button class="btn" id="again">مبارزة جديدة</button><button class="btn ghost" id="toMenu">القائمة</button></div>
+</div>
+
+<script type="module" src="../../src/main.ts"></script>
+<script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../sw.js').catch(()=>{}))</script>
+</body>
+</html>

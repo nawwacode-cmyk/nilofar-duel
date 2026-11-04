@@ -3,7 +3,7 @@ name: Build Android APK
 on:
   push:
     branches: [main]
-    paths-ignore: ['README.md', 'index.html', 'assets/**']
+    paths-ignore: ['README.md', 'HANDOFF.md', 'public/index.html', 'public/assets/**']
   workflow_dispatch:
 
 permissions:
@@ -29,10 +29,10 @@ jobs:
           packages: ''
 
       - name: Install
-        run: npm install
+        run: npm ci
 
       - name: Web bundle
-        run: npm run build:www
+        run: npm run build && npm run build:www
 
       - name: Android project
         run: npx cap add android

@@ -1,17 +1,29 @@
 {
   "name": "nilofar-duel",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": true,
+  "type": "module",
   "description": "مبارزة النيلوفر - 3D wizard duel",
   "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
     "build:www": "node scripts/build-www.mjs"
   },
   "dependencies": {
     "@capacitor/android": "6.1.2",
-    "@capacitor/core": "6.1.2"
+    "@capacitor/core": "6.1.2",
+    "@supabase/supabase-js": "2.45.4",
+    "three": "0.160.0"
   },
   "devDependencies": {
     "@capacitor/assets": "3.0.5",
-    "@capacitor/cli": "6.1.2"
+    "@capacitor/cli": "6.1.2",
+    "@types/three": "0.160.0",
+    "typescript": "^5.9.3",
+    "vite": "^5.4.21",
+    "vitest": "^2.1.9"
   }
 }
