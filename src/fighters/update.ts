@@ -1,14 +1,20 @@
 import { S, opp } from '../game/state';
-import { anim, tipPos, headPos } from './fighter';
+import { anim, tipPos, headPos, applyGrip } from './fighter';
 import { setShield } from '../combat/actions';
 import { play } from '../audio/audio';
 import { emit } from '../render/particles';
 import { G } from '../data/rules';
 import { GOLD, ICE } from '../data/palettes';
-import { V, clamp, rnd, pick, angleDelta } from '../core/util';
+import { V, C, clamp, rnd, pick, angleDelta } from '../core/util';
 import type { Fighter } from '../core/types';
 
-const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT'] as const;
+/** Floor dust kicked up by feet, landings and knock-back slides. */
+function dust(c: Fighter, n: number, sp: number) {
+  for (let i = 0; i < n; i++) emit(c.x + rnd(0.25), 0.05, c.z + rnd(0.25), rnd(sp), 0.15 + Math.random() * 0.25, rnd(sp), DUST, 0.22 + Math.random() * 0.2, 0.7 + Math.random() * 0.5, { t: 'smoke', smoke: 1, grow: 0.7, a: 0.28, drag: 2.5 });
+}
+const DUST = C(0.32, 0.34, 0.42);
+
+const TIMERS =['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT'] as const;
 const fwd = V(), right = V();
 
 /**
@@ -34,8 +40,14 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
       if (c.wantShield && !c.shieldOn) setShield(c, true);
       if (!c.wantShield && c.shieldOn) setShield(c, false);
       const sp = c.stunT > 0 ? 0 : c.R.speed * (c.slowT > 0 ? 0.5 : 1) * (c.shieldOn ? 0.45 : 1) * (c.castT > 0 ? 0.35 : 1);
-      if (c.dodgeT > 0) { c.dodgeT -= dt; c.vx = c.dodgeDir.x * 7.5; c.vz = c.dodgeDir.z * 7.5; }
-      else { c.vx += (c.inX * sp - c.vx) * Math.min(1, dt * 12); c.vz += (c.inZ * sp - c.vz) * Math.min(1, dt * 12); }
+      if (c.dodgeT > 0) {
+        c.dodgeT -= dt; c.vx = c.dodgeDir.x * 7.5; c.vz = c.dodgeDir.z * 7.5;
+        if (c.dodgeT <= 0) dust(c, 10, 1.2); // landing puff
+      } else if (c.knockT > 0) {
+        // Knock-back slide: input ignored, friction only.
+        c.knockT -= dt; const f = Math.pow(0.015, dt); c.vx *= f; c.vz *= f;
+        if (Math.random() < 0.5) dust(c, 1, 0.5);
+      } else { c.vx += (c.inX * sp - c.vx) * Math.min(1, dt * 12); c.vz += (c.inZ * sp - c.vz) * Math.min(1, dt * 12); }
       c.x = clamp(c.x + c.vx * dt, -G.bx, G.bx); c.z = clamp(c.z + c.vz * dt, G.zMin, G.zMax);
       // Soft body separation so wizards never overlap.
       const dx = c.x - o.x, dz = c.z - o.z, dd = Math.hypot(dx, dz);
@@ -53,7 +65,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
         else {
           anim(c, Math.abs(vf) > Math.abs(vr) ? (vf > 0 ? 'walkF' : 'walkB') : (vr > 0 ? 'walkR' : 'walkL'), { speed: clamp(spd / 1.5, 0.7, 2) });
           c.stepAcc += spd * dt;
-          if (c.stepAcc > 0.75) { c.stepAcc = 0; play('step' + ((Math.random() * 4) | 0), { vol: 0.25, x: c.x }); }
+          if (c.stepAcc > 0.75) { c.stepAcc = 0; play('step' + ((Math.random() * 4) | 0), { vol: 0.25, x: c.x }); dust(c, 3, 0.4); }
         }
       }
     }
@@ -63,6 +75,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
   }
   c.root.position.set(c.x, 0, c.z); c.root.rotation.y = c.ry; c.blob.position.set(c.x, 0.012, c.z);
   c.mixer.update(dt);
+  applyGrip(c);
   tipPos(c, c.light.position);
   c.light.intensity *= Math.pow(0.12, dt); c.light.intensity = Math.max(c.light.intensity, 1.4);
   if (!c.dead && Math.random() < 0.5) { const p = c.light.position; emit(p.x, p.y, p.z, rnd(0.05), 0.15, rnd(0.05), pick(c.pal), 0.08, 0.4, { t: Math.random() < 0.5 ? 'magic' : 'spark' }); }

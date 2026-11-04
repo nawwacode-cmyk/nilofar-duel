@@ -11,12 +11,16 @@ import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
 import { netSend } from '../net/online';
 import { atkHeld, readMove } from '../input/input';
-import { updCamera } from '../camera/camera';
+import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/court';
+import { updateCrowd } from '../world/crowd';
 import { updateFx } from '../fx/effects';
 import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';
 import { TXT } from '../data/text';
+import { timeScale, updateImpactFx } from '../fx/impact';
+import { updateLights } from '../render/lights';
+import { monitorFps } from '../render/quality';
 
 const clock = new THREE.Clock();
 let netAcc = 0;
@@ -24,7 +28,7 @@ let netAcc = 0;
 /** One frame: state machine, simulation, effects, camera, render. dt is capped at 50 ms. */
 function frame() {
   const rdt = Math.min(0.05, clock.getDelta());
-  const dt = rdt * S.slowmo;
+  const dt = rdt * S.slowmo * timeScale(rdt);
   S.T += dt; S.stateT += rdt;
   if (S.CH[0]) {
     if (S.state === 'intro' && S.stateT > 1.8) {
@@ -48,9 +52,13 @@ function frame() {
     if (S.mode === 'online' && netAcc > 0.05) { netAcc = 0; netSend(); }
   }
   updateAmbience(rdt);
+  if (!inMenus()) updateCrowd(rdt);
   updateFx(dt);
+  updateLights(dt);
+  updateImpactFx(rdt, S.CH[0] ? me() : null);
+  monitorFps(rdt, S.state === 'fight');
   updateParticles(dt);
-  if (S.CH[0]) updCamera(rdt);
+  if (S.CH[0]) { updCamera(rdt); applyDebugCamera(); }
   // Title/select/online screens cover the canvas with the castle artwork, so skip the GPU work there.
   if (!inMenus()) composer.render();
   requestAnimationFrame(frame);

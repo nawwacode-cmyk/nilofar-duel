@@ -29,9 +29,59 @@ export async function loadCourt() {
   g.setAttribute('normal', new THREE.BufferAttribute(nor, 3));
   const tex = await new THREE.TextureLoader().loadAsync(renderer.capabilities.maxTextureSize >= 8192 ? 'models/court4k.jpg' : 'models/court2k.jpg');
   tex.flipY = false; tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  const m = new THREE.Mesh(g, new THREE.MeshLambertMaterial({ map: tex, color: 0x7d8bb4, side: THREE.DoubleSide }));
-  m.frustumCulled = false; scene.add(m);
+  const mat = new THREE.MeshLambertMaterial({ map: tex, color: 0x7d8bb4, side: THREE.DoubleSide });
+  const m = new THREE.Mesh(g, mat);
+  m.frustumCulled = false; m.receiveShadow = true; scene.add(m); courtMesh = m;
+  patchFloorHole(m, mat);
 }
+
+/**
+ * The photogrammetry scan has a hole in the floor at the arena centre (a well opening in the real courtyard).
+ * Cover it with a disc that re-uses the court texture from a nearby patch of floor, with a soft feathered edge.
+ * UVs are found by ray-casting the scan, so the patch matches the stone's scale and orientation.
+ */
+function patchFloorHole(court: THREE.Mesh, courtMat: THREE.MeshLambertMaterial) {
+  const HOLE = { x: 0.25, z: 0 }, R = 1.4, SRC = { x: 2.6, z: 0 };
+  const rc = new THREE.Raycaster(); const down = new THREE.Vector3(0, -1, 0);
+  const uvAt = (x: number, z: number) => { rc.set(new THREE.Vector3(x, 4, z), down); return rc.intersectObject(court, false)[0]?.uv ?? null; };
+  const u0 = uvAt(SRC.x, SRC.z), ux = uvAt(SRC.x + 0.5, SRC.z), uz = uvAt(SRC.x, SRC.z + 0.5);
+  if (!u0 || !ux || !uz) return;
+  // UV change per metre along world x and z (local Jacobian of the scan's texture mapping).
+  const dx = ux.clone().sub(u0).multiplyScalar(2), dz = uz.clone().sub(u0).multiplyScalar(2);
+  const disc = new THREE.CircleGeometry(R, 48);
+  disc.rotateX(-Math.PI / 2);
+  const pos = disc.attributes.position, uv = disc.attributes.uv;
+  for (let i = 0; i < pos.count; i++) {
+    const lx = pos.getX(i), lz = pos.getZ(i);
+    uv.setXY(i, u0.x + dx.x * lx + dz.x * lz, u0.y + dx.y * lx + dz.y * lz);
+  }
+  // Radial alpha: solid to 75 % of the radius, then feathered.
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const x = c.getContext('2d')!; const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gr.addColorStop(0, '#fff'); gr.addColorStop(0.75, '#fff'); gr.addColorStop(1, '#000');
+  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
+  const alpha = new THREE.CanvasTexture(c);
+  // alphaMap uses the mesh UVs, so draw it through a separate UV set (maskUv) covering the disc 0..1.
+  const uv2 = new Float32Array(pos.count * 2);
+  for (let i = 0; i < pos.count; i++) { uv2[i * 2] = pos.getX(i) / (2 * R) + 0.5; uv2[i * 2 + 1] = pos.getZ(i) / (2 * R) + 0.5; }
+  disc.setAttribute('maskUv', new THREE.BufferAttribute(uv2, 2));
+  const mat = new THREE.MeshLambertMaterial({ map: courtMat.map, color: courtMat.color, alphaMap: alpha, transparent: true, depthWrite: false });
+  mat.onBeforeCompile = sh => {
+    // Sample the alpha mask with maskUv instead of the texture-atlas UVs.
+    sh.vertexShader = sh.vertexShader.replace('#include <uv_pars_vertex>', '#include <uv_pars_vertex>\nattribute vec2 maskUv;\nvarying vec2 vMaskUv;')
+      .replace('#include <uv_vertex>', '#include <uv_vertex>\nvMaskUv = maskUv;');
+    sh.fragmentShader = sh.fragmentShader.replace('#include <uv_pars_fragment>', '#include <uv_pars_fragment>\nvarying vec2 vMaskUv;')
+      .replace('#include <alphamap_fragment>', 'diffuseColor.a *= texture2D( alphaMap, vMaskUv ).g;');
+  };
+  const patch = new THREE.Mesh(disc, mat); patch.receiveShadow = true;
+  mat.polygonOffset = true; mat.polygonOffsetFactor = -2; mat.polygonOffsetUnits = -2;
+  patch.position.set(HOLE.x, 0.02, HOLE.z); patch.renderOrder = 1;
+  scene.add(patch);
+}
+
+let courtMesh: THREE.Mesh | null = null;
+/** The scanned courtyard mesh (for floor-height ray casts). */
+export const getCourtMesh = () => courtMesh;
 
 const torches: { g: THREE.Group; L: THREE.PointLight; s: number }[] = [];
 

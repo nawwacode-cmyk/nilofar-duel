@@ -1,6 +1,8 @@
 import * as THREE from 'three';
-import { camera, renderer, composer, bloom, DPR } from '../render/stage';
+import { camera, renderer, composer, bloom } from '../render/stage';
 import { setParticleScale } from '../render/particles';
+import { bloomScale } from '../render/quality';
+import { fovPunch } from '../fx/impact';
 import { S, ch, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
 
@@ -37,7 +39,9 @@ export function updCamera(dt: number) {
     if (S.state === 'ko') { const d = S.CH.find(c => c?.dead) || a; tp.set(d.x * 0.8, 1.2, Math.min(LIM, d.z + 3.4)); tl.set(d.x, 0.6, d.z); }
     camera.updateProjectionMatrix();
   }
-  if (inMenus()) { camera.fov = 42; camera.updateProjectionMatrix(); }
+  if (inMenus()) camera.fov = 42;
+  else camera.fov += fovPunch(dt);
+  camera.updateProjectionMatrix();
   camPos.lerp(tp, 1 - Math.pow(0.02, dt)); camLook.lerp(tl, 1 - Math.pow(0.02, dt));
   camera.position.copy(camPos); camera.position.y += Math.sin(S.T * 0.4) * 0.03;
   if (S.shake > 0 && !reduceMotion) { camera.position.x += rnd(S.shake); camera.position.y += rnd(S.shake); }
@@ -49,6 +53,13 @@ export function resize() {
   const w = innerWidth, h = innerHeight;
   renderer.setSize(w, h, false); composer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
-  bloom.resolution.set(w * 0.5, h * 0.5);
-  setParticleScale((h * DPR) / (2 * Math.tan(THREE.MathUtils.degToRad(21))));
+  bloom.resolution.set(w * bloomScale(), h * bloomScale());
+  setParticleScale((h * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(21))));
 }
+
+/** Debug-only fixed camera (set via ?debug window.__dbg.camAt); null = normal camera. */
+let debugCam: { pos: THREE.Vector3; look: THREE.Vector3 } | null = null;
+export function setDebugCamera(pos: [number, number, number] | null, look?: [number, number, number]) {
+  debugCam = pos && look ? { pos: V(...pos), look: V(...look) } : null;
+}
+export function applyDebugCamera() { if (debugCam) { camera.position.copy(debugCam.pos); camera.lookAt(debugCam.look); } }

@@ -10,6 +10,7 @@ import { setupFighters, startMatch, ko, toMenu } from '../game/flow';
 import { banner } from '../ui/hud';
 import { TXT } from '../data/text';
 import { $ } from '../core/util';
+import { impact } from '../fx/impact';
 import { CLIP_NAMES, type CastKind, type ProjKind } from '../core/types';
 
 /**
@@ -96,7 +97,7 @@ function netRecv(pp: Packet) {
   if (st[4] && !o.shieldOn) { o.shieldOn = true; o.shieldT = S.T; o.shield = shieldMesh(o); play('shield', { vol: 0.4, x: o.x }); }
   else if (!st[4] && o.shieldOn) { o.shieldOn = false; o.shield?.off(); o.shield = null; }
   if (st[5] < o.hp && S.state === 'fight') {
-    const d = o.hp - st[5]; o.hp = st[5]; dmgText(o, '−' + d, ch(net.me).hex); flash(o, 12);
+    const d = o.hp - st[5]; o.hp = st[5]; dmgText(o, '−' + d, ch(net.me).hex); flash(o, 12); impact(o, ch(net.me), o.hp <= 0 ? 1 : Math.min(0.9, Math.max(0.15, d / 40)));
     if (o.hp <= 0) ko(o);
   } else o.hp = st[5];
   o.mana = st[6]; o.dodgeT = st[7] ? 0.3 : 0;

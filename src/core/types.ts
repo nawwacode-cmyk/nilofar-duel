@@ -58,6 +58,10 @@ export interface Fighter {
   shieldT: number; shieldOn: boolean; shHP: number; shield: ShieldFx | null; wantShield: boolean;
   dodgeDir: THREE.Vector3; dead: boolean; inX: number; inZ: number; stepAcc: number;
   wins: number; warpTo: [number, number] | null;
+  /** Hit feel: material flash 0..1, knock-back time left, per-fighter cloned materials. */
+  hitFlash: number; knockT: number; mats: THREE.MeshPhongMaterial[];
+  /** Finger bones curled around the wand every frame (after the animation mixer). */
+  grip: { bone: THREE.Bone; q: THREE.Quaternion }[];
   /** Network-interpolation targets for the remote fighter. */
   nx?: number; nz?: number; nry?: number;
 }

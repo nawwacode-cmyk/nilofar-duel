@@ -5,10 +5,13 @@ import { emit, burst } from '../render/particles';
 import { dmgText, flash } from '../fx/effects';
 import { setShield, fire } from './actions';
 import { ko } from '../game/flow';
+import { impact } from '../fx/impact';
+import { crowdReact } from '../world/crowd';
+import { opp } from '../game/state';
 import { G, DMG } from '../data/rules';
 import { GOLD } from '../data/palettes';
 import { TXT } from '../data/text';
-import { V, pick } from '../core/util';
+import { V, pick, clamp } from '../core/util';
 import type { Fighter, Projectile } from '../core/types';
 
 export type HitResult = 'miss' | 'parry' | 'block' | 'hit';
@@ -43,6 +46,8 @@ function breakShield(c: Fighter) {
   const p = chest(c); setShield(c, false); c.cdS = 4.5; c.stunT = 0.9; play('m_shatter', { vol: 1, x: c.x });
   for (let i = 0; i < 70; i++) { const v = V().randomDirection(); emit(p.x + v.x * 0.8, p.y + v.y, p.z + v.z * 0.8, v.x * 4, v.y * 3 + 1, v.z * 4, pick(c.pal), 0.12, 0.8, { t: 'star', grav: -6, drag: 1 }); }
   dmgText(c, TXT.shieldBroken, '#fff'); anim(c, 'hit', { once: true, speed: 0.9, force: true });
+  impact(c, opp(c), 0.6);
+  crowdReact('gasp', 0.5);
 }
 
 export function applyDmg(c: Fighter, d: number, att: Fighter) {
@@ -50,6 +55,7 @@ export function applyDmg(c: Fighter, d: number, att: Fighter) {
   c.hp = Math.max(0, c.hp - d); dmgText(c, '−' + d, att.hex); c.hitT = 0.35;
   S.shake = Math.max(S.shake, d > 15 ? 0.15 : 0.06); flash(c, 12);
   if (c.castT <= 0 && !c.shieldOn && c.dodgeT <= 0) anim(c, 'hit', { once: true, speed: 1.4, force: true });
+  impact(c, att, c.hp <= 0 ? 1 : clamp(d / 40, 0.15, 0.9));
   play('tap', { vol: 0.6, x: c.x, rate: 0.7 });
   if (c.hp <= 0) ko(c);
 }
