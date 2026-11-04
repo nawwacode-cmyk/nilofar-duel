@@ -47,9 +47,23 @@ jobs:
       - name: Sync
         run: npx cap sync android
 
+      # Same signing key on every build, so a new APK installs as an update over the old one
+      # (a fresh random debug key per CI run made Android refuse updates). Debug keys are not secret.
+      - name: Stable debug signing key
+        run: mkdir -p ~/.android && cp android-config/debug.keystore ~/.android/debug.keystore
+
+      # Increasing version code so Android treats every build as a newer version.
+      - name: Version
+        run: sed -i -E "s/versionCode [0-9]+/versionCode ${{ github.run_number }}/; s/versionName \"[^\"]*\"/versionName \"1.0.${{ github.run_number }}\"/" android/app/build.gradle
+
       - name: Build APK
         working-directory: android
         run: ./gradlew assembleDebug --no-daemon
+
+      - name: Check web bundle inside the APK
+        run: |
+          unzip -l android/app/build/outputs/apk/debug/app-debug.apk | grep -q 'assets/public/build/play-.*\.js'
+          unzip -p android/app/build/outputs/apk/debug/app-debug.apk assets/public/index.html | grep -q 'src="./build/play-'
 
       - name: Rename
         run: cp android/app/build/outputs/apk/debug/app-debug.apk nilofar-duel.apk
@@ -58,7 +72,7 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v1.0.${{ github.run_number }}
-          name: مبارزة النيلوفر 1.0.${{ github.run_number }}
-          body: آخر نسخة من اللعبة للأندرويد. نزّل nilofar-duel.apk وافتحه على موبايلك.
+          name: أسرار الظلام 1.0.${{ github.run_number }}
+          body: آخر نسخة من «أسرار الظلام» للأندرويد. نزّل nilofar-duel.apk وافتحه على موبايلك.
           files: nilofar-duel.apk
           make_latest: true
