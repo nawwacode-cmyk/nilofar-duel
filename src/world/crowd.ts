@@ -31,7 +31,8 @@ function seats(): [number, number][] {
 const tint = new THREE.Color(0.3, 0.3, 0.36);
 
 export function buildCrowd() {
-  const max = [0, 8, 14][getTier()];
+  // High tier only: phones start on low/medium, so spectators never cost them frames.
+  const max = [0, 0, 10][getTier()];
   if (!max) return;
   const court = getCourtMesh(); const rc = new THREE.Raycaster(); const down = new THREE.Vector3(0, -1, 0);
   const all = seats();
