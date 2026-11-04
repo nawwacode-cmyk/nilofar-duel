@@ -4,6 +4,7 @@ import { unlock } from '../audio/audio';
 import { castBolt, castSpecial, castSkill, dodge } from '../combat/actions';
 import { mash } from '../game/struggle';
 import { useFinisher } from '../combat/finisher';
+import { isEditingControls } from '../ui/settingsUI';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
 
@@ -14,7 +15,7 @@ const input = { x: 0, z: 0, keys: {} as Record<string, boolean> };
 export let atkHeld = false;
 
 export function press(a: Action, on: boolean) {
-  if (!S.CH[0]) return;
+  if (!S.CH[0] || S.paused || isEditingControls()) return;
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
   if (a === 'fb') { if (on) useFinisher(c); return; }
@@ -51,7 +52,7 @@ export function initInput() {
     unlock(); stickId = e.pointerId;
     try { stickZone.setPointerCapture(e.pointerId); } catch { /* some browsers refuse capture; plain move events still work */ }
     const r = localRect(stickZone); stickC = toLocal(e.clientX, e.clientY);
-    stick.style.left = stickC.x - r.left + 'px'; stick.style.top = stickC.y - r.top + 'px'; moveStick(e);
+    stick.style.right = 'auto'; stick.style.left = stickC.x - r.left + 'px'; stick.style.top = stickC.y - r.top + 'px'; moveStick(e);
   });
   stickZone.addEventListener('pointermove', e => { if (e.pointerId === stickId) moveStick(e); });
   const stickEnd = (e: PointerEvent) => { if (e.pointerId !== stickId) return; stickId = null; input.x = input.z = 0; knob.style.transform = ''; };

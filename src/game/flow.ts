@@ -27,7 +27,7 @@ function clearArena() {
 export function startMatch() {
   S.CH.forEach(c => { if (c) { c.wins = 0; c.fbUsed = false; } });
   S.round = 0;
-  $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false;
+  $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false; $('pauseBtn').hidden = false; $('rematch').hidden = true;
   $('bSk').textContent = skillLabel(me().R);
   walls.slice().forEach(killWall); clones.slice().forEach(c => killClone(c, false));
   S.CH.forEach((c, i) => {
@@ -69,7 +69,7 @@ export function endMatch() {
   $('endP').textContent = S.mode === 'online'
     ? (w.idx === net.me ? TXT.endOnlineWin : TXT.endOnlineLose)
     : (w.idx === 0 ? TXT.endAiWin : TXT.endAiLose);
-  $('end').hidden = false; $('ctl').hidden = true;
+  $('end').hidden = false; $('ctl').hidden = true; $('pauseBtn').hidden = true;
 }
 
 /** Menus cover the canvas, so no fighters are kept on stage there (also frees their GPU memory). */
@@ -80,7 +80,8 @@ export function clearFighters() {
 
 export function toMenu() {
   S.state = 'menu'; musicOff();
-  ['end', 'hud', 'ctl', 'sWrap'].forEach(id => { $(id).hidden = true; });
+  ['end', 'hud', 'ctl', 'sWrap', 'pauseBtn', 'pause', 'rematch'].forEach(id => { $(id).hidden = true; });
+  S.paused = false;
   banner(''); clearProjectiles(); strikes.length = 0;
   leaveNet(); S.mode = 'ai'; clearFighters(); $('menu').hidden = false;
 }

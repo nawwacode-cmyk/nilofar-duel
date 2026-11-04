@@ -13,6 +13,7 @@ import { $ } from '../core/util';
 import { impact } from '../fx/impact';
 import { CLIP_NAMES, type CastKind, type Fighter, type ProjKind, type Projectile } from '../core/types';
 import { G } from '../data/rules';
+import { ROSTER } from '../data/roster';
 import { remoteFatalHit } from '../combat/finisher';
 
 /**
@@ -71,6 +72,7 @@ export async function onlineStart(host: boolean, code: string) {
     }
   });
   chn.on('broadcast', { event: 'st' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) netRecv(payload as Packet); });
+  chn.on('broadcast', { event: 'rm' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) onRematch(payload as RmMsg); });
   chn.subscribe(async status => {
     if (status === 'SUBSCRIBED') await chn.track({ role: host ? 'h' : 'g', ch: S.sel });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') showError(TXT.online.connectFail);
@@ -91,6 +93,65 @@ export function netSend() {
   };
   net.urgent = false;
   channel.send({ type: 'broadcast', event: 'st', payload }).catch(() => { /* dropped packets are fine at 20 Hz */ });
+}
+
+/* ---------- rematch in the same room ---------- */
+/**
+ * Either player presses "new duel": both get REMATCH_S seconds to pick a wizard (each sees the other's pick),
+ * then the host announces the final pair and both start together. Nobody leaves the room.
+ */
+const REMATCH_S = 10;
+type RmMsg = { from: string; t: 'start' | 'pick' | 'go'; ri?: number; a?: number; b?: number };
+const rm = { active: false, mine: 0, theirs: 0, timer: 0 };
+
+function sendRm(m: Omit<RmMsg, 'from'>) { void channel?.send({ type: 'broadcast', event: 'rm', payload: { from: net.myId, ...m } }); }
+
+export function requestRematch() { if (!rm.active) { sendRm({ t: 'start' }); beginRematch(); } }
+
+function beginRematch() {
+  rm.active = true;
+  rm.mine = ch(net.me).ri; rm.theirs = ch(1 - net.me).ri;
+  $('end').hidden = true; $('rematch').hidden = false;
+  renderRematch();
+  let left = REMATCH_S; $('rCount').textContent = String(left);
+  clearInterval(rm.timer);
+  rm.timer = window.setInterval(() => {
+    left--; $('rCount').textContent = String(Math.max(0, left));
+    if (left > 0) return;
+    clearInterval(rm.timer);
+    if (net.me === 0) { const a = rm.mine, b = rm.theirs; sendRm({ t: 'go', a, b }); goRematch(a, b); }
+  }, 1000);
+}
+
+function renderRematch() {
+  $('rRoster').replaceChildren(...ROSTER.map((r, i) => {
+    const b = document.createElement('button');
+    b.className = 'wcard' + (i === rm.mine ? ' on' : ''); b.style.setProperty('--c', r.css);
+    const img = document.createElement('img'); img.alt = ''; img.src = `models/portraits/${r.id}.webp`;
+    const plate = document.createElement('span'); plate.className = 'plate';
+    const ic = document.createElement('span'); ic.className = 'ic'; ic.textContent = r.icon;
+    const nm = document.createElement('b'); nm.textContent = r.name;
+    plate.append(ic, nm); b.append(img, plate);
+    b.onclick = () => { rm.mine = i; S.sel = i; sendRm({ t: 'pick', ri: i }); renderRematch(); };
+    return b;
+  }));
+  $('rPeer').textContent = TXT.online.peerPicked(ROSTER[rm.theirs].name);
+}
+
+function goRematch(hostRi: number, guestRi: number) {
+  rm.active = false; clearInterval(rm.timer);
+  const a = hostRi, b = guestRi;
+  void ensureModels([a, b]).then(() => {
+    if (!net.peer) return;
+    $('rematch').hidden = true;
+    setupFighters(a, b); startMatch();
+  });
+}
+
+function onRematch(m: RmMsg) {
+  if (m.t === 'start') { if (!rm.active) beginRematch(); }
+  else if (m.t === 'pick' && m.ri !== undefined) { rm.theirs = m.ri; if (rm.active) renderRematch(); }
+  else if (m.t === 'go' && m.a !== undefined && m.b !== undefined && net.me === 1) goRematch(m.a, m.b);
 }
 
 /* ---------- hit prediction on the attacker's side ---------- */

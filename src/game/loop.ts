@@ -66,7 +66,7 @@ export function tick(rdt: number) {
 function frame() {
   const rdt = Math.min(0.05, clock.getDelta());
   if (S.sim) { requestAnimationFrame(frame); return; } // the simulator drives tick() itself
-  const dt = tick(rdt);
+  const dt = S.paused ? 0 : tick(rdt);
   updateAmbience(rdt);
   updateFx(dt);
   updateLights(dt);

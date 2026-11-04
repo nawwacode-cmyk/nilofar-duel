@@ -39,6 +39,7 @@
   </div>
 </div>
 <button id="mute" aria-label="الصوت"><span class="ic">volume_up</span></button>
+<button id="pauseBtn" aria-label="إيقاف مؤقت" hidden><span class="ic">pause</span></button>
 
 <!-- loading -->
 <div class="ov" id="load">
@@ -55,14 +56,14 @@
   <h1 class="logo">أسرار الظلام</h1>
   <div class="rule"><i></i></div>
   <p class="tag">في ساحة القلعة، تحت ضوء القمر والمشاعل، يتواجه أربعة سحرة. ولن يخرج منها إلا منتصرٌ واحد.</p>
-  <div class="btns"><button class="gbtn big" id="enter"><span class="ic">swords</span> ادخل الساحة</button></div>
+  <div class="btns"><button class="gbtn big" id="enter"><span class="ic">swords</span> ادخل الساحة</button><button class="gbtn dark" id="tSettings"><span class="ic">settings</span> الإعدادات</button></div>
   <p class="credit">الساحة الحجرية: Reials Col·legis، طرطوشة، مسح Giravolt (CC BY 4.0) · شرفة القلعة: خامات Poly Haven (CC0) · الشخصيات والحركات: Mixamo · المؤثرات: Kenney (CC0) · الأصوات: Mixkit، Kenney، lentikula · الموسيقى: Heavy Combat من Cosme Leites</p>
 </div>
 
 <!-- character select -->
 <div class="ov scene" id="menu" hidden>
   <header class="mhead">
-    <button class="back" id="backTitle"><span class="ic">arrow_back</span> عودة</button>
+    <div class="hleft"><button class="back" id="backTitle"><span class="ic">arrow_back</span> عودة</button><button class="back icon" id="mSettings" aria-label="الإعدادات"><span class="ic">settings</span></button></div>
     <div class="crest"><div class="logo">أسرار الظلام</div><div class="ribbon">اختر ساحرك</div></div>
   </header>
   <div class="mbody">
@@ -120,6 +121,53 @@
   <div class="btns"><button class="gbtn big" id="again"><span class="ic">swords</span> مبارزة جديدة</button><button class="gbtn dark" id="toMenu">القائمة</button></div>
 </div>
 
+
+<!-- pause (offline: freezes the duel; online: the duel keeps running) -->
+<div class="ov clear" id="pause" hidden>
+  <div class="frame pbox">
+    <h2 class="gtext" id="pTitle">إيقاف مؤقت</h2>
+    <p id="pNote" hidden>المبارزة مستمرة عند صديقك أثناء فتح هذه القائمة.</p>
+    <div class="pbtns">
+      <button class="gbtn big" id="pResume"><span class="ic">play_arrow</span> استئناف</button>
+      <button class="gbtn dark" id="pSettings"><span class="ic">settings</span> الإعدادات</button>
+      <button class="gbtn dark" id="pQuit"><span class="ic">logout</span> <span id="pQuitTxt">الخروج إلى القائمة</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- settings -->
+<div class="ov scene" id="settings" hidden>
+  <div class="frame sett">
+    <div class="shead"><button class="back" id="setBack"><span class="ic">arrow_back</span> عودة</button><h2 class="gtext">الإعدادات</h2><button class="back" id="setReset"><span class="ic">replay</span> الافتراضي</button></div>
+    <div class="sbody">
+      <nav class="stabs" id="setTabs">
+        <button data-tab="sound" class="on">الصوت</button>
+        <button data-tab="graphics">الرسوميات</button>
+        <button data-tab="motion">التأثيرات</button>
+        <button data-tab="controls">التحكم</button>
+      </nav>
+      <div class="spanel" id="setPanel"></div>
+    </div>
+  </div>
+</div>
+
+<!-- control layout editor -->
+<div id="editBar" hidden>
+  <span><span class="ic">open_with</span> اسحب الأزرار إلى أماكنها. لا يُسمح بتلامسها.</span>
+  <button class="back" id="editReset"><span class="ic">replay</span> الافتراضي</button>
+  <button class="gbtn" id="editDone">حفظ</button>
+</div>
+
+<!-- online rematch: both players get 10 s to change wizard -->
+<div class="ov scene" id="rematch" hidden>
+  <div class="frame rbox">
+    <h2 class="gtext">مبارزة جديدة</h2>
+    <p>اختر ساحرك قبل انتهاء الوقت. يرى صديقك اختيارك.</p>
+    <div class="rtimer"><span class="ic">replay</span> <b id="rCount">10</b></div>
+    <div class="rgrid" id="rRoster"></div>
+    <p class="rpeer" id="rPeer"></p>
+  </div>
+</div>
 
 <script type="module" src="../../src/main.ts"></script>
 <script>if('serviceWorker' in navigator)addEventListener('load',()=>navigator.serviceWorker.register('../sw.js').catch(()=>{}))</script>

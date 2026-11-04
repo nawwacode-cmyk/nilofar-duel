@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { renderer, composer, moon, scene } from './stage';
 import { setDynamicLights } from './lights';
+import { settings, onSettingChange } from '../settings/settings';
 
 /**
  * Three quality tiers, picked from the device and then adjusted by measured frame rate during fights.
@@ -12,6 +13,7 @@ let tier: Tier = 2;
 export const getTier = () => tier;
 
 function initialTier(): Tier {
+  if (settings.quality !== 'auto') return settings.quality;
   const saved = localStorage.getItem(KEY);
   if (saved === '0' || saved === '1' || saved === '2') return +saved as Tier;
   const coarse = matchMedia('(pointer: coarse)').matches;
@@ -37,12 +39,15 @@ export function applyTier(t: Tier) {
   dispatchEvent(new Event('resize'));
 }
 
-export function initQuality() { applyTier(initialTier()); }
+export function initQuality() {
+  applyTier(initialTier());
+  onSettingChange(k => { if (k === 'quality') { if (settings.quality === 'auto') localStorage.removeItem(KEY); applyTier(initialTier()); } });
+}
 
 /** Drops one tier when fights average under 30 fps for 4 s (never raises automatically). */
 let acc = 0, frames = 0, cooldown = 0;
 export function monitorFps(rdt: number, fighting: boolean) {
-  if (!fighting) { acc = 0; frames = 0; return; }
+  if (!fighting || settings.quality !== 'auto') { acc = 0; frames = 0; return; }
   cooldown = Math.max(0, cooldown - rdt);
   acc += rdt; frames++;
   if (acc < 4) return;

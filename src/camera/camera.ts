@@ -4,6 +4,7 @@ import { setParticleScale } from '../render/particles';
 import { bloomScale } from '../render/quality';
 import { fovPunch } from '../fx/impact';
 import { getCine } from '../combat/finisher';
+import { settings } from '../settings/settings';
 import { S, ch, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
 import { viewSize, updateRotation } from '../core/view';
@@ -54,7 +55,8 @@ export function updCamera(dt: number) {
   camera.updateProjectionMatrix();
   camPos.lerp(tp, 1 - Math.pow(0.02, dt)); camLook.lerp(tl, 1 - Math.pow(0.02, dt));
   camera.position.copy(camPos); camera.position.y += Math.sin(S.T * 0.4) * 0.03;
-  if (S.shake > 0 && !reduceMotion) { camera.position.x += rnd(S.shake); camera.position.y += rnd(S.shake); }
+  const sh = S.shake * settings.shake;
+  if (sh > 0 && !reduceMotion) { camera.position.x += rnd(sh); camera.position.y += rnd(sh); }
   S.shake *= Math.pow(0.02, dt);
   camera.lookAt(camLook);
 }

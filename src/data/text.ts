@@ -39,5 +39,6 @@ export const TXT = {
     searching: 'جارٍ البحث عن المبارزة…',
     connectFail: 'تعذّر الاتصال بخادم المبارزات. تحقّق من اتصالك وحاول مجددًا.',
     peerLeft: 'غادر صديقك المبارزة',
+    peerPicked: (name: string) => `اختيار صديقك: ${name}`,
   },
 } as const;

@@ -2,7 +2,7 @@ import { S, inMenus } from '../game/state';
 import { ensureModel, ensureModels } from '../fighters/fighter';
 import { play, unlock, isMuted, setMuted, musicOn } from '../audio/audio';
 import { setupFighters, startMatch, toMenu } from '../game/flow';
-import { code4, leaveNet, onlineStart } from '../net/online';
+import { code4, leaveNet, onlineStart, requestRematch } from '../net/online';
 import { onDownloadProgress } from '../assets/net';
 import { ROSTER, skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
@@ -78,7 +78,8 @@ export function initMenus() {
     if (c.length !== 4) { $('oErr').hidden = false; $('oErr').textContent = TXT.online.badCode; return; }
     $('oErr').hidden = true; $('onTxt').textContent = TXT.online.searching; await onlineStart(false, c);
   };
-  $('again').onclick = () => { unlock(); $('end').hidden = true; startMatch(); };
+  // Online: both players get 10 s to change wizard in the same room; offline: straight into a new duel.
+  $('again').onclick = () => { unlock(); if (S.mode === 'online') { requestRematch(); return; } $('end').hidden = true; startMatch(); };
   $('toMenu').onclick = toMenu;
 }
 

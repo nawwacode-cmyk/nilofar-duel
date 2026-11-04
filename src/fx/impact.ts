@@ -4,6 +4,7 @@ import { grade } from '../render/stage';
 import { lightFlash } from '../render/lights';
 import { chest } from '../fighters/fighter';
 import { reduceMotion } from '../core/util';
+import { settings } from '../settings/settings';
 import type { Fighter } from '../core/types';
 
 /**
@@ -45,7 +46,7 @@ const white = new THREE.Color(1, 1, 1);
 /** Per-frame material flash + post effects. */
 export function updateImpactFx(rdt: number, me: Fighter | null) {
   flashScreen = Math.max(0, flashScreen - rdt * 0.9);
-  grade.uniforms.uFlash.value = flashScreen;
+  grade.uniforms.uFlash.value = settings.flashes ? flashScreen : 0;
   const danger = me && S.state === 'fight' && !me.dead ? Math.max(0, 1 - me.hp / (me.R.hp * 0.3)) : 0;
   const pulse = danger > 0 ? danger * (0.65 + 0.35 * Math.sin(S.T * 7)) : 0;
   grade.uniforms.uDanger.value += (pulse - grade.uniforms.uDanger.value) * Math.min(1, rdt * 6);
@@ -53,6 +54,6 @@ export function updateImpactFx(rdt: number, me: Fighter | null) {
     if (!c || !c.mats) continue;
     if (c.hitFlash > 0) c.hitFlash = Math.max(0, c.hitFlash - rdt * 9);
     const k = c.hitFlash * c.hitFlash;
-    for (const m of c.mats) m.emissive.copy(m.userData.baseEmissive).lerp(white, k * 0.45);
+    for (const m of c.mats) m.emissive.copy(m.userData.baseEmissive).lerp(white, settings.flashes ? k * 0.45 : 0);
   }
 }

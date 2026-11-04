@@ -11,6 +11,7 @@ import { initLights } from './render/lights';
 import { initQuality } from './render/quality';
 import { initInput } from './input/input';
 import { initMenus, buildRoster } from './ui/menus';
+import { initSettingsUI } from './ui/settingsUI';
 import { startLoop } from './game/loop';
 import { runBalance, trace } from './sim/sim';
 import { ROSTER } from './data/roster';
@@ -34,6 +35,7 @@ async function boot() {
   addEventListener('resize', resize);
   initInput();
   initMenus();
+  initSettingsUI();
   const bar = $('bar').firstElementChild as HTMLElement, pct = $('pct');
   onDownloadProgress((l, t) => {
     const p = Math.min(100, Math.round((l / Math.max(1, t)) * 100));

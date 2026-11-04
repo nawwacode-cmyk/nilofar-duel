@@ -19,6 +19,8 @@ export const S = {
   CH: [null, null] as [Fighter | null, Fighter | null],
   /** Balance simulator running: the computer plays both sides, nothing is rendered. */
   sim: false,
+  /** Offline pause menu open: the duel is frozen. */
+  paused: false,
 };
 
 /** Network session data (kept here so gameplay code can read it without importing the network layer). */

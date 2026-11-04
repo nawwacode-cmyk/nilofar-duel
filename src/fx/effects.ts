@@ -5,6 +5,7 @@ import { fx } from '../game/state';
 import { headPos } from '../fighters/fighter';
 import { rnd, pick } from '../core/util';
 import { viewSize } from '../core/view';
+import { settings } from '../settings/settings';
 import type { Fighter, Palette, ShieldFx } from '../core/types';
 
 /** Boosts the fighter's wand light (decays every frame in updChar). */
@@ -12,6 +13,7 @@ export function flash(c: Fighter, a: number) { c.light.intensity = Math.max(c.li
 
 /** Floating damage / status text above a fighter's head. */
 export function dmgText(c: Fighter, txt: string, col: string) {
+  if (!settings.dmgNumbers && txt.startsWith('−')) return;
   const p = headPos(c).project(camera);
   const el = document.createElement('div'); el.className = 'dmg'; el.style.color = col; el.textContent = txt;
   const { w, h } = viewSize();
