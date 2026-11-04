@@ -135,7 +135,8 @@ a.gbtn{text-decoration:none}
 .abl span:last-child{font-size:var(--fs-sm);color:var(--muted)}
 
 .mfoot{display:flex;align-items:center;justify-content:center;gap:var(--g4);flex-wrap:nowrap}
-.diffbox{display:flex;align-items:center;gap:var(--g2)}
+.diffbox{display:flex;align-items:center;justify-content:flex-end;gap:var(--g2)}
+.mset{display:flex;flex-direction:column;gap:var(--g2);align-items:stretch}
 
 @media (max-height:460px){
   :root{--g3:12px;--g4:18px;--btn-h:34px;--btn-h-lg:38px}

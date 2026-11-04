@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { S } from './game/state';
 import { loadClips } from './assets/loader';
 import { loadRosterModels } from './fighters/fighter';
-import { loadCourt, makeTorches } from './world/court';
+import { loadArenas } from './world/arena';
 import { loadSounds } from './audio/audio';
 import { resize, setDebugCamera } from './camera/camera';
 import { initLights } from './render/lights';
@@ -31,8 +31,7 @@ async function boot() {
   const pct = $('pct');
   const tick = () => { const p = Math.round((++done / total) * 100); bar.style.width = p + '%'; pct.textContent = p + '%'; };
   try {
-    await Promise.all([loadRosterModels(tick), loadClips(tick), loadCourt().then(tick), loadSounds().then(tick)]);
-    makeTorches();
+    await Promise.all([loadRosterModels(tick), loadClips(tick), loadArenas(tick), loadSounds().then(tick)]);
     makePortraits();
     S.state = 'title'; buildRoster(); showcase();
     // ?debug exposes internals for manual inspection and automated browser checks.

@@ -12,7 +12,7 @@ import { aiThink } from '../ai/ai';
 import { netSend } from '../net/online';
 import { atkHeld, readMove } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
-import { updateAmbience } from '../world/court';
+import { updateAmbience } from '../world/arena';
 import { updateFx } from '../fx/effects';
 import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';

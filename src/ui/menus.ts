@@ -9,6 +9,7 @@ import { code4, leaveNet, onlineStart } from '../net/online';
 import { ROSTER, skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
 import { $, V } from '../core/util';
+import { getArena, setArena, type ArenaId } from '../world/arena';
 
 const portraits: string[] = [];
 
@@ -83,6 +84,10 @@ export function initMenus() {
     S.diff = +(b.dataset.d || 1);
     $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
   });
+  const arenaBtns = $('arena').querySelectorAll<HTMLButtonElement>('button');
+  const markArena = () => arenaBtns.forEach(x => x.classList.toggle('on', x.dataset.arena === getArena()));
+  arenaBtns.forEach(b => b.onclick = () => { void setArena(b.dataset.arena as ArenaId); markArena(); });
+  markArena();
   $('mAI').onclick = () => {
     unlock(); S.mode = 'ai'; $('menu').hidden = true;
     let o = (Math.random() * 3) | 0; if (o >= S.sel) o++;

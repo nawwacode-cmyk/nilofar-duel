@@ -15,7 +15,8 @@ TypeScript وVite وThree.js (WebGL)، وSupabase Realtime للعب عبر ال�
 - التفاصيل الكاملة للبنية والخطة في `HANDOFF.md`.
 
 ## المصادر والرخص
-- الساحة: Reials Col·legis de St Jaume i St Maties، طرطوشة، مسح Giravolt على Sketchfab (CC BY 4.0)
+- الساحة الحجرية: Reials Col·legis de St Jaume i St Maties، طرطوشة، مسح Giravolt على Sketchfab (CC BY 4.0)
+- شرفة القلعة: خامات الحجر والأرضية من Poly Haven (CC0)، ولوحة القلعة والقمر من صاحب المشروع
 - الشخصيات والحركات: Adobe Mixamo
 - المؤثرات: Kenney Particle Pack (CC0)
 - الأصوات: Mixkit، وKenney Sci-fi وImpact Sounds (CC0)، وBasic Spell Impacts من lentikula (CC0)
