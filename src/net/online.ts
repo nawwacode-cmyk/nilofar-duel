@@ -40,7 +40,7 @@ export async function getClient() {
 export function leaveNet() {
   // Tell the peer we left on purpose, so it ends the duel at once instead of waiting for a reconnection.
   if (channel && net.peer) void channel.send({ type: 'broadcast', event: 'bye', payload: { from: net.myId } });
-  const c = channel; channel = null; net.peer = null; net.waiting = false; net.selfDown = false;
+  const c = channel; channel = null; net.peer = null; net.waiting = false; net.selfDown = false; net.lastRecv = 0;
   if (c && sb) { const s = sb; setTimeout(() => { try { void s.removeChannel(c); } catch (e) { console.warn(e); } }, 300); }
 }
 
@@ -58,6 +58,9 @@ export async function onlineStart(host: boolean, code: string) {
   if (!client) { showError(TXT.online.disabled); return; }
   leaveNet();
   net.code = code; net.me = host ? 0 : 1; net.seen.clear(); net.casts = []; net.peer = null;
+  // A new session starts with a clean connection record: the last packet of a previous duel must not count,
+  // or the next duel would think the friend went silent minutes ago and end at once.
+  net.lastRecv = 0; net.rtt = 0; net.peerTs = 0; net.peerTsAt = 0; net.waiting = false; net.selfDown = false;
   const chn = client.channel('duel-' + code.toLowerCase(), { config: { presence: { key: net.myId }, broadcast: { self: false, ack: false } } });
   chn.on('presence', { event: 'sync' }, () => {
     const st = chn.presenceState<{ role?: string; ch?: number; ar?: ArenaId }>();
@@ -65,6 +68,7 @@ export async function onlineStart(host: boolean, code: string) {
     const peer = others.find(p => p.role === (host ? 'g' : 'h'));
     if (peer && !net.peer && (S.state === 'menu' || S.state === 'online')) {
       net.peer = peer.key; net.oppRi = +(peer.ch ?? 0) || 0; $('online').hidden = true; S.mode = 'online';
+      net.lastRecv = performance.now(); // grace while both load their wizards
       const a = net.me === 0 ? S.sel : net.oppRi, b = net.me === 0 ? net.oppRi : S.sel;
       $('onTxt').textContent = TXT.loadingFighters(0);
       // Both play in the host's arena (arenas differ in size, so positions only agree in the same one).
