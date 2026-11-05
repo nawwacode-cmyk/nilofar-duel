@@ -17,7 +17,7 @@ import { after } from '../game/schedule';
 export function fire(c: Fighter, o: CastOrder) {
   if (o.kind === 'thunder') { unveilCast(c); spawnStrike(c.idx, o.x, o.z); }
   else if (o.kind in SKFX) { if (o.kind !== 'veil') unveilCast(c); SKFX[o.kind as keyof typeof SKFX](c, o); }
-  else { const p = spawnProj({ ...o, kind: o.kind as ProjKind, owner: c.idx }); o.id = p.id; unveilCast(c, p); }
+  else { const p = spawnProj({ ...o, kind: o.kind as ProjKind, owner: c.idx }); o.id = p.id; unveilCast(c); }
   if (S.mode === 'online' && c.idx === net.me) {
     net.casts.push([o.id ?? ++S.projId, o.kind, +o.x.toFixed(3), +o.y.toFixed(3), +o.z.toFixed(3), +o.dx.toFixed(3), +o.dy.toFixed(3), +o.dz.toFixed(3)]);
     if (net.casts.length > 8) net.casts.shift();

@@ -52,13 +52,12 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
 };
 
 /**
- * Leaving the veil: any spell cast while hidden reveals Ehab, and that first spell hits harder.
- * Called for local and replayed casts alike, so both devices agree on the damage.
+ * Leaving the veil: any spell cast while hidden reveals Ehab.
+ * Called for local and replayed casts alike, so both devices agree.
  */
-export function unveilCast(c: Fighter, p?: Projectile) {
+export function unveilCast(c: Fighter) {
   if (c.veilT <= 0) return;
   c.veilT = 0;
-  if (p) p.dmg = Math.round(p.dmg * G.veilMult);
   for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl);
   for (let i = 0; i < 24; i++) emit(c.x + rnd(0.4), 0.1 + Math.random() * 1.8, c.z + rnd(0.4), rnd(0.6), 0.4, rnd(0.6), pick(ARCH), 0.14, 0.5, { t: 'spark' });
   play('m_light', { vol: 0.5, x: c.x, dur: 1 });

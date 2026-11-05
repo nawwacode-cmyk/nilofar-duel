@@ -13,27 +13,30 @@ export const G = {
   castCone: 0.26,
   /** A hit from behind (projectile travelling along the victim's facing) ignores the shield and hurts more. */
   backDot: 0.35, backstabMult: 1.5,
-  /** Ehab's veil: seconds unseen; the first spell cast out of it hurts this much more. */
-  veilT: 3, veilMult: 1.4,
+  /** Ehab's veil: seconds unseen. No damage bonus: like every skill it only creates an opening. */
+  veilT: 3,
 } as const;
 
 export const PSPEC: Record<ProjKind, ProjSpec> = {
-  fire: { r: 0.13, dmg: 10, sp: 15, pw: 1, trail: 'flame' },
-  ice: { r: 0.12, dmg: 9, sp: 16, pw: 1, trail: 'spark', slow: 0.7 },
-  shadow: { r: 0.13, dmg: 8, sp: 14, pw: 1, trail: 'twirl' },
-  spark: { r: 0.1, dmg: 8, sp: 24, pw: 1, trail: 'spark' },
-  meteor: { r: 0.34, dmg: 34, sp: 9.5, pw: 3, trail: 'flame', aoe: 1.6 },
-  spear: { r: 0.13, dmg: 13, sp: 17, pw: 2, trail: 'spark', slow: 2 },
-  curse: { r: 0.15, dmg: 28, sp: 5, pw: 2, trail: 'twirl', home: 2.4, life: 4.5 },
-  shmini: { r: 0.09, dmg: 5, sp: 13, pw: 1, trail: 'twirl' },
-  gold: { r: 0.13, dmg: 11, sp: 19, pw: 1, trail: 'magic' },
-  orb: { r: 0.14, dmg: 9, sp: 10, pw: 2, trail: 'magic', home: 3.2, life: 3 },
+  // Basic bolts: same damage, speed and size for every wizard (only the look differs).
+  fire: { r: 0.12, dmg: 9, sp: 17, pw: 1, trail: 'flame' },
+  ice: { r: 0.12, dmg: 9, sp: 17, pw: 1, trail: 'spark' },
+  shadow: { r: 0.12, dmg: 9, sp: 17, pw: 1, trail: 'twirl' },
+  spark: { r: 0.12, dmg: 9, sp: 17, pw: 1, trail: 'spark' },
+  gold: { r: 0.12, dmg: 9, sp: 17, pw: 1, trail: 'magic' },
+  // Specials: each deals 30 when it connects (spread ones split it across what usually lands).
+  meteor: { r: 0.34, dmg: 30, sp: 9.5, pw: 2, trail: 'flame', aoe: 1.6 },
+  spear: { r: 0.13, dmg: 15, sp: 17, pw: 2, trail: 'spark' },
+  curse: { r: 0.15, dmg: 30, sp: 5, pw: 2, trail: 'twirl', home: 2.4, life: 4.5 },
+  orb: { r: 0.14, dmg: 6, sp: 10, pw: 2, trail: 'magic', home: 3.2, life: 3 },
+  // Layla's clones: small, so the skill distracts rather than out-damages.
+  shmini: { r: 0.09, dmg: 3, sp: 13, pw: 1, trail: 'twirl' },
 };
 
 /** Fixed damage numbers outside PSPEC. */
 export const DMG = {
-  thunder: 36, thunderShielded: 12, thunderRadius: 1.15,
-  aoe: 20, aoeShielded: 8, meteorThroughShield: 0.35,
+  thunder: 30, thunderShielded: 10, thunderRadius: 1.15,
+  aoe: 15, aoeShielded: 6, meteorThroughShield: 0.35,
   struggleWin: 42, struggleDraw: 15,
 } as const;
 

@@ -1,25 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { ROSTER, skillLabel } from '../src/data/roster';
+import { ROSTER, FAIR, skillLabel } from '../src/data/roster';
 import { G, PSPEC, DMG, AI_LEVELS } from '../src/data/rules';
 import { TXT } from '../src/data/text';
 
 describe('roster', () => {
-  it('keeps the four original wizards\' balance numbers, then Ehab', () => {
-    expect(ROSTER.map(r => [r.id, r.hp, r.speed, r.bolt.kind, r.bolt.cd, r.spec, r.dodgeCost, r.skill.k, r.skill.cost, r.skill.cd])).toEqual([
-      ['reem', 240, 2.9, 'fire', 0.42, 'meteor', 14, 'portal', 25, 7],
-      ['siraj', 290, 2.5, 'ice', 0.45, 'spears', 14, 'wall', 30, 9],
-      ['layla', 210, 3.4, 'shadow', 0.33, 'curse', 9, 'clones', 35, 10],
-      ['qasem', 255, 2.8, 'spark', 0.38, 'thunder', 14, 'blink', 15, 4],
-      ['ehab', 300, 3.0, 'gold', 0.36, 'orbs', 11, 'veil', 30, 9],
+  it('has the five wizards with their own spells and skills', () => {
+    expect(ROSTER.map(r => [r.id, r.bolt.kind, r.spec, r.skill.k])).toEqual([
+      ['reem', 'fire', 'meteor', 'portal'],
+      ['siraj', 'ice', 'spears', 'wall'],
+      ['layla', 'shadow', 'curse', 'clones'],
+      ['qasem', 'spark', 'thunder', 'blink'],
+      ['ehab', 'gold', 'orbs', 'veil'],
     ]);
+  });
+  it('is fair: same health, speed, dodge, attack cadence and skill cost for everyone', () => {
+    for (const r of ROSTER) {
+      expect([r.hp, r.speed, r.dodgeCost, r.bolt.cd, r.skill.cost, r.skill.cd]).toEqual([FAIR.hp, FAIR.speed, FAIR.dodgeCost, FAIR.boltCd, FAIR.skill.cost, FAIR.skill.cd]);
+    }
+  });
+  it('is fair: every basic bolt hits the same (damage, speed, size, power, no extra effects)', () => {
+    const specs = ROSTER.map(r => PSPEC[r.bolt.kind]);
+    for (const s of specs) expect([s.dmg, s.sp, s.r, s.pw, s.slow, s.home]).toEqual([specs[0].dmg, specs[0].sp, specs[0].r, specs[0].pw, undefined, undefined]);
+  });
+  it('is fair: every special deals 30 when it connects', () => {
+    expect(PSPEC.meteor.dmg).toBe(30);
+    expect(PSPEC.curse.dmg).toBe(30);
+    expect(DMG.thunder).toBe(30);
+    expect(PSPEC.spear.dmg * 2).toBe(30); // three spread spears, two land at most
+    expect(PSPEC.orb.dmg * 5).toBe(30); // five orbs
+    for (const k of ['meteor', 'spear', 'curse', 'orb'] as const) { expect(PSPEC[k].pw).toBe(2); expect(PSPEC[k].slow).toBeUndefined(); }
   });
   it('every skill is affordable from a full mana bar', () => {
     for (const r of ROSTER) expect(r.skill.cost).toBeLessThanOrEqual(100);
     expect(G.spCost).toBeLessThanOrEqual(100);
-  });
-  it('Ehab is the strongest wizard (highest health and power)', () => {
-    const e = ROSTER.find(r => r.id === 'ehab')!;
-    for (const r of ROSTER) if (r !== e) { expect(e.hp).toBeGreaterThan(r.hp); expect(e.stat[2]).toBeGreaterThanOrEqual(r.stat[2]); }
   });
   it('every basic bolt kind has a projectile spec', () => {
     for (const r of ROSTER) expect(PSPEC[r.bolt.kind]).toBeDefined();
@@ -32,7 +45,7 @@ describe('roster', () => {
 describe('rules', () => {
   it('keeps the original combat constants', () => {
     expect(G).toMatchObject({ boltCost: 6, spCost: 55, dodgeCd: 0.8, regen: 13, shieldDrain: 14, parryWin: 0.22, shMax: 1.5, shCd: 3, shHP: 40, strugCd: 7 });
-    expect(DMG).toMatchObject({ thunder: 36, struggleWin: 42, struggleDraw: 15, aoe: 20 });
+    expect(DMG).toMatchObject({ thunder: 30, struggleWin: 42, struggleDraw: 15, aoe: 15 });
   });
   it('AI difficulty increases monotonically', () => {
     for (let i = 1; i < AI_LEVELS.length; i++) {

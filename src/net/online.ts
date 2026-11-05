@@ -226,7 +226,7 @@ function netRecv(pp: Packet) {
     net.seen.add(id);
     if (kind === 'thunder') { unveilCast(o); spawnStrike(o.idx, x, z, true); }
     else if (kind in SKFX) { if (kind !== 'veil') unveilCast(o); SKFX[kind as keyof typeof SKFX](o, { kind, x, y, z, dx, dy, dz, remote: true }); }
-    else unveilCast(o, spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id }));
+    else { unveilCast(o); spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id }); }
     play(o.R.snd === 'bolt' ? 'cast3' : 'cast2', { vol: 0.35, x: o.x, rate: 1.3 });
   }
 }
