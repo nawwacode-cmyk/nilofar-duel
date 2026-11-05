@@ -18,7 +18,6 @@ import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';
 import { TXT } from '../data/text';
 import { runScheduled } from './schedule';
-import { updateCine, updateFinish } from '../combat/finisher';
 import { timeScale, updateImpactFx } from '../fx/impact';
 import { updateLights } from '../render/lights';
 import { monitorFps } from '../render/quality';
@@ -49,10 +48,8 @@ export function tick(rdt: number) {
       if (S.mode === 'ai' && S.state === 'fight') aiThink(ch(1), dt);
     }
     if (S.state === 'struggle') updStruggle(rdt);
-    if (S.state === 'cine') updateCine(rdt);
-    if (S.state === 'finish') updateFinish(dt);
     S.CH.forEach(c => c && updChar(c, dt, S.mode !== 'online' || c.idx === net.me || S.state === 'menu'));
-    if (S.state !== 'cine') { updProjs(dt); updStrikes(dt); updWalls(dt); updClones(dt); } // the world holds still during a cinematic
+    updProjs(dt); updStrikes(dt); updWalls(dt); updClones(dt);
     if (!inMenus()) { hud(); updateButtons(); }
     netAcc += rdt;
     // 20 Hz state, plus an immediate send (capped at 40 Hz) for casts and HP changes.

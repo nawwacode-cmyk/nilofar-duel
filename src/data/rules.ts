@@ -15,6 +15,10 @@ export const G = {
   backDot: 0.35, backstabMult: 1.5,
   /** Ehab's veil: seconds unseen. No damage bonus: like every skill it only creates an opening. */
   veilT: 6,
+  /** Ehab's illusion army: how long the opponent is held, and how long it stays held when it had its shield up. */
+  armyStun: 1.5, armyStunShielded: 0.5,
+  /** Close combat: within this distance the attack button shoves/strikes instead of casting. */
+  meleeRange: 1.6, meleePush: 7.5,
 } as const;
 
 export const PSPEC: Record<ProjKind, ProjSpec> = {
@@ -38,6 +42,7 @@ export const DMG = {
   thunder: 30, thunderShielded: 10, thunderRadius: 1.15,
   aoe: 15, aoeShielded: 6, meteorThroughShield: 0.35,
   struggleWin: 42, struggleDraw: 15,
+  army: 30, armyShielded: 10, melee: 6,
 } as const;
 
 /** AI difficulty table: easy / normal / hard. */

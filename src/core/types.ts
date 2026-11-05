@@ -1,15 +1,15 @@
 import type * as THREE from 'three';
 
 export type Palette = readonly THREE.Color[];
-export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end' | 'cine' | 'finish';
+export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end';
 export type Mode = 'ai' | 'online';
 
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
 export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb';
 export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs';
-export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil';
+export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army';
 /** Everything that can travel over the network as a "cast". */
-export type CastKind = ProjKind | SkillKind | 'thunder' | 'fatal' | 'fatality';
+export type CastKind = ProjKind | SkillKind | 'thunder' | 'melee';
 
 export const CLIP_NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR'] as const;
 export type ClipName = typeof CLIP_NAMES[number];
@@ -40,6 +40,8 @@ export interface WizardDef {
   /** Material Symbols ligature for the element. */
   icon: string;
   skill: { k: SkillKind; cost: number; cd: number };
+  /** Optional fourth ability with its own button (Ehab, the archmage). */
+  skill2?: { k: SkillKind; cost: number; cd: number }; ab2?: Ability;
   /** Model format: Mixamo FBX (default) or a Tripo-rigged GLB whose animations are retargeted at load. */
   rig?: 'tripo';
 }
@@ -57,7 +59,7 @@ export interface Fighter {
   cur: THREE.AnimationAction | null; curName?: ClipName;
   x: number; z: number; vx: number; vz: number; ry: number;
   hp: number; mana: number;
-  cdA: number; cdD: number; cdS: number; cdK: number;
+  cdA: number; cdD: number; cdS: number; cdK: number; cdK2: number;
   castT: number; hitT: number; slowT: number; stunT: number; invT: number; warpT: number; dodgeT: number;
   shieldT: number; shieldOn: boolean; shHP: number; shield: ShieldFx | null; wantShield: boolean;
   dodgeDir: THREE.Vector3; dead: boolean; inX: number; inZ: number; stepAcc: number;
@@ -68,8 +70,6 @@ export interface Fighter {
   turnLockT: number;
   /** Ehab's veil: invisible to the opponent while > 0 (broken by casting). */
   veilT: number; alpha?: number;
-  /** Fatal Blow: used this match / cooldown after a miss. */
-  fbUsed: boolean; fbCd: number;
   /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
   authHp: number; pend: { d: number; t: number }[];
   /** Finger bones curled around the wand every frame (after the animation mixer). */

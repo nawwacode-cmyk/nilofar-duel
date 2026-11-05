@@ -34,6 +34,10 @@ describe('roster', () => {
     for (const r of ROSTER) expect(r.skill.cost).toBeLessThanOrEqual(100);
     expect(G.spCost).toBeLessThanOrEqual(100);
   });
+  it('only Ehab has a fourth ability (the illusion army), worth a special', () => {
+    expect(ROSTER.filter(r => r.skill2).map(r => [r.id, r.skill2!.k, r.ab2![1]])).toEqual([['ehab', 'army', 'جيش الأوهام']]);
+    expect(DMG.army).toBe(30);
+  });
   it('every basic bolt kind has a projectile spec', () => {
     for (const r of ROSTER) expect(PSPEC[r.bolt.kind]).toBeDefined();
   });

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
+import { fx } from '../game/state';
 import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
 import { base, chest, clipFor, tintModel } from '../fighters/fighter';
 import { play, pr } from '../audio/audio';
@@ -15,7 +16,7 @@ import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types'
 import { after } from '../game/schedule';
 
 /** Visual + gameplay side of each skill. `o.remote` means it was cast on the other device. */
-/** Skills (and finishers, registered by combat/finisher.ts) replayed by cast kind on both devices. */
+/** Skills replayed by cast kind on both devices. */
 export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   portal(c, o) {
     portalRing(o.x, o.z, c.pal);
@@ -40,6 +41,8 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   },
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
+  army(c, o) { spawnArmy(c, o.x, o.z, o.y); },
+  melee(c, o) { meleeHit(c, o.dx, o.dz); },
   veil(c, o) {
     // Ehab leaves a perfect illusion of himself where he stood and, unseen, steps out behind his opponent.
     // Deliberately quiet: a faint shimmer and a soft sound, so the trick is not given away.
@@ -64,6 +67,81 @@ export function unveilCast(c: Fighter) {
   for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl);
   for (let i = 0; i < 10; i++) emit(c.x + rnd(0.3), 0.2 + Math.random() * 1.6, c.z + rnd(0.3), rnd(0.3), 0.3, rnd(0.3), pick(ARCH), 0.08, 0.4, { t: 'spark', a: 0.6 });
   play('m_light', { vol: 0.3, x: c.x, dur: 0.8 });
+}
+
+/* ---------- close combat ---------- */
+/** The shove lands on the victim's device (victim authority); both devices show it. */
+function meleeHit(c: Fighter, dx: number, dz: number) {
+  const o = opp(c);
+  play('m_whoosh', { vol: 0.5, x: c.x, rate: 1.4 });
+  after(0.1, () => {
+    if (c.dead || o.dead || S.state !== 'fight') return;
+    if (Math.hypot(o.x - c.x, o.z - c.z) > G.meleeRange + 0.4) return; // stepped away in time
+    const h = chest(o);
+    for (let i = 0; i < 14; i++) emit(h.x + rnd(0.15), h.y + rnd(0.2), h.z + rnd(0.15), dx * 2 + rnd(1), rnd(1), dz * 2 + rnd(1), pick(c.pal), 0.1, 0.3, { t: 'spark' });
+    play('tap', { vol: 0.9, x: o.x, rate: 0.6 }); play('boom1', { vol: 0.25, x: o.x, rate: 1.6 });
+    if (!isLocal(o) || o.dodgeT > 0.05 || o.invT > 0) return;
+    // A raised shield takes the blow but is still pushed back.
+    if (!o.shieldOn) applyDmg(o, DMG.melee, c);
+    o.vx = dx * G.meleePush; o.vz = dz * G.meleePush; o.knockT = 0.35;
+  });
+  if (isLocal(c)) { c.vx = -dx * 2.5; c.vz = -dz * 2.5; c.knockT = 0.15; } // recoil
+}
+
+/* ---------- Ehab's illusion army ---------- */
+/**
+ * Illusions of Ehab multiply in a ring around the opponent and hold them (stun), then all strike at once.
+ * Dodging or being invulnerable at the moment they appear escapes it; a raised shield shortens the hold and
+ * softens the blow. Stun and damage are applied on the victim's device; both devices show the scene.
+ */
+const ARMY = 8, ARMY_R = 1.9, ARMY_STRIKE = 1.0;
+function spawnArmy(c: Fighter, x: number, z: number, seed: number) {
+  const v = opp(c);
+  const escaped = v.dodgeT > 0.05 || v.invT > 0, shielded = v.shieldOn;
+  const tint = c.tint ?? new THREE.Color(1, 1, 1);
+  const units = Array.from({ length: ARMY }, (_, k) => {
+    const a = (k / ARMY) * Math.PI * 2 + (seed % 100) / 100;
+    const m = SkeletonUtils.clone(base[c.ri]);
+    m.traverse(o => {
+      const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
+      mesh.material = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(mt => {
+        const n = mt.clone() as THREE.MeshStandardMaterial; n.transparent = true; n.opacity = 0.8; n.depthWrite = false;
+        n.color?.multiply(tint); if (n.emissive) n.emissive.setRGB(0.35, 0.24, 0.05); return n;
+      })[0];
+    });
+    const g = new THREE.Group(); g.add(m); m.position.y = c.model.position.y;
+    const px = x + Math.cos(a) * ARMY_R, pz = z + Math.sin(a) * ARMY_R;
+    g.position.set(px, 0, pz); g.rotation.y = Math.atan2(x - px, z - pz); scene.add(g);
+    const mx = new THREE.AnimationMixer(m);
+    const idle = mx.clipAction(clipFor(c.ri, 'idle', m)), hit = mx.clipAction(clipFor(c.ri, 'bolt', m));
+    idle.time = Math.random(); idle.play();
+    for (let i = 0; i < 10; i++) emit(px + rnd(0.3), 0.2 + Math.random() * 1.6, pz + rnd(0.3), rnd(0.5), 0.5, rnd(0.5), pick(ARCH), 0.12, 0.5, { t: 'twirl' });
+    return { g, mx, idle, hit, px, pz };
+  });
+  play('m_arcane', { vol: 0.8, x }); play('m_cast_long', { vol: 0.5, x });
+  emit(x, 0.05, z, 0, 0, 0, ARCH[1], 0.8, 1.2, { t: 'rune', spin: 1.5, grow: 4 });
+  if (!escaped && isLocal(v) && S.state === 'fight') v.stunT = Math.max(v.stunT, shielded ? G.armyStunShielded : G.armyStun);
+  let t = 0, struck = false;
+  fx.push(dt => {
+    t += dt;
+    for (const u of units) u.mx.update(dt);
+    if (!struck && t > ARMY_STRIKE) {
+      struck = true;
+      for (const u of units) { u.idle.stop(); u.hit.reset().setLoop(THREE.LoopOnce, 1).play(); }
+      play('m_blast', { vol: 0.8, x }); S.shake = Math.max(S.shake, 0.12);
+      explosion(V(v.x, 1, v.z), ARCH, 1.1);
+      if (!escaped && isLocal(v) && S.state === 'fight' && !v.dead) applyDmg(v, shielded ? DMG.armyShielded : DMG.army, c);
+    }
+    // Dash in for the strike, then fade away.
+    const k = clamp((t - ARMY_STRIKE + 0.25) / 0.25, 0, 1);
+    for (const u of units) {
+      u.g.position.set(u.px + (v.x - u.px) * k * 0.55, 0, u.pz + (v.z - u.pz) * k * 0.55);
+      if (t > ARMY_STRIKE + 0.3) u.g.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) (mesh.material as THREE.Material).opacity = Math.max(0, 0.8 - (t - ARMY_STRIKE - 0.3) * 2); });
+    }
+    if (t < ARMY_STRIKE + 0.75) return true;
+    for (const u of units) { scene.remove(u.g); u.mx.stopAllAction(); }
+    return false;
+  });
 }
 
 /* ---------- Ehab's decoy ---------- */

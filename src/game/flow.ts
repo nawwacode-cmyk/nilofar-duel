@@ -6,7 +6,6 @@ import { setShield } from '../combat/actions';
 import { clearProjectiles } from '../combat/projectiles';
 import { killWall, killClone } from '../combat/skills';
 import { leaveNet } from '../net/online';
-import { beginFinish, aiFinisher } from '../combat/finisher';
 import { banner, hud } from '../ui/hud';
 import { skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
@@ -32,10 +31,11 @@ function clearArena() {
 }
 
 export function startMatch() {
-  S.CH.forEach(c => { if (c) { c.wins = 0; c.fbUsed = false; } });
+  S.CH.forEach(c => { if (c) c.wins = 0; });
   S.round = 0;
   $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false; $('pauseBtn').hidden = false; $('rematch').hidden = true;
   $('bSk').textContent = skillLabel(me().R);
+  const R = me().R; $('bSk2').hidden = !R.skill2; if (R.ab2) $('bSk2').textContent = R.ab2[1].split(' ')[0];
   walls.slice().forEach(killWall); clones.slice().forEach(c => killClone(c, false));
   S.CH.forEach((c, i) => {
     if (!c) return;
@@ -58,12 +58,6 @@ export function ko(c: Fighter) {
   if (S.state !== 'fight') return;
   c.dead = true; anim(c, 'death', { once: true, force: true }); setShield(c, false);
   const w = opp(c); w.wins = (w.wins || 0) + 1; hud();
-  // Deciding round: the loser stays dazed for the winner's Fatality (the simulator skips the show).
-  if (w.wins >= 2 && !S.sim) {
-    c.dead = false; beginFinish(c);
-    if (S.mode === 'ai' && w.idx === 1) aiFinisher(w);
-    return;
-  }
   S.state = 'ko'; S.stateT = 0; S.slowmo = 0.35;
   banner(w.wins >= 2 ? TXT.matchWon(w.R, label(w)) : TXT.roundWon(w.R, label(w)));
   explosion(chest(c), w.pal, 1.6); play('m_whoosh', { vol: 0.8 }); play('m_epic', { vol: 1 }); play('c_huge', { vol: 0.6 });

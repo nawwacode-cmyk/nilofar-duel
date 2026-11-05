@@ -217,10 +217,8 @@ body:has(#title:not([hidden])) #mute,body:has(#menu:not([hidden])) #mute,body:ha
 #bSp.ready{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 14px var(--gold)}
 #bSh{right:92px;bottom:10px}
 #bSk{width:48px;height:48px;right:114px;bottom:114px;font-size:var(--fs-xs)}
-/* Finisher: appears only when usable, beyond the shield button (82px from it, 30px edge gap). */
-#bFb{right:174px;bottom:10px;color:#241503;background:radial-gradient(circle at 40% 30%,#fff0bf,#e0a43a 60%,#8d4a14);box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 18px #ff9a3c;animation:fbPulse 1s ease-in-out infinite}
-@keyframes fbPulse{50%{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 30px #ff6a1c}}
-@media (prefers-reduced-motion:reduce){#bFb{animation:none}}
+/* Fourth ability (only wizards that have one, e.g. Ehab): beyond the shield button (82px from it, 30px edge gap). */
+#bSk2{right:174px;bottom:10px;color:#241503;background:radial-gradient(circle at 40% 30%,#fff0bf,#e0a43a 60%,#8d4a14);box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi)}
 
 /* beam struggle */
 #sWrap{position:fixed;inset:0;z-index:4}
@@ -268,7 +266,7 @@ input[type=range]::-moz-range-thumb{width:20px;height:20px;border-radius:50%;bac
 #editBar .gbtn{height:30px;padding:0 18px;font-size:var(--fs-md)}
 html.editing #ctl .b{outline:1px dashed #fbe3a2aa;outline-offset:3px;cursor:grab;--cd:0!important}
 html.editing #ctl .b.bad{outline-color:#ff6a5c;box-shadow:0 0 0 2px #ff6a5c}
-html.editing #bFb{display:flex!important}
+html.editing #bSk2{display:flex!important}
 
 .rbox{display:flex;flex-direction:column;align-items:center;gap:var(--g2);padding:var(--g3) clamp(var(--g3),4vw,36px);width:min(720px,94vw)}
 .rtimer{font-family:var(--display);font-weight:700;font-size:var(--fs-2xl);color:var(--gold-hi);display:flex;align-items:center;gap:var(--g1)}
@@ -282,7 +280,7 @@ html.editing #bFb{display:flex!important}
 #ctl .b,#stick{opacity:var(--btn-op,1)}
 html.lefty #btns{right:auto;left:var(--safe-l);transform-origin:bottom left}
 html.lefty #bAtk{right:auto;left:0}html.lefty #bDg{right:auto;left:10px}html.lefty #bSp{right:auto;left:68px}
-html.lefty #bSh{right:auto;left:92px}html.lefty #bSk{right:auto;left:114px}html.lefty #bFb{right:auto;left:174px}
+html.lefty #bSh{right:auto;left:92px}html.lefty #bSk{right:auto;left:114px}html.lefty #bSk2{right:auto;left:174px}
 html.lefty #stickZone{left:auto;right:0}
 html.lefty #stick{left:auto;right:calc(var(--safe-r) + 10px)}
 html.editing #mute,html.editing #pauseBtn{display:none}

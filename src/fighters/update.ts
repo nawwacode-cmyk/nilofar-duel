@@ -26,7 +26,7 @@ function dust(c: Fighter, n: number, sp: number) {
 }
 const DUST = C(0.32, 0.34, 0.42);
 
-const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'invT', 'turnLockT', 'fbCd', 'veilT'] as const;
+const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'cdK2', 'invT', 'turnLockT', 'veilT'] as const;
 const fwd = V(), right = V();
 
 /**

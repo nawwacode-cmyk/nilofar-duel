@@ -261,7 +261,7 @@ export function resetChar(c: Fighter) {
   Object.assign(c, {
     x: i === 0 ? -3 : 3, z: -0.6, vx: 0, vz: 0, ry: i === 0 ? Math.PI / 2 : -Math.PI / 2, hp: c.R.hp, mana: 60,
     cdA: 0, cdD: 0, shieldT: -1, shieldOn: false, dodgeT: 0, dodgeDir: V(), castT: 0, hitT: 0, slowT: 0, stunT: 0, cdS: 0, shHP: 0,
-    cdK: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, fbCd: 0, authHp: c.R.hp, pend: [],
+    cdK: 0, cdK2: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, authHp: c.R.hp, pend: [],
   });
   if (c.shield) { c.shield.off(); c.shield = null; }
   anim(c, 'idle', { force: true });

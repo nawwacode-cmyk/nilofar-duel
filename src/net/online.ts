@@ -14,7 +14,6 @@ import { impact } from '../fx/impact';
 import { CLIP_NAMES, type CastKind, type Fighter, type ProjKind, type Projectile } from '../core/types';
 import { G } from '../data/rules';
 import { ROSTER } from '../data/roster';
-import { remoteFatalHit } from '../combat/finisher';
 import { getArena, setArena, type ArenaId } from '../world/arena';
 
 /**
@@ -92,7 +91,7 @@ export function netSend() {
   const payload: Packet = {
     from: net.myId,
     st: [+c.x.toFixed(2), +c.z.toFixed(2), +c.ry.toFixed(2), c.curName ? CLIP_NAMES.indexOf(c.curName) : -1, c.shieldOn ? 1 : 0, Math.round(c.hp), Math.round(c.mana), c.dodgeT > 0 ? 1 : 0],
-    cs: net.casts, fb: net.fb || 0, sg: net.sg || 0, ss: strug ? +strug.s.toFixed(3) : 0, sr: net.sr || null, mc: strug ? strug.my : 0, mcid: strug ? strug.id : 0,
+    cs: net.casts, sg: net.sg || 0, ss: strug ? +strug.s.toFixed(3) : 0, sr: net.sr || null, mc: strug ? strug.my : 0, mcid: strug ? strug.id : 0,
   };
   net.urgent = false;
   channel.send({ type: 'broadcast', event: 'st', payload }).catch(() => { /* dropped packets are fine at 20 Hz */ });
@@ -213,7 +212,6 @@ function netRecv(pp: Packet) {
   if (st[4] && !o.shieldOn) { o.shieldOn = true; o.shieldT = S.T; o.shield = shieldMesh(o); play('shield', { vol: 0.4, x: o.x }); }
   else if (!st[4] && o.shieldOn) { o.shieldOn = false; o.shield?.off(); o.shield = null; }
   reconcileHp(o, st[5]);
-  if (pp.fb) remoteFatalHit(pp.fb);
   o.mana = st[6]; o.dodgeT = st[7] ? 0.3 : 0;
 
   if (net.me === 1) {

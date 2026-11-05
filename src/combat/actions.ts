@@ -47,7 +47,9 @@ function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
 }
 
 export function castBolt(c: Fighter) {
-  if (c.dead || c.stunT > 0 || c.shieldOn || c.cdA > 0 || c.mana < G.boltCost || c.dodgeT > 0 || c.castT > 0.1) return;
+  if (c.dead || c.stunT > 0 || c.shieldOn || c.cdA > 0 || c.dodgeT > 0 || c.castT > 0.1) return;
+  if (melee(c)) return;
+  if (c.mana < G.boltCost) return;
   c.cdA = c.R.bolt.cd; c.mana -= G.boltCost; c.castT = 0.36;
   anim(c, 'bolt', { once: true, speed: 1.7, force: true });
   play(c.R.cs, { vol: 0.45, x: c.x, dur: 1.1 });
@@ -115,6 +117,19 @@ export function setShield(c: Fighter, on: boolean) {
   if (!on && c.shieldOn) { c.shieldOn = false; c.cdS = G.shCd; if (c.shield) { c.shield.off(); c.shield = null; } }
 }
 
+/**
+ * Close combat: when the two wizards are almost touching, the attack button becomes a shove with the wand hand
+ * that throws the opponent back, so duels return to spell range. Free of mana, same rhythm as the basic bolt.
+ */
+function melee(c: Fighter) {
+  const o = opp(c); const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz);
+  if (d > G.meleeRange || o.dead) return false;
+  c.cdA = c.R.bolt.cd; c.castT = 0.3;
+  anim(c, 'bolt', { once: true, speed: 2.4, force: true });
+  fire(c, { kind: 'melee', x: c.x, y: 0, z: c.z, dx: dx / (d || 1), dy: 0, dz: dz / (d || 1) });
+  return true;
+}
+
 /** Character-specific movement/utility skill (U). */
 export function castSkill(c: Fighter) {
   const K = c.R.skill;
@@ -137,4 +152,14 @@ export function castSkill(c: Fighter) {
   if (K.k === 'wall') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'wall', x: c.x + d.x * 1.5, y: Math.atan2(d.x, d.z), z: c.z + d.z * 1.5, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'clones') fire(c, { kind: 'clones', x: c.x, y: (Math.random() * 1e5) | 0, z: c.z, dx: 0, dy: 0, dz: 0 });
   if (K.k === 'veil') { const [ex, ez] = behind(); fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: ex, dy: 0, dz: ez }); }
+}
+
+/** The optional fourth ability (Y): Ehab's illusion army. */
+export function castSkill2(c: Fighter) {
+  const K = c.R.skill2;
+  if (!K || c.dead || c.stunT > 0 || c.cdK2 > 0 || c.mana < K.cost || c.castT > 0.1 || c.warpT > 0) return;
+  c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5;
+  anim(c, 'special', { once: true, speed: 1.6, force: true });
+  const o = opp(c);
+  fire(c, { kind: K.k, x: o.x, y: (Math.random() * 1e5) | 0, z: o.z, dx: 0, dy: 0, dz: 0 });
 }

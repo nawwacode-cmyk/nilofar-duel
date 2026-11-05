@@ -34,8 +34,8 @@ export function buildRoster() {
     return [el('span', 'ic', ic), el('span', '', n), bar, el('em', '', t)];
   }));
   $('dAbT').textContent = TXT.abilitiesOf(R);
-  const abIcons = ['swords', 'auto_awesome', R.icon];
-  $('dAb').replaceChildren(...R.ab.map(([k, n, d], i) => {
+  const abIcons = ['swords', 'auto_awesome', R.icon, 'auto_awesome'];
+  $('dAb').replaceChildren(...[...R.ab, ...(R.ab2 ? [R.ab2] : [])].map(([k, n, d], i) => {
     const row = el('div', 'abl');
     const name = el('b', '', n); name.append(el('small', '', `${k} · ${TXT.abilityKeys[i]}`));
     row.append(el('span', 'ic', abIcons[i]), name, el('span', '', d));

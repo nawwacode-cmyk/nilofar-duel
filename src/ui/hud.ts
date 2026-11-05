@@ -1,7 +1,5 @@
 import { S, me } from '../game/state';
 import { G } from '../data/rules';
-import { TXT } from '../data/text';
-import { finisherAvailable } from '../combat/finisher';
 import { $ } from '../core/util';
 
 /** Health/mana bars and round pips for both sides. */
@@ -35,8 +33,5 @@ export function updateButtons() {
   set('bSp', 1 - Math.min(1, c.mana / G.spCost));
   $('bSp').classList.toggle('ready', c.mana >= G.spCost);
   set('bSk', Math.max(c.cdK / c.R.skill.cd, c.mana < c.R.skill.cost ? 0.999 : 0));
-  const fb = $('bFb'), avail = finisherAvailable(c);
-  if (fb.hidden === avail) fb.hidden = !avail;
-  const label = S.state === 'finish' ? TXT.fatalityBtn : TXT.fatalBtn;
-  if (avail && fb.textContent !== label) fb.textContent = label;
+  const K2 = c.R.skill2; if (K2) set('bSk2', Math.max(c.cdK2 / K2.cd, c.mana < K2.cost ? 0.999 : 0));
 }

@@ -1,15 +1,14 @@
 import { S } from '../game/state';
 import { me } from '../game/state';
 import { unlock } from '../audio/audio';
-import { castBolt, castSpecial, castSkill, dodge } from '../combat/actions';
+import { castBolt, castSpecial, castSkill, castSkill2, dodge } from '../combat/actions';
 import { mash } from '../game/struggle';
-import { useFinisher } from '../combat/finisher';
 import { isEditingControls } from '../ui/settingsUI';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
-type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'fb';
+type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'sk2';
 
 const input = { x: 0, z: 0, keys: {} as Record<string, boolean> };
 export let atkHeld = false;
@@ -20,7 +19,7 @@ export let atkHeld = false;
  */
 const BUFFER_S = 0.2;
 let buffered: { a: Action; until: number } | null = null;
-const CASTS: Partial<Record<Action, typeof castBolt>> = { atk: castBolt, dg: dodge, sp: castSpecial, sk: castSkill };
+const CASTS: Partial<Record<Action, typeof castBolt>> = { atk: castBolt, dg: dodge, sp: castSpecial, sk: castSkill, sk2: castSkill2 };
 
 /** Every successful cast or dodge costs mana, so a drop means it went off. */
 function tryCast(a: Action) {
@@ -33,7 +32,6 @@ export function press(a: Action, on: boolean) {
   if (!S.CH[0] || S.paused || isEditingControls()) return;
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
-  if (a === 'fb') { if (on) useFinisher(c); return; }
   if (a === 'atk') atkHeld = on;
   if (a === 'sh') c.wantShield = on;
   if (on && CASTS[a] && S.state === 'fight') buffered = tryCast(a) ? null : { a, until: performance.now() / 1000 + BUFFER_S };
@@ -46,7 +44,7 @@ export function pumpInput() {
   if (tryCast(buffered.a)) buffered = null;
 }
 
-const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk', KeyO: 'fb', KeyF: 'fb' };
+const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk', KeyY: 'sk2' };
 
 /** Normalised movement vector from stick + WASD/arrows. */
 export function readMove(): [number, number] {

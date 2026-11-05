@@ -1,10 +1,9 @@
 import { S, opp, projs, strikes } from '../game/state';
-import { castBolt, castSpecial, castSkill, dodge } from '../combat/actions';
+import { castBolt, castSpecial, castSkill, castSkill2, dodge } from '../combat/actions';
 import { G, AI_LEVELS } from '../data/rules';
 import { V } from '../core/util';
 import type { Fighter, Projectile } from '../core/types';
 import { after } from '../game/schedule';
-import { fatalReady, useFinisher } from '../combat/finisher';
 
 /** Computer opponent: keeps a preferred range, strafes, reacts to incoming spells, uses skills. */
 type AiState = { t: number; strafe: number; nextAtk: number; shieldUntil: number; skT: number };
@@ -58,8 +57,9 @@ export function aiThink(c: Fighter, dt: number) {
     // Vanish when something is incoming or at random, slip aside, then strike from hiding.
     else if (K === 'veil' && (threat || Math.random() < 0.25)) { castSkill(c); ai.skT = 4; ai.strafe *= -1; after(1.2 + Math.random(), () => { if (!c.dead) castBolt(c); }); }
   }
-  // Fatal Blow under the same rules as the player (own health under 30 %, once per match), in range.
-  if (fatalReady(c) && dist < 6.5 && Math.random() < dt * 0.9) useFinisher(c);
+  // Fourth ability (Ehab's army) when the opponent is within reach and not mid-dodge.
+  const K2 = c.R.skill2;
+  if (K2 && c.cdK2 <= 0 && c.mana >= K2.cost + 5 && dist < 8 && o.dodgeT <= 0 && Math.random() < dt * D.skill * 0.6) castSkill2(c);
   ai.nextAtk -= dt;
   if (ai.nextAtk <= 0 && !c.shieldOn) {
     ai.nextAtk = (0.5 + Math.random()) / D.rate;

@@ -72,6 +72,9 @@ export const ROSTER: readonly WizardDef[] = [
       ['مهارة', 'حجاب الخداع', 'يختفي عن الأنظار ويترك وهمًا مكانه'],
     ],
     skill: { k: 'veil', ...FAIR.skill },
+    // The archmage's extra ability (owner's request): a ring of illusions that holds the opponent, then strikes.
+    skill2: { k: 'army', cost: 40, cd: 14 },
+    ab2: ['قدرة', 'جيش الأوهام', 'تتكاثر أوهامه حول خصمه فتشلّه لحظة ثم تنقضّ عليه'],
   },
 ];
 
