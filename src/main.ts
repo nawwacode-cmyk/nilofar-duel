@@ -4,7 +4,8 @@ import { S, net, ch } from './game/state';
 import { loadClips } from './assets/loader';
 import { onDownloadProgress, resetDownloadProgress } from './assets/net';
 import { ensureModel, ensureModels, makeFighter, dropFighter, anim, applyGroundContact } from './fighters/fighter';
-import { loadArenas, floorAt, setArena, type ArenaId } from './world/arena';
+import { loadArenas, floorAt, setArena, refreshAtmosphere, type ArenaId } from './world/arena';
+import { onTierChange } from './render/quality';
 import { setupFighters, startMatch } from './game/flow';
 import { G } from './data/rules';
 import { loadSounds } from './audio/audio';
@@ -34,6 +35,7 @@ const mb = (b: number) => (b / 1048576).toFixed(1);
  */
 async function boot() {
   initLights();
+  onTierChange(refreshAtmosphere);
   initQuality();
   resize();
   addEventListener('resize', resize);

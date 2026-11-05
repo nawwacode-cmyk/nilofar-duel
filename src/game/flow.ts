@@ -59,6 +59,7 @@ export function newRound() {
   play('m_drums', { vol: 0.9 }); play('c_chant', { vol: 0.35 });
 }
 
+
 export function ko(c: Fighter) {
   if (S.state !== 'fight' || trainKo(c)) return;
   c.dead = true; anim(c, 'death', { once: true, force: true }); setShield(c, false);

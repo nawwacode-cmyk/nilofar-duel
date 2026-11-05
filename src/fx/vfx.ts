@@ -4,6 +4,7 @@ import { emit } from '../render/particles';
 import { getTier } from '../render/quality';
 import { shockDistort } from '../render/post';
 import { play } from '../audio/audio';
+import { burstSheet } from './flipbook';
 import { floorAt } from '../world/arena';
 import { C, rnd, pick } from '../core/util';
 import type { Fighter, Palette } from '../core/types';
@@ -103,7 +104,7 @@ export function shockRing(x: number, z: number, pal: Palette, size = 2, heavy = 
   r.on = true; r.t = 0; r.dur = heavy ? 0.6 : 0.4; r.size = size;
   const y = floorAt(x, z) + 0.04;
   r.mesh.position.set(x, y, z); r.mesh.visible = true;
-  (r.mesh.material as THREE.MeshBasicMaterial).color.copy(pal[1]).multiplyScalar(1.4);
+  (r.mesh.material as THREE.MeshBasicMaterial).color.copy(pal[1]).multiplyScalar(0.55);
   r.dome.visible = heavy; r.dome.position.set(x, y, z);
   (r.dome.material as THREE.ShaderMaterial).uniforms.uColor.value.copy(pal[pal.length - 1]);
 }
@@ -238,10 +239,13 @@ export function impactFx(e: Element, p: THREE.Vector3, pal: Palette, power = 0.3
   const tier = getTier();
   if (tier === 0) return;
   const heavy = power >= 0.6, fy = floorAt(p.x, p.z), nearFloor = p.y - fy < 1.6;
-  shockRing(p.x, p.z, pal, 0.9 + power * 2.6, heavy);
+  shockRing(p.x, p.z, pal, 0.7 + power * 1.6, heavy);
   if (nearFloor || heavy) groundMark(e, p.x, p.z, 0.8 + power * 1.6);
   if (tier === 2 && (heavy || e === 'fire')) shockDistort(p.x, p.y, p.z, 1.2 + power * 3, heavy ? 1 : 0.5);
   const n = tier === 2 ? 1 : 0.5;
+  // Real explosion footage for fire (and every heavy blast); a smoke puff in the element's colour otherwise.
+  if (e === 'fire' || heavy) burstSheet('explosion', p.x, p.y + (heavy ? 0.3 : 0), p.z, heavy ? 2 + power : 0.9, heavy ? 1.1 : 0.55, e === 'fire' ? undefined : pal[0].clone().multiplyScalar(0.45).addScalar(0.45));
+  else burstSheet('smoke', p.x, p.y, p.z, 0.9, 0.8, pal[1].clone().multiplyScalar(0.25).addScalar(0.55));
   if (e === 'ice') play('k_ice' + ((Math.random() * 3) | 0), { vol: 0.5, x: p.x });
   if (e === 'fire') for (let i = 0; i < 18 * n; i++) emit(p.x + rnd(0.3), p.y, p.z + rnd(0.3), rnd(2), 1 + Math.random() * 2.5, rnd(2), C(2.8, 1 + Math.random(), 0.2), 0.05, 1.2 + Math.random(), { t: 'spark', grav: -2.5, drag: 0.8 });
   else if (e === 'ice') for (let i = 0; i < 16 * n; i++) emit(p.x, p.y, p.z, rnd(3), 1 + Math.random() * 2, rnd(3), pick(pal), 0.12 + Math.random() * 0.1, 0.8, { t: 'star', grav: -8, drag: 0.5, spin: rnd(8) });

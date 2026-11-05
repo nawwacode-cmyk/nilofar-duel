@@ -12,6 +12,7 @@
 
 **Effects & sound**
 - Particle sprites and impact sounds — **Kenney** (www.kenney.nl, CC0)
+- Fire, explosion and smoke footage — **Unity Labs** free VFX flipbooks (CC0)
 - Sound effects — **Mixkit**, **lentikula** (freesound.org), **Kenney**
 - Music: *Heavy Combat* — **Cosme Leites**
 

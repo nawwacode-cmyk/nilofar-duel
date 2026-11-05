@@ -5,6 +5,7 @@ import { loadCourt, courtRoot, COURT_ENV, updateCourtAmbience, courtFloorAt } fr
 import { loadTerrace, terraceRoot, TERRACE_ENV, updateTerraceAmbience } from './terrace';
 import { loadPalace, palaceRoot, PALACE_ENV, updatePalaceAmbience, palaceFloorAt } from './palace';
 import { captureArenaEnv, setDaylight } from '../render/charLight';
+import { setAtmosphere, updateAtmosphere, ATMOS } from './atmos';
 
 /** Lighting and atmosphere that belong to an arena. */
 export interface ArenaEnv {
@@ -79,6 +80,7 @@ export async function setArena(id: ArenaId, remember = true) {
   // The wizards' reflections and ambient light come from this arena.
   setDaylight((ARENAS[id].env.exposure ?? 1) > 1.4);
   captureArenaEnv(ARENAS[id].root);
+  setAtmosphere(ATMOS[id]);
 }
 
 /** Boot: load the remembered arena; warm up the other one in the background. */
@@ -101,7 +103,9 @@ export function restoreArena() {
   if (id !== current) void setArena(id);
 }
 
-export function updateAmbience(rdt: number) { ARENAS[current].ambience(rdt); }
+export function updateAmbience(rdt: number) { ARENAS[current].ambience(rdt); updateAtmosphere(rdt); }
+/** Quality changed: rebuild the light shafts for the new tier. */
+export function refreshAtmosphere() { setAtmosphere(ATMOS[current]); }
 
 /** Floor height under a point of the current arena (the terrace is flat). */
 export function floorAt(x: number, z: number) { return current === 'court' ? courtFloorAt(x, z) : current === 'palace' ? palaceFloorAt(x, z) : 0; }

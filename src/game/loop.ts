@@ -24,6 +24,7 @@ import { updateLights } from '../render/lights';
 import { monitorFps } from '../render/quality';
 import { updatePost } from '../render/post';
 import { updateVfx } from '../fx/vfx';
+import { updateFlipbooks } from '../fx/flipbook';
 
 const clock = new THREE.Clock();
 let netAcc = 0;
@@ -75,6 +76,7 @@ function frame() {
   updateLights(dt);
   updatePost(rdt);
   updateVfx(dt);
+  updateFlipbooks(rdt);
   updateImpactFx(rdt, S.CH[0] ? me() : null);
   monitorFps(rdt, S.state === 'fight');
   updateParticles(dt);

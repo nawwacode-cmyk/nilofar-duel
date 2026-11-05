@@ -14,6 +14,7 @@ Generated content (posters, Tripo models) is listed too, so the origin of every 
 | Particle sprite atlas (`models/fx.webp`) | kenney.nl — Particle Pack | Kenney | CC0 | None (credit appreciated) |
 | Impact sounds `k_punch*`, `k_thud*`, `k_ice*` (`sfx/`) | kenney.nl — Impact Sounds | Kenney | CC0 | None (credit appreciated) |
 | Spell, cast and ambience sounds (`m_*`, `c_*`, others in `sfx/`) | mixkit.co, freesound.org (lentikula), kenney.nl | Mixkit; lentikula; Kenney | Mixkit Sound Effects Free License; CC0; CC0 | Mixkit: no standalone redistribution |
+| Fire, explosion and smoke flipbooks (`models/fx_flame.webp`, `fx_explosion.webp`, `fx_smoke.webp`) — Flame02, Explosion02, WispySmoke01 | Unity Labs "Free VFX image sequences & flipbooks" | Unity Technologies | CC0 | None |
 | Music (`sfx/music`) — "Heavy Combat" | — | Cosme Leites | Free for use in projects; not redistributable on its own | Credit (shown on the title screen) |
 | Fonts: Alexandria; Material Symbols (icon subset) | Google Fonts | Mohamed Gaber / Google | SIL Open Font License 1.1; Apache 2.0 | Keep licence notices; no selling the fonts alone |
 | Title, loading and menu backgrounds (`img/*`) | Project owner | Project owner | Owner's content | — |

@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { loopFlame, flipFlames } from '../fx/flipbook';
 import { renderer, scene } from '../render/stage';
 import { emit } from '../render/particles';
 import { FIRE } from '../data/palettes';
@@ -98,6 +99,7 @@ function buildBraziers(tex: Awaited<ReturnType<typeof pbr>>) {
     const b = new THREE.Mesh(bowl, iron); b.scale.setScalar(k * 0.9); b.position.set(x, h, z); terraceRoot.add(b);
     const L = new THREE.PointLight(0xff8a3d, big ? 9 : 6, big ? 11 : 8, 1.6); L.position.set(x, h + 0.5, z); terraceRoot.add(L);
     fires.push({ x, y: h + 0.22 * k, z, L, s: Math.random() * 10, big });
+    loopFlame(terraceRoot, x, h + 0.12 * k, z, big ? 1.35 : 0.95);
   }
 }
 
@@ -110,7 +112,8 @@ export function updateTerraceAmbience(rdt: number) {
     const fl = 1 + Math.sin(f.s) * 0.08 + Math.sin(f.s * 2.7) * 0.06 + rnd(0.03);
     f.L.intensity = (f.big ? 9 : 6) * fl;
     const n = f.big ? 2 : 1;
-    for (let i = 0; i < n; i++) if (Math.random() < 0.85) emit(f.x + rnd(0.12), f.y, f.z + rnd(0.12), rnd(0.1), 0.8 + Math.random() * 0.5, rnd(0.1), pick(FIRE), (f.big ? 0.36 : 0.26) + Math.random() * 0.14, 0.5, { t: 'flame', drag: 1, spin: rnd(1) });
+    if (flipFlames()) { if (Math.random() < 0.3) emit(f.x + rnd(0.1), f.y + 0.4, f.z + rnd(0.1), rnd(0.25), 1 + Math.random(), rnd(0.25), C(1.6, 0.6, 0.15), 0.04, 1.3, { t: 'spark', drag: 0.6 }); }
+    else for (let i = 0; i < n; i++) if (Math.random() < 0.85) emit(f.x + rnd(0.12), f.y, f.z + rnd(0.12), rnd(0.1), 0.8 + Math.random() * 0.5, rnd(0.1), pick(FIRE), (f.big ? 0.36 : 0.26) + Math.random() * 0.14, 0.5, { t: 'flame', drag: 1, spin: rnd(1) });
     if (Math.random() < 0.15) emit(f.x, f.y + 0.6, f.z, rnd(0.1), 0.5, rnd(0.1), C(0.08, 0.08, 0.1), 0.4, 2, { t: 'smoke', smoke: 1, grow: 0.4, a: 0.3 });
   }
   // Mist rolling up from the valley behind the balustrade.

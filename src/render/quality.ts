@@ -10,6 +10,9 @@ import { settings, onSettingChange } from '../settings/settings';
  * The chosen tier is remembered so the next launch starts at the right level.
  */
 export type Tier = 0 | 1 | 2; // low, medium, high
+let onTier: (() => void) | null = null;
+/** Called after every tier change (systems that rebuild per tier, e.g. the arena atmosphere). */
+export function onTierChange(fn: () => void) { onTier = fn; }
 const KEY = 'asrar.quality';
 let tier: Tier = 2;
 export const getTier = () => tier;
@@ -37,6 +40,7 @@ export function applyTier(t: Tier) {
   if (moon.shadow.mapSize.x !== size) { moon.shadow.mapSize.set(size, size); moon.shadow.map?.dispose(); moon.shadow.map = null; }
   setDynamicLights(t >= 1);
   setPostTier(t); setCharTier(t);
+  onTier?.();
   // Materials must recompile when shadow support toggles.
   scene.traverse(o => { const m = (o as THREE.Mesh).material; if (m) (Array.isArray(m) ? m : [m]).forEach(x => { x.needsUpdate = true; }); });
   dispatchEvent(new Event('resize'));
