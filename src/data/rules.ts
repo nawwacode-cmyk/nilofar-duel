@@ -14,7 +14,7 @@ export const G = {
   /** A hit from behind (projectile travelling along the victim's facing) ignores the shield and hurts more. */
   backDot: 0.35, backstabMult: 1.5,
   /** Ehab's veil: seconds unseen. No damage bonus: like every skill it only creates an opening. */
-  veilT: 3,
+  veilT: 6,
 } as const;
 
 export const PSPEC: Record<ProjKind, ProjSpec> = {
