@@ -36,6 +36,11 @@ export const net = {
   sg: 0, sr: null as [number, number] | null, lastSg: 0, hostS: 0, oppMc: 0, oppMcId: 0,
   /** Something important happened (a cast, our HP changed): send state now instead of at the next tick. */
   urgent: false,
+  /** Connection health (ms, performance.now clock): last packet from the peer, round trip, the peer's last
+   *  timestamp and when it arrived (echoed back so the peer can measure its round trip). */
+  lastRecv: 0, rtt: 0, peerTs: 0, peerTsAt: 0,
+  /** The duel is frozen while the peer's packets have stopped arriving; our own link to the server is down. */
+  waiting: false, selfDown: false,
 };
 
 export const projs: Projectile[] = [];

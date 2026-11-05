@@ -1,6 +1,6 @@
 import './ui/styles.css';
 import * as THREE from 'three';
-import { S } from './game/state';
+import { S, net } from './game/state';
 import { loadClips } from './assets/loader';
 import { onDownloadProgress, resetDownloadProgress } from './assets/net';
 import { ensureModel, ensureModels, makeFighter, dropFighter, anim, applyGroundContact } from './fighters/fighter';
@@ -46,7 +46,7 @@ async function boot() {
     onDownloadProgress(null); resetDownloadProgress();
     S.state = 'title'; buildRoster();
     // ?debug exposes internals for manual inspection and automated browser checks.
-    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, floorAt, balance: runBalance, simTrace: trace } });
+    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, net, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, floorAt, balance: runBalance, simTrace: trace } });
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
     void preload();

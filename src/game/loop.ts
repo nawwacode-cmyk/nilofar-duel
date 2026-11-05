@@ -9,7 +9,7 @@ import { castBolt } from '../combat/actions';
 import { updProjs } from '../combat/projectiles';
 import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
-import { netSend, expirePredictions } from '../net/online';
+import { netSend, expirePredictions, checkConnection } from '../net/online';
 import { atkHeld, readMove, pumpInput } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/arena';
@@ -30,7 +30,9 @@ let netAcc = 0;
  * balance simulator (sim/sim.ts), which calls it with a fixed step and no rendering. Returns the scaled dt.
  */
 export function tick(rdt: number) {
-  const dt = rdt * S.slowmo * timeScale(rdt);
+  // Online duels freeze while the connection is lost (checkConnection), and resume where they were.
+  if (S.mode === 'online') checkConnection();
+  const dt = rdt * S.slowmo * timeScale(rdt) * (net.waiting ? 0 : 1);
   S.T += dt; S.stateT += rdt;
   runScheduled();
   if (S.CH[0]) {

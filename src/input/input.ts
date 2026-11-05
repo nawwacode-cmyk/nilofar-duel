@@ -1,4 +1,4 @@
-import { S } from '../game/state';
+import { S, net } from '../game/state';
 import { me } from '../game/state';
 import { unlock } from '../audio/audio';
 import { castBolt, castSpecial, castSkill, castSkill2, dodge } from '../combat/actions';
@@ -29,7 +29,7 @@ function tryCast(a: Action) {
 }
 
 export function press(a: Action, on: boolean) {
-  if (!S.CH[0] || S.paused || isEditingControls()) return;
+  if (!S.CH[0] || S.paused || net.waiting || isEditingControls()) return;
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
   if (a === 'atk') atkHeld = on;

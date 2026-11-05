@@ -37,8 +37,10 @@ async function getClient() {
 }
 
 export function leaveNet() {
-  if (channel && sb) { try { void sb.removeChannel(channel); } catch (e) { console.warn(e); } }
-  channel = null; net.peer = null;
+  // Tell the peer we left on purpose, so it ends the duel at once instead of waiting for a reconnection.
+  if (channel && net.peer) void channel.send({ type: 'broadcast', event: 'bye', payload: { from: net.myId } });
+  const c = channel; channel = null; net.peer = null; net.waiting = false; net.selfDown = false;
+  if (c && sb) { const s = sb; setTimeout(() => { try { void s.removeChannel(c); } catch (e) { console.warn(e); } }, 300); }
 }
 
 /** 4-char room code without look-alike characters (no I, L, O, 0, 1). */
@@ -68,28 +70,36 @@ export async function onlineStart(host: boolean, code: string) {
       const arena = host ? getArena() : peer.ar ?? getArena();
       void Promise.all([ensureModels([a, b]), setArena(arena)]).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
     }
-    if (net.peer && !others.some(p => p.key === net.peer)) {
-      net.peer = null;
-      if (S.state !== 'menu') { banner(TXT.online.peerLeft); setTimeout(toMenu, 2200); }
-    }
+    // A peer missing from presence is handled by checkConnection (it may only be a short network drop).
+  });
+  chn.on('broadcast', { event: 'bye' }, ({ payload }) => {
+    if (!net.peer || !payload || payload.from !== net.peer) return;
+    net.peer = null; net.waiting = false;
+    if (S.state !== 'menu') { banner(TXT.online.peerLeft); setTimeout(toMenu, 2200); }
   });
   chn.on('broadcast', { event: 'st' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) netRecv(payload as Packet); });
   chn.on('broadcast', { event: 'rm' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) onRematch(payload as RmMsg); });
   chn.subscribe(async status => {
-    if (status === 'SUBSCRIBED') await chn.track({ role: host ? 'h' : 'g', ch: S.sel, ar: getArena() });
-    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') showError(TXT.online.connectFail);
+    // The client rejoins by itself after a drop; we only track the state for the connection indicator.
+    if (status === 'SUBSCRIBED') { net.selfDown = false; await chn.track({ role: host ? 'h' : 'g', ch: S.sel, ar: getArena() }); }
+    if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
+      if (net.peer) net.selfDown = true; else if (status !== 'CLOSED') showError(TXT.online.connectFail);
+    }
   });
   channel = chn;
 }
 
 /** st = [x, z, ry, clipIndex, shield, hp, mana, dodging]; cs = recent casts. */
-interface Packet { from: string; st: number[]; cs?: (string | number)[][]; fb?: number; sg?: number; ss?: number; sr?: [number, number] | null; mc?: number; mcid?: number }
+interface Packet { from: string; ts?: number; e?: [number, number]; st: number[]; cs?: (string | number)[][]; fb?: number; sg?: number; ss?: number; sr?: [number, number] | null; mc?: number; mcid?: number }
 
 export function netSend() {
   if (S.mode !== 'online' || !channel || !net.peer) return;
   const c = ch(net.me); const strug = getStruggle();
+  const now = performance.now();
   const payload: Packet = {
-    from: net.myId,
+    from: net.myId, ts: Math.round(now),
+    // Echo of the peer's last timestamp and how long we held it: the peer computes its round trip from it.
+    e: net.peerTs ? [net.peerTs, Math.round(now - net.peerTsAt)] : undefined,
     st: [+c.x.toFixed(2), +c.z.toFixed(2), +c.ry.toFixed(2), c.curName ? CLIP_NAMES.indexOf(c.curName) : -1, c.shieldOn ? 1 : 0, Math.round(c.hp), Math.round(c.mana), c.dodgeT > 0 ? 1 : 0],
     cs: net.casts, sg: net.sg || 0, ss: strug ? +strug.s.toFixed(3) : 0, sr: net.sr || null, mc: strug ? strug.my : 0, mcid: strug ? strug.id : 0,
   };
@@ -204,6 +214,10 @@ export function expirePredictions(o: Fighter) {
 const ONE_SHOT = ['bolt', 'special', 'hit', 'death', 'evade'];
 
 function netRecv(pp: Packet) {
+  const now = performance.now();
+  net.lastRecv = now;
+  if (pp.ts) { net.peerTs = pp.ts; net.peerTsAt = now; }
+  if (pp.e) { const r = now - pp.e[0] - pp.e[1]; if (r >= 0 && r < 10000) net.rtt = net.rtt ? net.rtt * 0.8 + r * 0.2 : r; }
   const o = S.CH[1 - net.me]; const st = pp.st;
   if (!st || !o || isLocal(o)) return;
   o.nx = st[0]; o.nz = st[1]; o.nry = st[2];
@@ -230,4 +244,35 @@ function netRecv(pp: Packet) {
     else { unveilCast(o); spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id }); }
     play(o.R.snd === 'bolt' ? 'cast3' : 'cast2', { vol: 0.35, x: o.x, rate: 1.3 });
   }
+}
+
+/* ---------- connection health ---------- */
+/** No packets for this long: freeze the duel and wait; this long: give up. */
+const FREEZE_MS = 3000, GIVE_UP_MS = 30000;
+const DUEL_STATES = ['intro', 'fight', 'ko', 'struggle'];
+let indAt = 0;
+
+/**
+ * Called every frame online. A short network drop freezes the duel on both devices (each stops hearing the
+ * other) and it resumes where it was when packets flow again; after GIVE_UP_MS the duel ends.
+ * Also refreshes the connection indicator (bottom left).
+ */
+export function checkConnection() {
+  const ind = $('netInd');
+  if (S.mode !== 'online' || !net.peer) { ind.hidden = true; net.waiting = false; return; }
+  const now = performance.now(), quiet = net.lastRecv ? now - net.lastRecv : 0;
+  const inDuel = DUEL_STATES.includes(S.state);
+  const lost = inDuel && quiet > FREEZE_MS;
+  if (lost && quiet > GIVE_UP_MS) { net.waiting = false; banner(TXT.online.peerGone); setTimeout(toMenu, 2200); net.peer = null; return; }
+  if (lost !== net.waiting) { net.waiting = lost; if (!lost) banner(''); }
+  if (lost) banner(net.selfDown ? TXT.online.lostSelf : TXT.online.lostPeer(Math.ceil((GIVE_UP_MS - quiet) / 1000)));
+  if (now - indAt < 400) return;
+  indAt = now; ind.hidden = false;
+  const down = net.selfDown || quiet > FREEZE_MS, ms = Math.round(net.rtt);
+  const [cls, word] = down ? ['down', TXT.online.net.down] : quiet > 1500 || ms > 600 ? ['bad', TXT.online.net.bad]
+    : ms > 300 ? ['weak', TXT.online.net.weak] : ms > 150 ? ['ok', TXT.online.net.ok] : ['good', TXT.online.net.good];
+  ind.className = cls;
+  // The latency is wrapped in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
+  // The latency sits in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
+  ind.lastElementChild!.textContent = down || !ms ? word : `${word} · ⁦${ms} ms⁩`;
 }
