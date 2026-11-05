@@ -15,8 +15,7 @@ import { ICE, SHADOW, LIGHT, ARCH, FLORA, WIND } from '../data/palettes';
 import { projs } from '../game/state';
 import { killProj } from './projectiles';
 import { dmgText } from '../fx/effects';
-import { makeTwister } from '../fx/tornado';
-import { makeTornadoModel, ensureTornadoModel } from '../fx/tornadoModel';
+import { makeTwister, makeVortex } from '../fx/tornado';
 import { V, C, rnd, pick, clamp, angleDelta } from '../core/util';
 import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types';
 import { after } from '../game/schedule';
@@ -51,7 +50,7 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   bloom(c, o) { bloom(c, o.x, o.z); },
   thorns(c, o) { thorns(c, o.x, o.z); },
   gust(c, o) { gust(c, o.x, o.z, o.dx, o.dz); },
-  tornado(c, o) { tornado(c, o.x, o.z, o.dx, o.dz); },
+  tornado(c, o) { tornado(c, o.x, o.z); },
   melee(c, o) { meleeHit(c, o.dx, o.dz, MELEE[o.y] ?? MELEE[0]); },
   veil(c, o) {
     // Ehab leaves a perfect illusion of himself where he stood and, unseen, steps out behind his opponent.
@@ -391,49 +390,58 @@ function gust(c: Fighter, x: number, z: number, dx: number, dz: number) {
 }
 
 /**
- * A real twister (shader funnel + dust) that chases the opponent for a few seconds. If it catches them they are
- * lifted off their feet (held) and hurt — the same weight as Ehab's illusion army.
+ * The tornado rises from the ground right under the opponent (a spinning dust ring warns for a moment — a dodge
+ * escapes). Its body is 3D: a twisting funnel and hundreds of dust puffs orbiting around them, so it truly wraps
+ * the victim, who is lifted and spun while it grinds (six hits, the same total as Ehab's illusion army) and held.
+ * Missed, it stays a few seconds where it rose and catches whoever walks in.
  */
-function tornado(c: Fighter, x: number, z: number, dx: number, dz: number) {
-  const LIFE = 3.6, SPEED = 4.9, TURN = 2.8, REACH = 1.15, PULL = 2.2;
-  // The real tornado model when it has arrived (prefetched with Abed); the shader funnel until then.
-  const tw = makeTornadoModel(4.4, LIFE) ?? makeTwister(3.4, 1.7);
-  void ensureTornadoModel();
-  scene.add(tw.group); tw.group.position.set(x, 0, z);
-  play('m_waves', { vol: 1, x, rate: 0.6, dur: LIFE });
-  let t = 0, px = x, pz = z, vx = dx, vz = dz, hit = false, lift = 0;
+function tornado(c: Fighter, x: number, z: number) {
+  const WARN = 0.45, LIFE = 3.4, REACH = 1.15, TICKS = 6;
   const v = opp(c);
+  const ring = new THREE.Mesh(new THREE.RingGeometry(0.9, 1.15, 48), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.75, 0.68, 0.55), transparent: true, opacity: 0, side: THREE.DoubleSide, depthWrite: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.04, z); scene.add(ring);
+  const funnel = makeTwister(3.6, 1.6, new THREE.Color(0.3, 0.27, 0.23), new THREE.Color(0.72, 0.67, 0.6));
+  const dust = makeVortex(3.8);
+  funnel.group.position.set(x, 0, z); dust.group.position.set(x, 0, z);
+  play('m_whoosh', { vol: 0.7, x, rate: 0.6 });
+  let t = 0, caught = false, ticks = 0, tickAt = 0, roar = false;
   fx.push(dt => {
     t += dt;
-    const ex = v.x - px, ez = v.z - pz, L = Math.hypot(ex, ez) || 1;
-    const want = Math.atan2(ex / L, ez / L), cur = Math.atan2(vx, vz), a = cur + clamp(angleDelta(cur, want), -TURN * dt, TURN * dt);
-    vx = Math.sin(a); vz = Math.cos(a);
-    px = clamp(px + vx * SPEED * dt, -G.bx - 1, G.bx + 1); pz = clamp(pz + vz * SPEED * dt, G.zMin - 1, G.zMax + 1);
-    tw.group.position.set(px, 0, pz);
-    const fade = Math.min(1, t / 0.35, (LIFE - t) / 0.4);
-    tw.update(dt, Math.max(0, fade));
-    // The arena feels it: the ground shakes more the closer it is to the camera's wizards, and it drags the
-    // opponent towards itself (a dodge or walking away against the wind escapes).
-    const near = Math.hypot(v.x - px, v.z - pz);
-    S.shake = Math.max(S.shake, 0.05 * fade + (near < 4 ? 0.06 * (1 - near / 4) : 0));
-    if (!hit && isLocal(v) && !v.dead && near < 4.5 && near > 0.01 && v.dodgeT <= 0) { v.x -= ((v.x - px) / near) * PULL * dt * (1 - near / 4.5); v.z -= ((v.z - pz) / near) * PULL * dt * (1 - near / 4.5); }
-    // Debris torn from the ground spirals up the funnel.
-    if (Math.random() < 0.7) { const ang = Math.random() * Math.PI * 2, r = 1.2 + Math.random() * 1.5; emit(px + Math.cos(ang) * r, 0.05, pz + Math.sin(ang) * r, -Math.cos(ang) * 2 - Math.sin(ang) * 3, 2.5 + Math.random() * 2, -Math.sin(ang) * 2 + Math.cos(ang) * 3, C(0.32, 0.28, 0.22), 0.07, 1.1, { t: 'spark', drag: 0.5 }); }
-    // Dust skirt at the base and bits of debris climbing the walls.
-    for (let k = 0; k < 3; k++) { const ang = Math.random() * Math.PI * 2, r = 0.25 + Math.random() * 0.5; emit(px + Math.cos(ang) * r, 0.08, pz + Math.sin(ang) * r, -Math.sin(ang) * 2.5, 0.4, Math.cos(ang) * 2.5, C(0.45, 0.47, 0.5), 0.5, 0.7, { t: 'smoke', smoke: 1, grow: 0.9, a: 0.4 * fade }); }
-    if (Math.random() < 0.5) { const h = Math.random() * 3, ang = Math.random() * Math.PI * 2, r = 0.2 + h * 0.25; emit(px + Math.cos(ang) * r, h, pz + Math.sin(ang) * r, -Math.sin(ang) * 4, 1.2, Math.cos(ang) * 4, pick(WIND), 0.08, 0.5, { t: 'spark' }); }
-    if (!hit && Math.hypot(v.x - px, v.z - pz) < REACH) {
-      hit = true;
-      if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0) {
-        if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.tornadoShielded, c); }
-        else { applyDmg(v, DMG.tornado, c); v.stunT = Math.max(v.stunT, DMG.tornadoStun); v.vx = v.vz = 0; lift = 1; }
-      }
-      burst(V(px, 1.2, pz), WIND, 50, 4, 0.7, 0.12, 'twirl'); play('m_blast', { vol: 0.6, x: px, rate: 0.8 });
-      t = Math.max(t, LIFE - 1.2);
+    if (t < WARN) {
+      // Warning: dust spinning on the ground under them.
+      (ring.material as THREE.MeshBasicMaterial).opacity = 0.35 + 0.35 * Math.sin(t * 30);
+      ring.rotation.z += dt * 8;
+      for (let k = 0; k < 4; k++) { const a = Math.random() * Math.PI * 2; emit(x + Math.cos(a) * 1, 0.05, z + Math.sin(a) * 1, -Math.sin(a) * 3, 0.3, Math.cos(a) * 3, C(0.5, 0.46, 0.4), 0.35, 0.5, { t: 'smoke', smoke: 1, a: 0.4 }); }
+      return true;
     }
-    // The caught wizard spins up in the funnel and drops back down.
-    if (lift > 0) { lift = Math.max(0, lift - dt / 1.2); v.root.position.y = Math.sin((1 - lift) * Math.PI) * 1.1; v.ry += dt * 9; }
-    if (t >= LIFE) { scene.remove(tw.group); tw.dispose(); v.root.position.y = 0; return false; }
+    if (!roar) { roar = true; scene.remove(ring); ring.geometry.dispose(); (ring.material as THREE.Material).dispose(); scene.add(funnel.group, dust.group); play('m_waves', { vol: 1, x, rate: 0.55, dur: LIFE }); play('m_blast', { vol: 0.6, x, rate: 0.6 }); }
+    const u = t - WARN, grow = Math.min(1, u / 0.35), fade = Math.min(1, (LIFE - u) / 0.45);
+    funnel.update(dt, Math.max(0, fade) * 0.75 * grow);
+    funnel.group.scale.setScalar(Math.max(0.05, grow));
+    dust.update(dt, Math.max(0, fade), Math.max(0.05, grow));
+    S.shake = Math.max(S.shake, 0.06 * fade);
+    // Debris torn up around the base.
+    if (Math.random() < 0.8) { const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 1.2; emit(x + Math.cos(a) * r, 0.05, z + Math.sin(a) * r, -Math.sin(a) * 4 - Math.cos(a) * 1.5, 1.5 + Math.random() * 2.5, Math.cos(a) * 4 - Math.sin(a) * 1.5, C(0.32, 0.28, 0.22), 0.07, 1, { t: 'spark', drag: 0.6 }); }
+    // Caught: whoever stands in it when it rises (or walks in later). Both devices see it; damage on the victim's.
+    if (!caught && !v.dead && Math.hypot(v.x - x, v.z - z) < REACH && v.dodgeT <= 0.05 && v.invT <= 0) {
+      caught = true; tickAt = u;
+      if (isLocal(v) && S.state === 'fight') {
+        if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.tornadoShielded, c); ticks = TICKS; }
+        else { v.stunT = Math.max(v.stunT, DMG.tornadoStun); v.vx = v.vz = 0; }
+      }
+    }
+    if (caught && ticks < TICKS && v.stunT > 0) {
+      // Lifted and spun inside the funnel, held at its centre.
+      const k = Math.min(1, (u - tickAt) / 0.4);
+      v.root.position.y = Math.max(v.root.position.y, k * 0.9 + Math.sin(u * 6) * 0.08); v.ry += dt * 10;
+      if (isLocal(v)) { v.x += (x - v.x) * Math.min(1, dt * 8); v.z += (z - v.z) * Math.min(1, dt * 8); }
+      if (u - tickAt > 0.2 + ticks * 0.22) {
+        ticks++;
+        if (isLocal(v) && S.state === 'fight' && !v.dead) applyDmg(v, Math.round(DMG.tornado / TICKS), c);
+        burst(V(v.x, 1.4, v.z), WIND, 10, 2, 0.4, 0.08, 'twirl');
+      }
+    }
+    if (u >= LIFE) { scene.remove(funnel.group, dust.group); funnel.dispose(); dust.dispose(); v.root.position.y = 0; return false; }
     return true;
   });
 }

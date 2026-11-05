@@ -3,7 +3,7 @@
 //   page that points at build files which no longer exist (that showed an unstyled page after updates).
 // - Hashed build files (play/build/*): immutable, cache-first; models, sounds, icons: cache-first.
 // - Offline: falls back to whatever is cached.
-const CACHE = 'asrar-v8'; // bump whenever files with fixed names (models/, sfx/) change
+const CACHE = 'asrar-v9'; // bump whenever files with fixed names (models/, sfx/) change
 
 self.addEventListener('install', () => self.skipWaiting());
 self.addEventListener('activate', e => e.waitUntil(

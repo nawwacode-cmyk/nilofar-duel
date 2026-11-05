@@ -22,7 +22,6 @@ import { runScheduled } from './schedule';
 import { timeScale, updateImpactFx } from '../fx/impact';
 import { updateLights } from '../render/lights';
 import { monitorFps } from '../render/quality';
-import { huntTick, huntCamera } from '../hunt/hunt';
 
 const clock = new THREE.Clock();
 let netAcc = 0;
@@ -68,16 +67,14 @@ export function tick(rdt: number) {
 function frame() {
   const rdt = Math.min(0.05, clock.getDelta());
   if (S.sim) { requestAnimationFrame(frame); return; } // the simulator drives tick() itself
-  const hunting = S.mode === 'hunt';
-  const dt = S.paused ? 0 : hunting ? huntTick(rdt) : tick(rdt);
+  const dt = S.paused ? 0 : tick(rdt);
   updateAmbience(rdt);
   updateFx(dt);
   updateLights(dt);
   updateImpactFx(rdt, S.CH[0] ? me() : null);
   monitorFps(rdt, S.state === 'fight');
   updateParticles(dt);
-  if (hunting) { if (!S.paused) huntCamera(rdt); applyDebugCamera(); }
-  else if (S.CH[0]) { updCamera(rdt); applyDebugCamera(); }
+  if (S.CH[0]) { updCamera(rdt); applyDebugCamera(); }
   // Title/select/online screens cover the canvas with the castle artwork, so skip the GPU work there.
   if (!inMenus()) composer.render();
   requestAnimationFrame(frame);

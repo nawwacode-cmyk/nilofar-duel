@@ -29,27 +29,6 @@
 <div id="banner"></div>
 <!-- training: a fighting-game combo counter under the player's health bar (options live in the pause menu) -->
 <div id="combo" hidden><b id="cHits">0</b><span id="cWord">ضربات</span><em id="cDmg">0</em></div>
-<!-- Hunters mode: objective, corner map, stage loading and stage end -->
-<div id="hunt" hidden><div id="hObj"></div><canvas id="mini" width="264" height="264" aria-hidden="true"></canvas></div>
-<div id="bossBar" hidden><b id="bossName"></b><div class="track"><i id="bossFill"></i></div></div>
-<div id="mCard" hidden><b id="mcName"></b><span id="mcTxt"></span></div>
-<div id="hHint" hidden></div>
-<!-- story scene: cinema bars, typed Arabic subtitle of the narrator's line, skip -->
-<div id="story" hidden><i class="lb top"></i><i class="lb bot"></i><p id="stSub"></p><button id="stSkip">تخطٍّ ‹</button></div>
-<div class="ov" id="hLoad" hidden>
-  <span class="lbl">رحلة الصيّادين</span>
-  <h1 class="logo" id="hlName"></h1>
-  <div class="rule"><i></i></div>
-  <p id="hlTxt"></p>
-  <svg viewBox="0 0 200 200" class="spin"><circle cx="100" cy="100" r="86"/><path d="M100 30 L170 100 L100 170 L30 100 Z"/><path d="M50.5 50.5 H149.5 V149.5 H50.5 Z"/></svg>
-</div>
-<div class="ov clear" id="hEnd" hidden>
-  <div class="rule"><i></i></div>
-  <h1 class="logo" id="hEndT"></h1>
-  <div class="rule"><i></i></div>
-  <p id="hEndP"></p>
-  <div class="btns"><button class="gbtn big" id="hRetry"><span class="ic">replay</span> حاول مجددًا</button><button class="gbtn dark" id="hMenu">القائمة</button></div>
-</div>
 <div id="ctl" hidden>
   <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
   <div id="btns">
@@ -98,7 +77,7 @@
     <div class="logo">أسرار الظلام</div>
     <button class="gbtn" id="mAI"><span class="ic">swords</span><span class="col">ضد الحاسوب</span></button>
     <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا</span></button>
-    <div class="duo"><button class="gbtn dark" id="mTrain"><span class="ic">shield</span><span class="col">تدريب</span></button><button class="gbtn dark" id="mHunt"><span class="ic">explore</span><span class="col">الصيّادون</span></button></div>
+    <div class="duo"><button class="gbtn dark" id="mTrain"><span class="ic">shield</span><span class="col">تدريب</span></button></div>
     <h4>الساحة</h4>
     <div class="alist" id="arena">
       <button data-arena="terrace"><img src="models/arenas/terrace.webp" alt=""><span>شرفة القلعة</span></button>
@@ -137,30 +116,6 @@
   <div class="vside l"><img id="vsA" alt=""><b id="vsAn"></b></div>
   <div class="vsmid"><span class="vsx">ضد</span><svg viewBox="0 0 200 200" class="spin"><circle cx="100" cy="100" r="86"/><path d="M100 30 L170 100 L100 170 L30 100 Z"/><path d="M50.5 50.5 H149.5 V149.5 H50.5 Z"/></svg><span class="lbl" id="vsTxt"></span></div>
   <div class="vside r"><img id="vsB" alt=""><b id="vsBn"></b></div>
-</div>
-
-<!-- optional pack (Hunters mode): size, download with progress, stop, delete -->
-<div class="ov clear" id="pack" hidden>
-  <div class="frame pkbox">
-    <div class="pkhead"><div class="emblem"><span class="ic">explore</span></div><div><h2 class="gtext">رحلة الصيّادين</h2><span class="lbl">طور تعاوني · لاعبان</span></div></div>
-    <p class="pkdesc">اخرج مع صديقك في رحلة صيدٍ عبر أراضٍ ملعونة، تواجهان فيها وحوشها وتصلان إلى زعيمها المرعب.</p>
-    <div class="pkbar" id="pkBar" hidden><div class="pktrack"><i id="pkFill"></i></div><span id="pkPct"></span></div>
-    <p class="lbl" id="pkMsg"></p>
-    <div class="prow" id="pkHeroRow" hidden><span class="lbl">البطل</span><div class="heroes" id="pkHero"><button data-h="ehab"><img src="models/portraits/ehab_face.webp" alt=""><b>إيهاب</b></button><button data-h="sara"><img src="models/portraits/sara_face.webp" alt=""><b>سارة</b></button><button data-h="abed"><img src="models/portraits/abed_face.webp" alt=""><b>عابد</b></button></div></div>
-    <div class="prow" id="pkModeRow" hidden><span class="lbl">اللعب</span><div class="seg" id="pkMode"><button data-m="solo">وحدي</button><button data-m="duo">مع صديق</button></div></div>
-    <div class="pkduo" id="pkDuo" hidden>
-      <div class="row"><button class="gbtn" id="pkHost"><span class="ic">add</span> إنشاء رمز</button><span class="codebig" id="pkCode" hidden></span><span class="lbl">أو</span><input id="pkJoinCode" maxlength="4" placeholder="الرمز" autocomplete="off" aria-label="رمز صديقك"><button class="gbtn ice" id="pkJoin">انضم</button></div>
-      <p class="lbl" id="pkDuoMsg">أنشئ رمزًا وأرسله لصديقك، أو أدخل الرمز الذي أرسله لك. يختار صاحب الرمز الصعوبة.</p>
-    </div>
-    <div class="prow" id="pkDiffRow" hidden><span class="lbl">الصعوبة</span><div class="seg" id="pkDiff"><button data-d="0">صيّاد مبتدئ</button><button data-d="1">صيّاد</button><button data-d="2">صيّاد أسطوري</button></div></div>
-    <div class="pkbtns">
-      <button class="gbtn big" id="pkPlay" hidden><span class="ic">explore</span> ابدأ الرحلة</button>
-      <button class="gbtn" id="pkDl"><span class="ic">download</span> <span id="pkDlTxt">تنزيل الطور</span></button>
-      <button class="gbtn dark" id="pkStop" hidden><span class="ic">pause</span> إيقاف</button>
-      <button class="gbtn dark" id="pkDel" hidden><span class="ic">delete</span> حذف من الجهاز</button>
-      <button class="back" id="pkClose"><span class="ic">arrow_back</span> عودة</button>
-    </div>
-  </div>
 </div>
 
 <!-- online -->
@@ -226,7 +181,6 @@
         <button data-tab="graphics">الرسوميات</button>
         <button data-tab="motion">التأثيرات</button>
         <button data-tab="controls">التحكم</button>
-        <button data-tab="downloads">التنزيلات</button>
       </nav>
       <div class="spanel" id="setPanel"></div>
     </div>

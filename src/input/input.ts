@@ -6,7 +6,6 @@ import { mash } from '../game/struggle';
 import { isEditingControls } from '../ui/settingsUI';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
-import { huntPress } from '../hunt/hunt';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
 type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'sk2';
@@ -31,7 +30,6 @@ function tryCast(a: Action) {
 
 export function press(a: Action, on: boolean) {
   if (!S.CH[0] || S.paused || net.waiting || isEditingControls()) return;
-  if (S.mode === 'hunt') { huntPress(a, on); return; }
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
   if (a === 'atk') atkHeld = on;

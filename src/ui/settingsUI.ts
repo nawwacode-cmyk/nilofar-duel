@@ -1,12 +1,10 @@
 import { S, inMenus } from '../game/state';
 import { settings, setSetting, resetSettings, onSettingChange, type QualityMode, type Settings } from '../settings/settings';
 import { toMenu } from '../game/flow';
-import { huntOnline } from '../hunt/hunt';
 import { unlock } from '../audio/audio';
 import { $ } from '../core/util';
 import { toLocal } from '../core/view';
 import { trainSummary } from '../game/training';
-import { openPack } from './packUI';
 
 /* =================== settings screen =================== */
 type Row =
@@ -34,9 +32,6 @@ const TABS: Record<string, Row[]> = {
     { k: 'btnOpacity', type: 'range', label: 'وضوح الأزرار', min: 0.35, max: 1, step: 0.05, fmt: pct },
     { k: 'leftHanded', type: 'toggle', label: 'وضع اليد اليسرى', hint: 'عصا الحركة يمينًا والأزرار يسارًا' },
     { type: 'action', label: 'أماكن الأزرار', hint: 'اسحب كل زر إلى المكان الذي يريحك', btn: 'تخصيص', run: () => startControlEditor() },
-  ],
-  downloads: [
-    { type: 'action', label: 'رحلة الصيّادين', hint: 'حزمة طور اختيارية: تنزيل أو حذف من الجهاز', btn: 'إدارة', run: () => { void openPack(); } },
   ],
 };
 
@@ -169,11 +164,10 @@ function initEditorDrag() {
 /* =================== pause =================== */
 export function showPause() {
   if (S.state === 'end' || inMenus() || editing) return;
-  const online = S.mode === 'online' || huntOnline();
+  const online = S.mode === 'online';
   if (!online) S.paused = true;
   $('pNote').hidden = !online;
-  $('pQuitTxt').textContent = online ? (S.mode === 'hunt' ? 'مغادرة الرحلة' : 'مغادرة المبارزة') : 'الخروج إلى القائمة';
-  $('pNote').textContent = S.mode === 'hunt' ? 'الرحلة مستمرة عند صديقك أثناء فتح هذه القائمة.' : 'المبارزة مستمرة عند صديقك أثناء فتح هذه القائمة.';
+  $('pQuitTxt').textContent = online ? 'مغادرة المبارزة' : 'الخروج إلى القائمة';
   $('pTrain').hidden = S.mode !== 'train';
   if (S.mode === 'train') $('tStats').textContent = trainSummary();
   $('pause').hidden = false;

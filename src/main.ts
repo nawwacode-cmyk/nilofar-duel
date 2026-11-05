@@ -16,12 +16,8 @@ import { initMenus, buildRoster } from './ui/menus';
 import { initSettingsUI } from './ui/settingsUI';
 import { checkForUpdate } from './ui/update';
 import { initTraining } from './game/training';
-import { initPackUI } from './ui/packUI';
-import { initHunt, playHunt } from './hunt/hunt';
-import type { StageId } from './hunt/stages';
 import { startLoop } from './game/loop';
 import { runBalance, trace } from './sim/sim';
-import { ensureTornadoModel, makeTornadoModel } from './fx/tornadoModel';
 import { ROSTER } from './data/roster';
 import { TXT } from './data/text';
 import { $ } from './core/util';
@@ -43,7 +39,7 @@ async function boot() {
   addEventListener('resize', resize);
   initInput();
   initMenus();
-  initSettingsUI(); initTraining(); initPackUI(); initHunt();
+  initSettingsUI(); initTraining();
   const bar = $('bar').firstElementChild as HTMLElement, pct = $('pct');
   onDownloadProgress((l, t) => {
     const p = Math.min(100, Math.round((l / Math.max(1, t)) * 100));
@@ -54,7 +50,7 @@ async function boot() {
     onDownloadProgress(null); resetDownloadProgress();
     S.state = 'title'; buildRoster();
     // ?debug exposes internals for manual inspection and automated browser checks.
-    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, net, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, floorAt, balance: runBalance, simTrace: trace, ensureTornadoModel, makeTornadoModel } });
+    if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, net, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, floorAt, balance: runBalance, simTrace: trace } });
     // Let the opening splash (CSS, ~2.4 s from page start) finish before the title replaces the loading screen.
     const splashLeft = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2400 - performance.now();
     if (splashLeft > 0) await new Promise(r => setTimeout(r, splashLeft));
@@ -72,8 +68,6 @@ async function boot() {
         setTimeout(() => { S.paused = true; }, 1500);
       }, 2200);
     }
-    // ?debug&hunt=<stage>: straight into a Hunters stage (with &huntsrc=<folder> the pack files come from there).
-    if (q.has('debug') && q.get('hunt')) void playHunt(q.get('hunt') as StageId);
     void preload();
   } catch (e) {
     console.error(e);

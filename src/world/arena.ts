@@ -90,11 +90,6 @@ export async function loadArenas(onLoaded: () => void) {
   }, 1500);
 }
 
-/** Hunters mode: its stage replaces the arenas (they stay loaded, just hidden). */
-export function hideArenas() { for (const a of Object.values(ARENAS)) a.root.visible = false; }
-/** After the hunt: the current arena and its light again. */
-export function showArena() { void setArena(current, false); }
-
 /** Back to the player's own choice after a mode that uses a fixed arena (training). */
 export function restoreArena() {
   const saved = localStorage.getItem(KEY) as ArenaId | null;

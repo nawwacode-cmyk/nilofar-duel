@@ -165,7 +165,5 @@ export function castSkill2(c: Fighter) {
   c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5;
   anim(c, 'special', { once: true, speed: 1.6, force: true });
   const o = opp(c);
-  // The tornado starts at Abed and chases; the others appear at the opponent.
-  if (K.k === 'tornado') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'tornado', x: c.x + d.x, y: 0, z: c.z + d.z, dx: d.x, dy: 0, dz: d.z }); return; }
   fire(c, { kind: K.k, x: o.x, y: (Math.random() * 1e5) | 0, z: o.z, dx: 0, dy: 0, dz: 0 });
 }

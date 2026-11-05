@@ -59,3 +59,55 @@ export function makeTwister(height = 3.2, width = 1.5, dark = new THREE.Color(0.
     dispose() { geo.dispose(); for (const l of layers) l.mat.dispose(); },
   };
 }
+
+/**
+ * The tornado's body in 3D: a few hundred soft dust puffs orbiting a centre on a rising helix (narrow and fast at the
+ * ground, wide and slower above), so the funnel really wraps around whoever stands in it — puffs pass in front of
+ * and behind them as the camera sees it.
+ */
+function puffTexture() {
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const x = c.getContext('2d')!;
+  const g = x.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,0.9)'); g.addColorStop(0.45, 'rgba(255,255,255,0.45)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+  x.fillStyle = g; x.fillRect(0, 0, 64, 64);
+  // Grain, so puffs read as dust rather than balls.
+  const d = x.getImageData(0, 0, 64, 64);
+  for (let i = 0; i < d.data.length; i += 4) d.data[i + 3] *= 0.65 + Math.random() * 0.35;
+  x.putImageData(d, 0, 0);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+let puffTex: THREE.Texture | null = null;
+
+export interface Vortex { group: THREE.Group; update(dt: number, opacity: number, grow: number): void; dispose(): void }
+
+export function makeVortex(height = 3.8, count = 240): Vortex {
+  puffTex ??= puffTexture();
+  const pos = new Float32Array(count * 3), col = new Float32Array(count * 3);
+  const st = Array.from({ length: count }, (_, i) => ({ h: Math.random(), a: Math.random() * Math.PI * 2, j: 0.8 + Math.random() * 0.5, i }));
+  const base = [new THREE.Color(0.52, 0.47, 0.4), new THREE.Color(0.7, 0.66, 0.6), new THREE.Color(0.38, 0.35, 0.31)];
+  st.forEach((_, i) => { const c = base[i % 3]; col.set([c.r, c.g, c.b], i * 3); });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3)); geo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const mat = new THREE.PointsMaterial({ size: 0.9, map: puffTex, vertexColors: true, transparent: true, depthWrite: false, opacity: 0, sizeAttenuation: true });
+  const pts = new THREE.Points(geo, mat); pts.frustumCulled = false; pts.renderOrder = 3;
+  const group = new THREE.Group(); group.add(pts);
+  let t = 0;
+  return {
+    group,
+    update(dt, opacity, grow) {
+      t += dt;
+      for (const s of st) {
+        // Rise; when at the top, start again at the ground.
+        s.h += dt * 0.32 * s.j; if (s.h > 1) s.h -= 1;
+        const r = (0.28 + Math.pow(s.h, 1.3) * 1.05) * grow * s.j;
+        s.a += dt * (7.5 - s.h * 4.5) * s.j;
+        const sway = Math.sin(s.h * 3 + t * 1.7) * 0.18 * s.h;
+        pos[s.i * 3] = Math.cos(s.a) * r + sway; pos[s.i * 3 + 1] = s.h * height * grow; pos[s.i * 3 + 2] = Math.sin(s.a) * r;
+      }
+      geo.attributes.position.needsUpdate = true;
+      mat.opacity = opacity * 0.55; mat.size = 0.55 + grow * 0.6;
+    },
+    dispose() { geo.dispose(); mat.dispose(); },
+  };
+}
