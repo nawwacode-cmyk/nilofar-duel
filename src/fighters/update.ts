@@ -1,7 +1,7 @@
 import type * as THREE from 'three';
 import { S, opp, me } from '../game/state';
 import { anim, tipPos, headPos, applyGrip, applyGroundContact } from './fighter';
-import { floorAt } from '../world/arena';
+import { floorAt, obstacles } from '../world/arena';
 import { setShield } from '../combat/actions';
 import { play } from '../audio/audio';
 import { emit } from '../render/particles';
@@ -65,6 +65,11 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
       // Soft body separation so wizards never overlap.
       const dx = c.x - o.x, dz = c.z - o.z, dd = Math.hypot(dx, dz);
       if (dd < 1.1 && dd > 0) { c.x += (dx / dd) * (1.1 - dd) * 0.5; c.z += (dz / dd) * (1.1 - dd) * 0.5; }
+      // Arena obstacles (a well, braziers): slide around them instead of walking through.
+      for (const [ox, oz, r] of obstacles()) {
+        const ex = c.x - ox, ez = c.z - oz, d = Math.hypot(ex, ez);
+        if (d < r) { const k = d > 1e-3 ? r / d : 1; c.x = ox + (d > 1e-3 ? ex : 1) * k; c.z = oz + (d > 1e-3 ? ez : 0) * k; }
+      }
     } else { c.vx *= 0.8; c.vz *= 0.8; c.dodgeT = Math.max(0, c.dodgeT - dt); }
     if (S.state === 'fight' || S.state === 'intro' || S.state === 'ko' || S.state === 'struggle') {
       const turn = angleDelta(c.ry, Math.atan2(o.x - c.x, o.z - c.z));

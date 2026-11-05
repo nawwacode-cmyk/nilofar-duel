@@ -14,11 +14,16 @@ export interface ArenaEnv {
    *  duel-area bounds, how far back the camera may go (+z) and the half-size of the shadow frustum. */
   hemi?: [number, number, number]; exposure?: number; sky?: [string, string];
   bounds?: { bx: number; zMin: number; zMax: number }; camLim?: number; shadow?: number;
+  /** Round obstacles fighters cannot walk through: [x, z, radius]. */
+  obstacles?: [number, number, number][];
 }
 
 /** The night arenas' duel area (the original game's bounds). */
 const NIGHT = { hemi: [0x6a80c0, 0x10121a, 1.05] as [number, number, number], exposure: 1.15, bounds: { bx: 4.6, zMin: -4.3, zMax: 2.4 }, camLim: 5.5, shadow: 7 };
 let camLim = NIGHT.camLim;
+let obst: [number, number, number][] = [];
+/** Round obstacles of the current arena. */
+export const obstacles = () => obst;
 /** Furthest the camera may move towards the viewer in the current arena. */
 export const cameraLimit = () => camLim;
 
@@ -60,6 +65,7 @@ function applyEnv(e: ArenaEnv) {
   // The duel area follows the arena (both online players always share the host's arena).
   Object.assign(G as unknown as Record<string, number>, e.bounds ?? NIGHT.bounds);
   camLim = e.camLim ?? NIGHT.camLim;
+  obst = e.obstacles ?? [];
 }
 
 /** Shows one arena (loading it if needed) and hides the other. */

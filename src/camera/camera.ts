@@ -35,6 +35,10 @@ export function updCamera(dt: number) {
       let cz = mz + dist, extra = 0;
       if (cz > LIM) { extra = cz - LIM; cz = LIM; }
       camera.fov = 42 + extra * 7; tp.set(mx * 0.9, 1.5 + dist * 0.09 + extra * 0.15, cz); tl.set(mx, 1.05, mz);
+      // Wide arenas: if both wizards (plus a margin) do not fit horizontally from where the camera may stand, open the
+      // field of view instead of backing out of the arena.
+      const fit = 2 * THREE.MathUtils.radToDeg(Math.atan((spanX / 2 + 1.3) / (camera.aspect * Math.max(1, cz - mz))));
+      camera.fov = Math.min(64, Math.max(camera.fov, fit));
     }
     if (S.state === 'struggle') {
       const sd = clamp(spanX * 0.5 + 1.8, 2.6, 4.6);

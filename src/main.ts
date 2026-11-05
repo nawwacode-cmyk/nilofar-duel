@@ -1,10 +1,12 @@
 import './ui/styles.css';
 import * as THREE from 'three';
-import { S, net } from './game/state';
+import { S, net, ch } from './game/state';
 import { loadClips } from './assets/loader';
 import { onDownloadProgress, resetDownloadProgress } from './assets/net';
 import { ensureModel, ensureModels, makeFighter, dropFighter, anim, applyGroundContact } from './fighters/fighter';
-import { loadArenas, floorAt } from './world/arena';
+import { loadArenas, floorAt, setArena, type ArenaId } from './world/arena';
+import { setupFighters, startMatch } from './game/flow';
+import { G } from './data/rules';
 import { loadSounds } from './audio/audio';
 import { resize, setDebugCamera } from './camera/camera';
 import { initLights } from './render/lights';
@@ -52,6 +54,17 @@ async function boot() {
     if (splashLeft > 0) await new Promise(r => setTimeout(r, splashLeft));
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
+    // ?debug&shot=<arena>[&edge]: jump straight into a frozen duel there (for headless screenshots of arenas).
+    const q = new URLSearchParams(location.search), shot = q.get('shot');
+    if (q.has('debug') && shot) {
+      await setArena(shot as ArenaId); await ensureModels([0, 3]);
+      setupFighters(0, 3); startMatch(); $('title').hidden = true;
+      setTimeout(() => {
+        S.state = 'fight';
+        if (q.has('edge')) { ch(0).x = -G.bx; ch(1).x = G.bx; ch(0).z = G.zMin; ch(1).z = G.zMax; }
+        setTimeout(() => { S.paused = true; }, 1500);
+      }, 2200);
+    }
     void preload();
   } catch (e) {
     console.error(e);

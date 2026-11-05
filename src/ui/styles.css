@@ -180,7 +180,7 @@ html.rot{--safe-l:max(var(--g3),env(safe-area-inset-top,0px));--safe-t:max(var(-
 .av.alt{filter:hue-rotate(120deg) saturate(.85) brightness(.85)}
 html.compact .av{width:40px;height:40px}
 .nmrow{display:flex;gap:var(--g1);align-items:center;direction:rtl}
-.side.l .nmrow{flex-direction:row-reverse;justify-content:flex-end}
+.side.l .nmrow{direction:ltr;justify-content:flex-start}
 .nm{font-family:var(--display);font-weight:700;font-size:var(--fs-xl);line-height:1;text-shadow:0 2px 8px #000}
 .side.l .nm{color:var(--p0)}.side.r .nm{color:var(--p1)}
 .el{font-size:var(--fs-xs);color:var(--muted)}

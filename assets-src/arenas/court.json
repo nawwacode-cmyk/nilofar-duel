@@ -1,0 +1,4 @@
+{ "cx": 1.0, "cz": -1.0, "floorY": 0.351, "rotY": 0,
+  "fine": { "r": 9, "yMax": 5, "cell": 0.06 },
+  "coarse": { "cell": 0.3 },
+  "crop": { "r": 24, "yMax": 13 } }

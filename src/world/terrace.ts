@@ -4,10 +4,15 @@ import { emit } from '../render/particles';
 import { FIRE } from '../data/palettes';
 import { C, rnd, pick } from '../core/util';
 import type { ArenaEnv } from './arena';
+import { fogBanks } from './scan';
 
 export const terraceRoot = new THREE.Group();
 /** Moonlight from the painted moon's side (upper left, behind); warm braziers answer from the front. */
-export const TERRACE_ENV: ArenaEnv = { moon: [-9, 12, -12], moonColor: 0xb8c6ff, moonI: 1.35, rim: [4, 5, -9], rimI: 0.7, fog: 0x0d1630, fogD: 0.022, bg: 0x0a0f22 };
+export const TERRACE_ENV: ArenaEnv = {
+  moon: [-9, 12, -12], moonColor: 0xb8c6ff, moonI: 1.35, rim: [4, 5, -9], rimI: 0.7, fog: 0x0d1630, fogD: 0.022, bg: 0x0a0f22,
+  // Wider duel area; fighters walk around the two front braziers.
+  bounds: { bx: 7.5, zMin: -4.4, zMax: 3.6 }, camLim: 8, shadow: 10, obstacles: [[-6.9, -3.4, 0.75], [6.9, -3.4, 0.75]],
+};
 
 /**
  * The moonlit castle terrace (second arena, next to the scanned stone courtyard).
@@ -27,7 +32,7 @@ async function pbr(name: string, repeat: [number, number]) {
 }
 
 /** Balustrade line (z) and the edge of the terrace floor. */
-const RAIL_Z = -5.4, FLOOR = { w: 26, d: 17, z: -1.6 };
+const RAIL_Z = -5.4, FLOOR = { w: 40, d: 17, z: -1.6 };
 
 export async function loadTerrace() {
   const [floorTex, stoneTex, backTex] = await Promise.all([
@@ -50,6 +55,13 @@ export async function loadTerrace() {
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: backTex, fog: false, color: 0xd8dcff }));
   back.position.set(0, -10.5 + H / 2, -24); back.renderOrder = -1;
   terraceRoot.add(back);
+  // The painted backdrop and the floor end beyond the widened duel area: soft night fog at both sides.
+  const sides: [number, number, number, number][] = [];
+  for (const sx of [-1, 1]) {
+    sides.push([sx * 13, 3, -7, 10]);
+    for (let z = -8; z <= 5; z += 2.6) sides.push([sx * 15.5, 0.9, z, 7]);
+  }
+  fogBanks(terraceRoot, sides, 0x111a36, 0.85);
   scene.add(terraceRoot);
 }
 
