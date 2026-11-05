@@ -5,6 +5,7 @@ import { clips, findBone, loadFbx, loadGlb, retarget } from '../assets/loader';
 import { faceForward, renameTripoBones, retargetClips } from '../assets/retarget';
 import { ROSTER } from '../data/roster';
 import { V } from '../core/util';
+import { toPBR, addRim, releaseMaterial } from '../render/charLight';
 import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 
 /** Prepared base models, one per roster entry; fighters are skeleton clones of these. */
@@ -67,11 +68,9 @@ function prepBase(i: number, m: THREE.Object3D) {
   m.traverse(o => {
     const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
     mesh.frustumCulled = false;
-    (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach(mt => {
-      const p = mt as THREE.MeshPhongMaterial;
-      if (p.shininess !== undefined) p.shininess = Math.min(p.shininess, 20);
-      if (p.specular) p.specular.multiplyScalar(0.4);
-    });
+    // Old Phong/Lambert materials (Mixamo FBX) become PBR so they take the arena's image lighting.
+    const conv = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(toPBR);
+    mesh.material = conv.length === 1 ? conv[0] : conv;
   });
   // Skinned GLBs keep their vertices in bind space, so measure the posed (precise) bounds for them.
   m.updateMatrixWorld(true);
@@ -95,6 +94,12 @@ function makeWand(col: number) {
   return g;
 }
 
+/** Rim colour from an element palette: its body colour, normalised and toned down (it adds to emission). */
+function rimColor(pal: readonly THREE.Color[]) {
+  const c = pal[1].clone(); const m = Math.max(c.r, c.g, c.b) || 1;
+  return c.multiplyScalar(0.55 / m);
+}
+
 export function makeFighter(ri: number, side: 0 | 1): Fighter {
   const R = ROSTER[ri];
   const m = SkeletonUtils.clone(base[ri]);
@@ -111,6 +116,7 @@ export function makeFighter(ri: number, side: 0 | 1): Fighter {
     hand: findBone(m, /RightHand$/), chestB: findBone(m, /Spine2$/) || findBone(m, /Spine1$/), headB: findBone(m, /Head$/),
     wand, light, blob, cur: null, shield: null, wins: 0, warpTo: null, dodgeDir: V(),
     hitFlash: 0, knockT: 0, mats: [], grip: [],
+    rimU: { color: { value: rimColor(R.pal) }, strength: { value: 0.6 } },
   } as unknown as Fighter;
   // Own copies of the materials so hit flashes affect only this fighter (mirror matches share a model).
   m.traverse(o => {
@@ -119,6 +125,7 @@ export function makeFighter(ri: number, side: 0 | 1): Fighter {
     const mats = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map(mt => {
       const n = mt.clone() as THREE.MeshPhongMaterial;
       if (n.emissive) { n.userData.baseEmissive = n.emissive.clone(); c.mats.push(n); }
+      if ((n as unknown as THREE.MeshStandardMaterial).isMeshStandardMaterial) addRim(n as unknown as THREE.MeshStandardMaterial, c.rimU);
       return n;
     });
     mesh.material = mats.length === 1 ? mats[0] : mats;
@@ -149,6 +156,7 @@ export function altCostume(c: Fighter) {
   c.pal = c.pal.map(turn);
   c.hex = '#' + turn(new THREE.Color(c.R.css)).getHexString();
   c.light.color = turn(c.light.color);
+  c.rimU.color.value.copy(rimColor(c.pal));
   const tip = c.wand.userData.tip as THREE.Mesh;
   (tip.material as THREE.MeshBasicMaterial).color = turn((tip.material as THREE.MeshBasicMaterial).color);
 }
@@ -252,6 +260,7 @@ export function dropFighter(c: Fighter | null) {
   if (!c) return;
   scene.remove(c.root, c.light, c.blob);
   c.mixer.stopAllAction();
+  c.mats.forEach(releaseMaterial);
   c.shield?.off();
 }
 

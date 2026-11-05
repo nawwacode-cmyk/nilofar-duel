@@ -9,6 +9,7 @@ import { G } from '../data/rules';
 import { V, C, rnd, pick, clamp } from '../core/util';
 import type { CastOrder, Fighter, ProjKind } from '../core/types';
 import { after } from '../game/schedule';
+import { focusOn } from '../camera/camera';
 
 /**
  * Executes a cast locally and queues it for the peer when online.
@@ -63,7 +64,7 @@ export function castBolt(c: Fighter) {
 
 export function castSpecial(c: Fighter) {
   if (c.dead || c.stunT > 0 || c.shieldOn || c.mana < G.spCost || c.dodgeT > 0 || c.castT > 0.1) return;
-  c.mana -= G.spCost; c.castT = 0.9;
+  c.mana -= G.spCost; c.castT = 0.9; focusOn(c.idx, 1.1);
   anim(c, 'special', { once: true, speed: 1.25, force: true }); play(c.R.ss, { vol: 0.8, x: c.x });
   const p = chest(c);
   for (let i = 0; i < 30; i++) emit(p.x + rnd(0.5), 0.1 + Math.random() * 1.8, p.z + rnd(0.5), rnd(0.3), 1.2, rnd(0.3), pick(c.pal), 0.25, 0.7, { t: 'magic' });
@@ -162,7 +163,7 @@ export function castSkill(c: Fighter) {
 export function castSkill2(c: Fighter) {
   const K = c.R.skill2;
   if (!K || c.dead || c.stunT > 0 || c.cdK2 > 0 || c.mana < K.cost || c.castT > 0.1 || c.warpT > 0) return;
-  c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5;
+  c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5; focusOn(c.idx, 1);
   anim(c, 'special', { once: true, speed: 1.6, force: true });
   const o = opp(c);
   fire(c, { kind: K.k, x: o.x, y: (Math.random() * 1e5) | 0, z: o.z, dx: 0, dy: 0, dz: 0 });

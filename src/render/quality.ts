@@ -1,6 +1,8 @@
 import * as THREE from 'three';
 import { renderer, composer, moon, scene } from './stage';
 import { setDynamicLights } from './lights';
+import { setPostTier } from './post';
+import { setCharTier } from './charLight';
 import { settings, onSettingChange } from '../settings/settings';
 
 /**
@@ -34,6 +36,7 @@ export function applyTier(t: Tier) {
   const size = t === 2 ? 2048 : 1024;
   if (moon.shadow.mapSize.x !== size) { moon.shadow.mapSize.set(size, size); moon.shadow.map?.dispose(); moon.shadow.map = null; }
   setDynamicLights(t >= 1);
+  setPostTier(t); setCharTier(t);
   // Materials must recompile when shadow support toggles.
   scene.traverse(o => { const m = (o as THREE.Mesh).material; if (m) (Array.isArray(m) ? m : [m]).forEach(x => { x.needsUpdate = true; }); });
   dispatchEvent(new Event('resize'));

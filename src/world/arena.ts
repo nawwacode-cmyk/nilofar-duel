@@ -4,6 +4,7 @@ import { G } from '../data/rules';
 import { loadCourt, courtRoot, COURT_ENV, updateCourtAmbience, courtFloorAt } from './court';
 import { loadTerrace, terraceRoot, TERRACE_ENV, updateTerraceAmbience } from './terrace';
 import { loadPalace, palaceRoot, PALACE_ENV, updatePalaceAmbience, palaceFloorAt } from './palace';
+import { captureArenaEnv, setDaylight } from '../render/charLight';
 
 /** Lighting and atmosphere that belong to an arena. */
 export interface ArenaEnv {
@@ -75,6 +76,9 @@ export async function setArena(id: ArenaId, remember = true) {
   if (current !== id) return; // a later choice won
   for (const [k, a] of Object.entries(ARENAS)) a.root.visible = k === id;
   applyEnv(ARENAS[id].env);
+  // The wizards' reflections and ambient light come from this arena.
+  setDaylight((ARENAS[id].env.exposure ?? 1) > 1.4);
+  captureArenaEnv(ARENAS[id].root);
 }
 
 /** Boot: load the remembered arena; warm up the other one in the background. */

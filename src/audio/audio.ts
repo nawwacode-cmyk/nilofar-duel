@@ -8,12 +8,21 @@ const master = AC.createGain(); master.gain.value = 0.8; master.connect(AC.desti
 const musicGain = AC.createGain(); musicGain.connect(master);
 /** Sound effects bus (everything except the music), so music and effects have separate volumes. */
 const sfxGain = AC.createGain(); sfxGain.connect(master);
-function applyVolumes() { musicGain.gain.value = 0.22 * settings.music; sfxGain.gain.value = settings.sfx; }
+let intensity = 0;
+function applyVolumes() { musicGain.gain.value = 0.22 * settings.music * (1 + 0.55 * intensity); sfxGain.gain.value = settings.sfx; }
+/** Music swells as the duel gets close (0 calm … 1 someone is nearly down). */
+export function setMusicIntensity(x: number) {
+  const v = Math.max(0, Math.min(1, x));
+  if (Math.abs(v - intensity) < 0.02) return;
+  intensity = v; applyVolumes();
+}
 applyVolumes();
 onSettingChange(k => { if (k === 'music' || k === 'sfx') applyVolumes(); });
 
 const SND: Record<string, AudioBuffer> = {};
-const SNAMES = ['fire1', 'fire2', 'fire3', 'fire4', 'fire5', 'ice1', 'ice2', 'ice3', 'ice4', 'ice5', 'bolt1', 'bolt2', 'bolt3', 'bolt4', 'bolt5', 'shadow1', 'shadow2', 'shadow3', 'shadow4', 'shadow5', 'shield', 'shield2', 'boom1', 'boom2', 'ko', 'cast1', 'cast2', 'cast3', 'hum', 'parry', 'glass', 'tap', 'step0', 'step1', 'step2', 'step3', 'music', 'm_fire_beam', 'm_energy', 'm_fire_cast', 'm_fireball', 'm_meteor', 'm_fire_swoosh', 'm_fire_expl', 'm_ice', 'm_ice_thin', 'm_arcane', 'm_fastmagic', 'm_sparkle', 'm_waves', 'm_cast_long', 'm_thunder', 'm_shock', 'm_epic', 'm_blast', 'm_shatter', 'm_drums', 'c_huge', 'c_loud', 'c_amb', 'c_chant', 'm_whoosh', 'm_light'];
+const SNAMES = ['fire1', 'fire2', 'fire3', 'fire4', 'fire5', 'ice1', 'ice2', 'ice3', 'ice4', 'ice5', 'bolt1', 'bolt2', 'bolt3', 'bolt4', 'bolt5', 'shadow1', 'shadow2', 'shadow3', 'shadow4', 'shadow5', 'shield', 'shield2', 'boom1', 'boom2', 'ko', 'cast1', 'cast2', 'cast3', 'hum', 'parry', 'glass', 'tap', 'step0', 'step1', 'step2', 'step3', 'music', 'm_fire_beam', 'm_energy', 'm_fire_cast', 'm_fireball', 'm_meteor', 'm_fire_swoosh', 'm_fire_expl', 'm_ice', 'm_ice_thin', 'm_arcane', 'm_fastmagic', 'm_sparkle', 'm_waves', 'm_cast_long', 'm_thunder', 'm_shock', 'm_epic', 'm_blast', 'm_shatter', 'm_drums', 'c_huge', 'c_loud', 'c_amb', 'c_chant', 'm_whoosh', 'm_light',
+  // Kenney "Impact Sounds" (CC0): body blows, heavy thuds, ice shards.
+  'k_punch0', 'k_punch1', 'k_punch2', 'k_punch3', 'k_punch4', 'k_thud0', 'k_thud1', 'k_thud2', 'k_ice0', 'k_ice1', 'k_ice2'];
 
 let muted = false;
 export const isMuted = () => muted;

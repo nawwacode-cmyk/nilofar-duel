@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { camera, renderer, composer, bloom } from '../render/stage';
 import { setParticleScale } from '../render/particles';
 import { bloomScale } from '../render/quality';
+import { resizePost } from '../render/post';
 import { fovPunch } from '../fx/impact';
 import { settings } from '../settings/settings';
 import { S, ch, inMenus } from '../game/state';
@@ -15,6 +16,10 @@ import { cameraLimit } from '../world/arena';
  */
 const camPos = V(0, 1.4, 3), camLook = V(0, 1.1, 0);
 const tp = V(), tl = V();
+
+/** Cinematic focus: during a special or a fourth ability the camera leans in on the caster for a moment. */
+let focus: { idx: number; until: number } | null = null;
+export function focusOn(idx: number, seconds: number) { if (!reduceMotion) focus = { idx, until: S.T + seconds }; }
 
 export function updCamera(dt: number) {
   const LIM = cameraLimit();
@@ -44,7 +49,23 @@ export function updCamera(dt: number) {
       const sd = clamp(spanX * 0.5 + 1.8, 2.6, 4.6);
       tp.set(mx, portrait ? 1.6 : 1.0, Math.min(LIM, mz + (portrait ? sd * 1.7 : sd))); tl.set(mx, 1.25, mz); camera.fov = portrait ? 66 : 40;
     }
-    if (S.state === 'ko') { const d = S.CH.find(c => c?.dead) || a; tp.set(d.x * 0.8, 1.2, Math.min(LIM, d.z + 3.4)); tl.set(d.x, 0.6, d.z); }
+    if (S.state === 'ko') {
+      // A slow half-orbit around the fallen wizard.
+      const d = S.CH.find(c => c?.dead) || a, ang = -0.5 + Math.min(1, S.stateT / 2.6) * 0.9;
+      tp.set(d.x + Math.sin(ang) * 3.4, 1.15, Math.min(LIM, d.z + Math.cos(ang) * 3.4)); tl.set(d.x, 0.6, d.z);
+    }
+    if (S.state === 'intro' && !reduceMotion) {
+      // Round start: from wide and high to the side, swooping down into the fight framing.
+      const k = Math.min(1, S.stateT / 1.7), e = 1 - Math.pow(1 - k, 3);
+      tp.x += (1 - e) * -3.2; tp.y += (1 - e) * 2.6; tp.z = Math.min(LIM, tp.z + (1 - e) * 1.2);
+    }
+    if (focus && S.state === 'fight') {
+      if (S.T > focus.until) focus = null;
+      else {
+        const f = S.CH[focus.idx];
+        if (f) { const k = 0.28; tl.x += (f.x - tl.x) * k; tl.y += (1.2 - tl.y) * k; tp.x += (f.x - tp.x) * k * 0.8; tp.z -= Math.min(1.2, Math.max(0, tp.z - f.z - 3)) * k; camera.fov -= 3; }
+      }
+    }
     camera.updateProjectionMatrix();
   }
   if (inMenus()) camera.fov = 42;
@@ -64,6 +85,7 @@ export function resize() {
   renderer.setSize(w, h, false); composer.setSize(w, h);
   camera.aspect = w / h; camera.updateProjectionMatrix();
   bloom.resolution.set(w * bloomScale(), h * bloomScale());
+  resizePost(w, h, renderer.getPixelRatio());
   setParticleScale((h * renderer.getPixelRatio()) / (2 * Math.tan(THREE.MathUtils.degToRad(21))));
 }
 

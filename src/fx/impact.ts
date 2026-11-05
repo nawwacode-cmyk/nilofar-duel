@@ -6,6 +6,8 @@ import { chest } from '../fighters/fighter';
 import { reduceMotion } from '../core/util';
 import { settings } from '../settings/settings';
 import type { Fighter } from '../core/types';
+import { rimStrength } from '../render/charLight';
+import { play, setMusicIntensity } from '../audio/audio';
 
 /**
  * Hit feel: hit-stop (a few frames of near-freeze), white flash on the victim's materials,
@@ -20,6 +22,8 @@ export function impact(victim: Fighter, attacker: Fighter, severity: number) {
   hitstop = Math.max(hitstop, 0.035 + 0.11 * severity);
   punch = Math.max(punch, severity);
   if (severity >= 0.6 && !reduceMotion) flashScreen = Math.max(flashScreen, 0.12 * severity);
+  // Heavy blows land with a body thud under the spell's own sound.
+  if (severity >= 0.45) { play('k_thud' + ((Math.random() * 3) | 0), { vol: 0.35 + 0.5 * severity, x: victim.x, rate: 0.85 }); if (severity >= 0.75) play('boom1', { vol: 0.35, x: victim.x, rate: 0.7 }); }
   victim.hitFlash = 1;
   const p = chest(victim);
   lightFlash(p.x, p.y, p.z, attacker.pal, 10 + 18 * severity, 0.18 + 0.2 * severity);
@@ -49,10 +53,14 @@ export function updateImpactFx(rdt: number, me: Fighter | null) {
   grade.uniforms.uFlash.value = settings.flashes ? flashScreen : 0;
   const danger = me && S.state === 'fight' && !me.dead ? Math.max(0, 1 - me.hp / (me.R.hp * 0.3)) : 0;
   const pulse = danger > 0 ? danger * (0.65 + 0.35 * Math.sin(S.T * 7)) : 0;
+  // Music gets more intense as either wizard nears defeat.
+  const low = S.state === 'fight' ? Math.max(...S.CH.map(c => (c && !c.dead ? 1 - c.hp / c.R.hp : 0))) : 0;
+  setMusicIntensity(low);
   grade.uniforms.uDanger.value += (pulse - grade.uniforms.uDanger.value) * Math.min(1, rdt * 6);
   for (const c of S.CH) {
     if (!c || !c.mats) continue;
     if (c.hitFlash > 0) c.hitFlash = Math.max(0, c.hitFlash - rdt * 9);
+    c.rimU.strength.value = c.veilT > 0 ? 0 : rimStrength(c.light.intensity);
     const k = c.hitFlash * c.hitFlash;
     for (const m of c.mats) m.emissive.copy(m.userData.baseEmissive).lerp(white, settings.flashes ? k * 0.45 : 0);
   }

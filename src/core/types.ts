@@ -72,6 +72,8 @@ export interface Fighter {
   veilT: number; alpha?: number;
   /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
   authHp: number; pend: { d: number; t: number }[];
+  /** Element rim light on the body (uniforms shared by all of the fighter's materials). */
+  rimU: { color: { value: THREE.Color }; strength: { value: number } };
   /** Finger bones curled around the wand every frame (after the animation mixer). */
   grip: { bone: THREE.Bone; q: THREE.Quaternion }[];
   /** Network-interpolation targets for the remote fighter. */
@@ -89,6 +91,8 @@ export interface Projectile extends ProjSpec {
   id: number | string; owner: 0 | 1; kind: ProjKind;
   pos: THREE.Vector3; vel: THREE.Vector3; core: THREE.Mesh; pal: Palette;
   life: number; remote: boolean; age: number; dead?: boolean; seenByAi?: boolean;
+  /** Light trail following it (fx/vfx.ts). */
+  ribbon?: { push(p: THREE.Vector3): void; end(): void };
 }
 
 export interface Strike { owner: 0 | 1; x: number; z: number; t: number; remote?: boolean; done?: boolean }

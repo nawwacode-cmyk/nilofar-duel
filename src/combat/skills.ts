@@ -16,6 +16,7 @@ import { projs } from '../game/state';
 import { killProj } from './projectiles';
 import { dmgText } from '../fx/effects';
 import { makeTwister, makeVortex } from '../fx/tornado';
+import { lightning, impactFx, groundMark, shockRing } from '../fx/vfx';
 import { V, C, rnd, pick, clamp, angleDelta } from '../core/util';
 import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types';
 import { after } from '../game/schedule';
@@ -98,7 +99,7 @@ function meleeHit(c: Fighter, dx: number, dz: number, m: (typeof MELEE)[number])
     if (Math.hypot(o.x - c.x, o.z - c.z) > G.meleeRange + 0.4) return; // stepped away in time
     const h = chest(o);
     for (let i = 0; i < 14; i++) emit(h.x + rnd(0.15), h.y + rnd(0.2), h.z + rnd(0.15), dx * 2 + rnd(1), rnd(1), dz * 2 + rnd(1), pick(c.pal), 0.1, 0.3, { t: 'spark' });
-    play('tap', { vol: 0.9, x: o.x, rate: 0.6 }); play('boom1', { vol: 0.25, x: o.x, rate: 1.6 });
+    play('k_punch' + ((Math.random() * 5) | 0), { vol: 1, x: o.x }); play('boom1', { vol: 0.2, x: o.x, rate: 1.6 });
     if (!isLocal(o) || o.dodgeT > 0.05 || o.invT > 0) return;
     // A raised shield takes the blow but is still pushed back.
     if (!o.shieldOn) applyDmg(o, DMG.melee, c);
@@ -307,6 +308,7 @@ export function updStrikes(dt: number) {
       s.done = true; const o = ch(1 - s.owner);
       for (let y = 0; y < 9; y += 0.25) emit(s.x + rnd(0.15), y, s.z + rnd(0.15), 0, 0, 0, pick(LIGHT), 0.5, 0.25, { t: 'spark' });
       explosion(V(s.x, 0.3, s.z), LIGHT, 1.2);
+      lightning(s.x, s.z, LIGHT); impactFx('spark', V(s.x, 0.3, s.z), LIGHT, 0.9);
       play('m_thunder', { vol: 1, x: s.x }); play(pr('bolt'), { vol: 0.6, x: s.x });
       S.shake = Math.max(S.shake, 0.2); ch(s.owner).light.intensity = 40;
       if (isLocal(o) && !o.dead && S.state === 'fight' && Math.hypot(o.x - s.x, o.z - s.z) < DMG.thunderRadius) {
@@ -346,6 +348,7 @@ function thorns(c: Fighter, x: number, z: number) {
       done = true;
       for (let i = 0; i < 30; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * R; emit(x + Math.cos(a) * r, 0.1, z + Math.sin(a) * r, 0, 3 + Math.random() * 3, 0, pick(FLORA), 0.14, 0.6, { t: 'spark', drag: 3 }); }
       play('m_blast', { vol: 0.6, x, rate: 1.3 });
+      groundMark('flora', x, z, R * 2.2); shockRing(x, z, FLORA, R * 1.6, true);
       if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0 && Math.hypot(v.x - x, v.z - z) < R) {
         if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.thornsShielded, c); }
         else { applyDmg(v, DMG.thorns, c); v.stunT = Math.max(v.stunT, DMG.thornsStun); v.vx = v.vz = 0; }
@@ -414,7 +417,7 @@ function tornado(c: Fighter, x: number, z: number) {
       for (let k = 0; k < 4; k++) { const a = Math.random() * Math.PI * 2; emit(x + Math.cos(a) * 1, 0.05, z + Math.sin(a) * 1, -Math.sin(a) * 3, 0.3, Math.cos(a) * 3, C(0.5, 0.46, 0.4), 0.35, 0.5, { t: 'smoke', smoke: 1, a: 0.4 }); }
       return true;
     }
-    if (!roar) { roar = true; scene.remove(ring); ring.geometry.dispose(); (ring.material as THREE.Material).dispose(); scene.add(funnel.group, dust.group); play('m_waves', { vol: 1, x, rate: 0.55, dur: LIFE }); play('m_blast', { vol: 0.6, x, rate: 0.6 }); }
+    if (!roar) { groundMark('wind', x, z, 2.8); shockRing(x, z, WIND, 2.4, true); roar = true; scene.remove(ring); ring.geometry.dispose(); (ring.material as THREE.Material).dispose(); scene.add(funnel.group, dust.group); play('m_waves', { vol: 1, x, rate: 0.55, dur: LIFE }); play('m_blast', { vol: 0.6, x, rate: 0.6 }); }
     const u = t - WARN, grow = Math.min(1, u / 0.35), fade = Math.min(1, (LIFE - u) / 0.45);
     funnel.update(dt, Math.max(0, fade) * 0.75 * grow);
     funnel.group.scale.setScalar(Math.max(0.05, grow));

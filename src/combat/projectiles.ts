@@ -12,6 +12,7 @@ import { G, PSPEC, DMG } from '../data/rules';
 import { ICE, WHITE } from '../data/palettes';
 import { V, C, rnd, pick } from '../core/util';
 import type { Clone, ProjKind, Projectile } from '../core/types';
+import { takeRibbon, impactFx, elementOf } from '../fx/vfx';
 
 interface SpawnOrder { kind: ProjKind; owner: 0 | 1; x: number; y: number; z: number; dx: number; dy: number; dz: number; id?: number | string; remote?: boolean }
 
@@ -23,13 +24,16 @@ export function spawnProj(o: SpawnOrder): Projectile {
   scene.add(core);
   const d = V(o.dx, o.dy, o.dz).normalize();
   const p: Projectile = { ...sp, id: o.id ?? ++S.projId, owner: o.owner, kind: o.kind, pos: V(o.x, o.y, o.z), vel: d.multiplyScalar(sp.sp), core, pal, life: sp.life || 2.2, remote: !!o.remote, age: 0 };
+  p.ribbon = takeRibbon(pal, sp.r);
   projs.push(p);
   return p;
 }
 
 export function killProj(p: Projectile, boom = true) {
   scene.remove(p.core); p.core.geometry.dispose(); (p.core.material as THREE.Material).dispose(); p.dead = true;
+  p.ribbon?.end();
   if (!boom) return;
+  impactFx(elementOf(ch(p.owner)), p.pos, p.pal, p.aoe ? 0.9 : p.dmg >= 15 ? 0.6 : 0.25);
   const snd = ch(p.owner).R.snd;
   if (p.aoe) {
     explosion(p.pos, p.pal, 1.4); play('m_fire_expl', { vol: 1, x: p.pos.x }); play(pr(snd), { vol: 0.8, x: p.pos.x });
@@ -58,7 +62,7 @@ export function updProjs(dt: number) {
       const v = p.vel.clone().normalize(); v.lerp(want, Math.min(1, p.home * dt)).normalize();
       p.vel.copy(v.multiplyScalar(Math.min(10, p.vel.length() + dt * 2.5)));
     }
-    p.pos.addScaledVector(p.vel, dt); p.core.position.copy(p.pos);
+    p.pos.addScaledVector(p.vel, dt); p.core.position.copy(p.pos); p.ribbon?.push(p.pos);
     if (p.kind === 'spear' || p.kind === 'spark' || p.kind === 'gale') p.core.lookAt(p.pos.clone().add(p.vel));
     const n = p.aoe ? 6 : 4;
     for (let i = 0; i < n; i++) emit(p.pos.x + rnd(p.r * 0.4), p.pos.y + rnd(p.r * 0.4), p.pos.z + rnd(p.r * 0.4), -p.vel.x * 0.04 + rnd(0.25), rnd(0.25) + 0.2, -p.vel.z * 0.04 + rnd(0.25), pick(p.pal), p.r * (1 + Math.random() * 1.1), 0.22 + Math.random() * 0.2, { t: p.trail as never, drag: 2 });
