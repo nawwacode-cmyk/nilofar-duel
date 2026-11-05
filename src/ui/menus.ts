@@ -12,26 +12,48 @@ import { veil, versus } from './transitions';
 /** Portraits are pre-rendered images (public/play/models/portraits), so menus never wait for 3D models. */
 const portrait = (i: number) => `models/portraits/${ROSTER[i].id}.webp`;
 
-/** Character select: portrait grid + the selected wizard's poster, name and opening line (story & abilities in the lore window). */
+/** Character select: the wizards in a revolving gallery (selected one in front), name and element under it. */
 export function buildRoster() {
+  const n = ROSTER.length;
   const roster = $('roster');
-  roster.replaceChildren(...ROSTER.map((r, i) => {
-    const b = el('button', 'wcard' + (i === S.sel ? ' on' : ''));
-    b.style.setProperty('--c', r.css); b.setAttribute('aria-pressed', String(i === S.sel)); b.setAttribute('aria-label', `${r.name}، ${r.elem}`);
+  if (roster.childElementCount !== n) roster.replaceChildren(...ROSTER.map((r, i) => {
+    const b = el('button', 'fc'); b.style.setProperty('--c', r.css); b.setAttribute('aria-label', `${r.name}، ${r.elem}`);
     const img = document.createElement('img'); img.alt = ''; img.src = portrait(i); img.decoding = 'async';
-    const plate = el('span', 'plate'); plate.append(el('span', 'ic', r.icon), el('b', '', r.name));
-    b.append(img, el('span', 'gem'), plate);
-    b.onclick = () => { unlock(); if (S.sel === i) return; S.sel = i; buildRoster(); void ensureModel(i); play(ROSTER[S.sel].ss, { vol: 0.5 }); };
+    b.append(img);
+    b.onclick = () => select(i);
     return b;
   }));
+  [...roster.children].forEach((b, i) => {
+    let off = i - S.sel; if (off > n / 2) off -= n; if (off < -n / 2) off += n;
+    const e = b as HTMLElement, a = Math.abs(off);
+    // RTL: the next wizard sits to the left.
+    e.style.transform = `translateX(${-off * 78}%) translateZ(${-a * 160}px) rotateY(${off * 18}deg) scale(${1 - a * 0.08})`;
+    e.style.zIndex = String(10 - a); e.style.opacity = a > 1 ? '0.45' : '1'; e.style.filter = off ? 'brightness(.6)' : 'none';
+    e.classList.toggle('c', off === 0); e.setAttribute('aria-pressed', String(off === 0));
+  });
   const R = ROSTER[S.sel];
   $('detail').style.setProperty('--c', R.css);
-  $('dIcon').textContent = R.icon;
   $('dName').textContent = R.name; $('dElem').textContent = R.elem;
-  const img = $<HTMLImageElement>('dImg'); if (!img.src.endsWith(portrait(S.sel))) { img.src = portrait(S.sel); img.style.animation = 'none'; void img.offsetWidth; img.style.animation = ''; }
-  // First sentence of the story as a teaser.
-  $('dTag').textContent = (R.story.match(/^[^.!؟]+[.!؟]/)?.[0] ?? R.story).trim();
   $('bSk').textContent = skillLabel(R);
+}
+
+function select(i: number) {
+  unlock(); if (S.sel === i) return;
+  S.sel = i; buildRoster(); void ensureModel(i); play(ROSTER[S.sel].ss, { vol: 0.5 });
+}
+
+/** Arrows, swipes and the side-bar buttons of the select screen. */
+function initGallery() {
+  const n = ROSTER.length;
+  $('rNext').onclick = () => select((S.sel + 1) % n);
+  $('rPrev').onclick = () => select((S.sel + n - 1) % n);
+  let x0: number | null = null;
+  $('roster').addEventListener('pointerdown', e => { x0 = e.clientX; });
+  $('roster').addEventListener('pointerup', e => {
+    if (x0 === null) return; const dx = e.clientX - x0; x0 = null;
+    if (Math.abs(dx) > 40) select((S.sel + (dx > 0 ? 1 : n - 1)) % n); // swipe right → next (RTL)
+  });
+  $('mMute').onclick = () => $('mute').click();
 }
 
 /** Story and abilities of the selected wizard. */
@@ -82,10 +104,10 @@ function buildTitle() {
 }
 
 export function initMenus() {
-  buildTitle();
+  buildTitle(); initGallery();
   $('mute').onclick = () => {
     unlock(); setMuted(!isMuted());
-    $('mute').firstElementChild!.textContent = isMuted() ? 'volume_off' : 'volume_up';
+    $('mute').firstElementChild!.textContent = $('mMute').firstElementChild!.textContent = isMuted() ? 'volume_off' : 'volume_up';
     $('mute').setAttribute('aria-label', isMuted() ? TXT.muteOn : TXT.muteOff);
     if (!isMuted() && S.state !== 'menu') musicOn();
   };

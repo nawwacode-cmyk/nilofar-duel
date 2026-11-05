@@ -69,31 +69,32 @@
   <p class="credit">الساحة الحجرية: Reials Col·legis، طرطوشة، وفناء القصر: قصر الأسقف، جيرونا، مسح Giravolt (CC BY 4.0) · شرفة القلعة: خامات Poly Haven (CC0) · الشخصيات والحركات: Mixamo · المؤثرات: Kenney (CC0) · الأصوات: Mixkit، Kenney، lentikula · الموسيقى: Heavy Combat من Cosme Leites</p>
 </div>
 
-<!-- character select -->
+<!-- character select: a side bar with every choice and button, the wizards in a revolving gallery -->
 <div class="ov scene" id="menu" hidden>
-  <header class="mhead">
-    <div class="hleft"><button class="back" id="backTitle"><span class="ic">arrow_back</span> عودة</button><button class="back icon" id="mSettings" aria-label="الإعدادات"><span class="ic">settings</span></button></div>
-    <div class="crest"><div class="logo">أسرار الظلام</div><div class="ribbon">اختر ساحرك</div></div>
-  </header>
-  <div class="mbody">
-    <div class="cards" id="roster"></div>
-    <section class="frame info" id="detail">
-      <img class="dimg" id="dImg" alt="">
-      <div class="itext">
-        <div class="dtop"><div class="emblem"><span class="ic" id="dIcon"></span></div><div class="dhead"><b id="dName"></b><span id="dElem"></span></div></div>
-        <p class="dtag" id="dTag"></p>
-        <button class="gbtn dark" id="dLore"><span class="ic">auto_awesome</span> القصة والقدرات</button>
-      </div>
-    </section>
-  </div>
-  <footer class="mfoot">
-    <div class="mset">
-      <div class="diffbox"><span class="lbl">الساحة</span><div class="seg" id="arena"><button data-arena="terrace">شرفة القلعة</button><button data-arena="court">الساحة الحجرية</button><button data-arena="palace">فناء القصر</button></div></div>
-      <div class="diffbox"><span class="lbl">مستوى الخصم</span><div class="seg" id="diff"><button data-d="0">سهل</button><button data-d="1" class="on">متوسط</button><button data-d="2">صعب</button></div></div>
+  <aside class="mbar">
+    <div class="logo">أسرار الظلام</div>
+    <button class="gbtn" id="mAI"><span class="ic">swords</span><span class="col">ضد الحاسوب</span></button>
+    <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا</span></button>
+    <h4>الساحة</h4>
+    <div class="alist" id="arena">
+      <button data-arena="terrace"><img src="models/arenas/terrace.webp" alt=""><span>شرفة القلعة</span></button>
+      <button data-arena="court"><img src="models/arenas/court.webp" alt=""><span>الساحة الحجرية</span></button>
+      <button data-arena="palace"><img src="models/arenas/palace.webp" alt=""><span>فناء القصر</span></button>
     </div>
-    <button class="gbtn big" id="mAI"><span class="ic">swords</span><span class="col">ابدأ المبارزة<small>ضد الحاسوب</small></span></button>
-    <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا<small>عبر الإنترنت</small></span></button>
-  </footer>
+    <h4>مستوى الخصم</h4>
+    <div class="seg" id="diff"><button data-d="0">سهل</button><button data-d="1" class="on">متوسط</button><button data-d="2">صعب</button></div>
+    <div class="mbfoot">
+      <button class="round" id="mSettings" aria-label="الإعدادات"><span class="ic">settings</span></button>
+      <button class="round" id="mMute" aria-label="الصوت"><span class="ic">volume_up</span></button>
+      <button class="round" id="backTitle" aria-label="عودة"><span class="ic">logout</span></button>
+    </div>
+  </aside>
+  <main class="mstage">
+    <div class="flow" id="roster"></div>
+    <button class="round arr nx" id="rNext" aria-label="التالي"><span class="ic">arrow_back</span></button>
+    <button class="round arr pv" id="rPrev" aria-label="السابق"><span class="ic">arrow_back</span></button>
+    <div class="minfo" id="detail"><b id="dName"></b><span id="dElem"></span><button class="gbtn dark" id="dLore"><span class="ic">auto_awesome</span> القصة والقدرات</button></div>
+  </main>
 </div>
 
 <!-- story & abilities of the selected wizard (opened from the select screen) -->
