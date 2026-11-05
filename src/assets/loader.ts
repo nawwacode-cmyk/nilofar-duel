@@ -34,7 +34,7 @@ type PackedClips = Record<ClipName, { d: number; t: [string, 'q' | 'v', number[]
 export async function loadClips() {
   const packed = await fetchJson<PackedClips>('models/anims.json', 300_000);
   for (const k of CLIP_NAMES) {
-    const c = packed[k];
+    const c = packed[k]; if (!c) continue;
     clips[k] = new THREE.AnimationClip(k, c.d, c.t.map(([name, kind, times, values]) =>
       kind === 'q' ? new THREE.QuaternionKeyframeTrack(name, times, values) : new THREE.VectorKeyframeTrack(name, times, values)));
   }

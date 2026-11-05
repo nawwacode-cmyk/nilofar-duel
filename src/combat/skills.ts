@@ -4,7 +4,8 @@ import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
 import { fx } from '../game/state';
 import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
-import { base, chest, clipFor, tintModel } from '../fighters/fighter';
+import { base, chest, clipFor, tintModel, anim } from '../fighters/fighter';
+import { clips } from '../assets/loader';
 import { play, pr } from '../audio/audio';
 import { portalRing } from '../fx/effects';
 import { applyDmg } from './damage';
@@ -42,7 +43,7 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
   army(c, o) { spawnArmy(c, o.x, o.z, o.y); },
-  melee(c, o) { meleeHit(c, o.dx, o.dz); },
+  melee(c, o) { meleeHit(c, o.dx, o.dz, MELEE[o.y] ?? MELEE[0]); },
   veil(c, o) {
     // Ehab leaves a perfect illusion of himself where he stood and, unseen, steps out behind his opponent.
     // Deliberately quiet: a faint shimmer and a soft sound, so the trick is not given away.
@@ -70,11 +71,21 @@ export function unveilCast(c: Fighter) {
 }
 
 /* ---------- close combat ---------- */
-/** The shove lands on the victim's device (victim authority); both devices show it. */
-function meleeHit(c: Fighter, dx: number, dz: number) {
+/**
+ * Close-combat variants (Mixamo clips, sped up): `hit` is when the fist/foot lands, in seconds after the press
+ * (measured: punch and hook reach furthest at ~1.12 s of the clip, the kick at ~0.67 s).
+ */
+export const MELEE = [
+  { clip: 'punch', speed: 3.5, hit: 1.13 / 3.5 },
+  { clip: 'kick', speed: 2.4, hit: 0.67 / 2.4 },
+  { clip: 'hook', speed: 3.5, hit: 1.12 / 3.5 },
+] as const;
+
+/** The blow lands on the victim's device (victim authority); both devices show it. */
+function meleeHit(c: Fighter, dx: number, dz: number, m: (typeof MELEE)[number]) {
   const o = opp(c);
   play('m_whoosh', { vol: 0.5, x: c.x, rate: 1.4 });
-  after(0.1, () => {
+  after(m.hit, () => {
     if (c.dead || o.dead || S.state !== 'fight') return;
     if (Math.hypot(o.x - c.x, o.z - c.z) > G.meleeRange + 0.4) return; // stepped away in time
     const h = chest(o);
@@ -84,6 +95,8 @@ function meleeHit(c: Fighter, dx: number, dz: number) {
     // A raised shield takes the blow but is still pushed back.
     if (!o.shieldOn) applyDmg(o, DMG.melee, c);
     o.vx = dx * G.meleePush; o.vz = dz * G.meleePush; o.knockT = 0.35;
+    // Thrown back: the stagger plays out before the wizard moves again.
+    if (!o.dead && !o.shieldOn) { anim(o, 'shoved', { once: true, speed: 1.6, force: true }); o.hitT = Math.max(o.hitT, 0.7); }
   });
   if (isLocal(c)) { c.vx = -dx * 2.5; c.vz = -dz * 2.5; c.knockT = 0.15; } // recoil
 }
@@ -113,7 +126,9 @@ function spawnArmy(c: Fighter, x: number, z: number, seed: number) {
     const px = x + Math.cos(a) * ARMY_R, pz = z + Math.sin(a) * ARMY_R;
     g.position.set(px, 0, pz); g.rotation.y = Math.atan2(x - px, z - pz); scene.add(g);
     const mx = new THREE.AnimationMixer(m);
-    const idle = mx.clipAction(clipFor(c.ri, 'idle', m)), hit = mx.clipAction(clipFor(c.ri, 'bolt', m));
+    // The illusions punch or kick (falls back to the casting move if an old clip pack lacks them).
+    const strike = clips[k % 2 ? 'kick' : 'punch'] ? (k % 2 ? 'kick' : 'punch') : 'bolt';
+    const idle = mx.clipAction(clipFor(c.ri, 'idle', m)), hit = mx.clipAction(clipFor(c.ri, strike, m));
     idle.time = Math.random(); idle.play();
     for (let i = 0; i < 10; i++) emit(px + rnd(0.3), 0.2 + Math.random() * 1.6, pz + rnd(0.3), rnd(0.5), 0.5, rnd(0.5), pick(ARCH), 0.12, 0.5, { t: 'twirl' });
     return { g, mx, idle, hit, px, pz };
@@ -127,7 +142,7 @@ function spawnArmy(c: Fighter, x: number, z: number, seed: number) {
     for (const u of units) u.mx.update(dt);
     if (!struck && t > ARMY_STRIKE) {
       struck = true;
-      for (const u of units) { u.idle.stop(); u.hit.reset().setLoop(THREE.LoopOnce, 1).play(); }
+      for (const u of units) { u.idle.stop(); u.hit.reset().setLoop(THREE.LoopOnce, 1); u.hit.timeScale = 3; u.hit.time = 0.6; u.hit.play(); }
       play('m_blast', { vol: 0.8, x }); S.shake = Math.max(S.shake, 0.12);
       explosion(V(v.x, 1, v.z), ARCH, 1.1);
       if (!escaped && isLocal(v) && S.state === 'fight' && !v.dead) applyDmg(v, shielded ? DMG.armyShielded : DMG.army, c);

@@ -54,7 +54,7 @@ export function ensureModel(i: number): Promise<void> {
       renameTripoBones(m); faceForward(m); prepBase(i, m);
       const src = SkeletonUtils.clone(base[RETARGET_SRC]);
       wandFrom(i, src, m);
-      ownClips[i] = retargetClips(src, Object.fromEntries(CLIP_NAMES.map(k => [k, retarget(k, src)])) as Record<ClipName, THREE.AnimationClip>, m);
+      ownClips[i] = retargetClips(src, Object.fromEntries(CLIP_NAMES.filter(k => clips[k]).map(k => [k, retarget(k, src)])) as Record<ClipName, THREE.AnimationClip>, m);
     })
     : loadFbx(`models/${r.file}.fbx.gz`, MODEL_BYTES[r.file]).then(m => prepBase(i, m));
   return pending[i];

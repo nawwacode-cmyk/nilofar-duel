@@ -1,4 +1,4 @@
-// Packs the 12 Mixamo animation FBX files in assets-src/anims (~7 MB) into one compact JSON (public/play/models/anims.json).
+// Packs the Mixamo animation FBX files in assets-src/anims (~7 MB) into one compact JSON (public/play/models/anims.json).
 // Same processing as the game used at runtime (cleanClip): rotations + vertical hip motion only.
 // Values are rounded (4 decimals for quaternions, 3 for hip height, 4 for times) — invisible at game scale.
 // Run: node tools/pack-anims.mjs
@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
-const NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR'];
+const NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR', 'punch', 'kick', 'hook', 'shoved'];
 const loader = new FBXLoader();
 const r = (v, d) => Math.round(v * d) / d;
 const out = {};

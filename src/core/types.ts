@@ -11,7 +11,7 @@ export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army'
 /** Everything that can travel over the network as a "cast". */
 export type CastKind = ProjKind | SkillKind | 'thunder' | 'melee';
 
-export const CLIP_NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR'] as const;
+export const CLIP_NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR', 'punch', 'kick', 'hook', 'shoved'] as const;
 export type ClipName = typeof CLIP_NAMES[number];
 
 /** [label, name, description] shown in the character sheet. */

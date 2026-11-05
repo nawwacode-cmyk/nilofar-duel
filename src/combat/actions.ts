@@ -4,7 +4,7 @@ import { play } from '../audio/audio';
 import { emit } from '../render/particles';
 import { flash, shieldMesh } from '../fx/effects';
 import { spawnProj } from './projectiles';
-import { SKFX, spawnStrike, unveilCast } from './skills';
+import { SKFX, spawnStrike, unveilCast, MELEE } from './skills';
 import { G } from '../data/rules';
 import { V, C, rnd, pick, clamp } from '../core/util';
 import type { CastOrder, Fighter, ProjKind } from '../core/types';
@@ -124,9 +124,10 @@ export function setShield(c: Fighter, on: boolean) {
 function melee(c: Fighter) {
   const o = opp(c); const dx = o.x - c.x, dz = o.z - c.z, d = Math.hypot(dx, dz);
   if (d > G.meleeRange || o.dead) return false;
-  c.cdA = c.R.bolt.cd; c.castT = 0.3;
-  anim(c, 'bolt', { once: true, speed: 2.4, force: true });
-  fire(c, { kind: 'melee', x: c.x, y: 0, z: c.z, dx: dx / (d || 1), dy: 0, dz: dz / (d || 1) });
+  const v = (Math.random() * MELEE.length) | 0, m = MELEE[v];
+  c.cdA = c.R.bolt.cd; c.castT = m.hit + 0.15;
+  anim(c, m.clip, { once: true, speed: m.speed, force: true });
+  fire(c, { kind: 'melee', x: c.x, y: v, z: c.z, dx: dx / (d || 1), dy: 0, dz: dz / (d || 1) });
   return true;
 }
 
