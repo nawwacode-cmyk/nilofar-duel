@@ -12,8 +12,13 @@
 - **القصة:** مشاهد قصيرة بأصوات **إنكليزية** (مسموح، صاحب المشروع وافق) مع **ترجمة عربية فصحى عالشاشة** (كتابة بتظهر). ممنوع أصوات عربية مولّدة (رفضها). الأصوات الإنكليزية ممكن من msedge-tts (Microsoft neural) بمجلد مؤقت مش بالمشروع.
 - **المواد:** `assets-src/hunters/` (الخرائط والوحوش مش بـ git، لازم تكون عالجهاز؛ المصادر على Sketchfab/Mixamo مذكورة فوق).
 - **الخطوات:**
-  1. ⏳ تجهيز الحزمة: تخفيف الخرائط (forest كبيرة 550م، منقص قطعة الطريق؛ village لازم تكبير وحدات) والوحوش (خامات ≤1k، حركات مدموجة) ← `tools/make-pack.mjs` ← `public/packs/hunters`.
-  2. ⬜ مرحلة الغابة لحالها (لاعب واحد): كاميرا بتلحق الساحر، حركة بالعالم، خريطة صغيرة، ذئاب/هياكل/عنكبوت بذكاء بسيط، بوابة.
+  1. ✅ تجهيز الحزمة (74.5 م.ب، 27 جزء، `public/packs/hunters`، النسخة ffba69452c). المصادر الخام (`assets-src/hunters/maps` و`monsters` و`pack`) بس على هالجهاز ومستثناة من git. الخطوات لإعادة البناء:
+     - خرائط: `node --max-old-space-size=8192 tools/slim-map.mjs assets-src/hunters/maps/<m>.glb <m> assets-src/hunters/cfg/<m>.json` ← `assets-src/hunters/pack/<m>.glb.gz` + `<m>.nav.gz` (شبكة ارتفاع+مشي، صيغتها مشروحة براس الأداة). forest: المركز (-18,156.53,5)، الأرض حوالي ±115×(-85..95)م؛ village: مقياس 170، بلا «Fruit»؛ swamp: مقياس 1.7، الكوخ بالنص على ارتفاع 3.2.
+     - وحوش Mixamo (FBX): `npx vite --port 4190` + كروم headless بـ `--remote-debugging-port=9333` + سكربت CDP يستدعي `fbx2glb(url, 1024)` بصفحة `web/tools/fbx2glb.html` (للتطوير بس، مو داخلة بالبناء) ← `m_<name>.glb.gz` (عظام mixamorig، خامات 1024).
+     - وحوش Sketchfab (wolf، greatwolf، spider): `tools/slim-glb.mjs` ثم gzip؛ حركاتها جوّاتها (wolf: 01_Run 02_walk 03_creep 04_Idle 05_site؛ spider: Spider walking/running...؛ greatwolf: أسماء غامضة لازم تتجرّب).
+     - حركات الوحوش: `node tools/pack-anims.mjs assets-src/hunters/anims <scratch>/anims.json` ثم gzip لـ `assets-src/hunters/pack/anims.json.gz` (19 حركة: ZombieIdle/Walk/Running/Attack/Biting/Dying/Scream/StandUp/Crawl/ReactionHit، Floating، MutantIdle/Walking/Run/Roaring/Swiping/Punch/JumpAttack/Dying). انتبه: لا تحط ملف غير مضغوط جوّا `pack/` لأنه بينضاف للحزمة.
+     - التجميع: `node tools/make-pack.mjs assets-src/hunters/pack hunters 4` (احذف `public/packs/hunters/p*.bin` القديمة قبلها).
+  2. ⏳ مرحلة الغابة لحالها (لاعب واحد): كاميرا بتلحق الساحر، حركة بالعالم، خريطة صغيرة، ذئاب/هياكل/عنكبوت بذكاء بسيط، بوابة.
   3. ⬜ مشاهد القصة: نظام ترجمة + صوت، مقدمة + مشهد بين المراحل.
   4. ⬜ القرية ثم الزعيم بثلاث مراحل.
   5. ⬜ أونلاين تعاوني (المضيف بيحسب الوحوش) + إحياء الصديق.

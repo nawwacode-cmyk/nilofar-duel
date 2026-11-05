@@ -1,18 +1,20 @@
 // Packs the Mixamo animation FBX files in assets-src/anims (~7 MB) into one compact JSON (public/play/models/anims.json).
 // Same processing as the game used at runtime (cleanClip): rotations + vertical hip motion only.
 // Values are rounded (4 decimals for quaternions, 3 for hip height, 4 for times) — invisible at game scale.
-// Run: node tools/pack-anims.mjs
-import { readFileSync, writeFileSync } from 'node:fs';
+// Run: node tools/pack-anims.mjs                       (the wizards)
+//      node tools/pack-anims.mjs <dir> <out.json>      (every FBX of <dir>, named after the file; e.g. the Hunters monsters)
+import { readFileSync, writeFileSync, readdirSync } from 'node:fs';
 import { gzipSync } from 'node:zlib';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 
-const NAMES = ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR', 'punch', 'kick', 'hook', 'shoved'];
+const [, , DIR = 'assets-src/anims', OUTF = 'public/play/models/anims.json'] = process.argv;
+const NAMES = process.argv[2] ? readdirSync(DIR).filter(f => f.endsWith('.fbx')).map(f => f.slice(0, -4)) : ['idle', 'bolt', 'beam', 'special', 'hit', 'death', 'block', 'evade', 'walkF', 'walkB', 'walkL', 'walkR', 'punch', 'kick', 'hook', 'shoved'];
 const loader = new FBXLoader();
 const r = (v, d) => Math.round(v * d) / d;
 const out = {};
 let before = 0;
 for (const n of NAMES) {
-  const buf = readFileSync(`assets-src/anims/${n}.fbx`); before += buf.length;
+  const buf = readFileSync(`${DIR}/${n}.fbx`); before += buf.length;
   const obj = loader.parse(buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.length), '');
   const clip = obj.animations[0];
   const tracks = [];
@@ -31,5 +33,5 @@ for (const n of NAMES) {
   out[n] = { d: r(clip.duration, 1e4), t: tracks };
 }
 const json = JSON.stringify(out);
-writeFileSync('public/play/models/anims.json', json);
+writeFileSync(OUTF, json);
 console.log(`FBX ${(before / 1048576).toFixed(2)} MB -> JSON ${(json.length / 1048576).toFixed(2)} MB (gzip ${(gzipSync(json).length / 1048576).toFixed(2)} MB)`);

@@ -1,0 +1,7 @@
+{ "center": [0, -0.3, 0], "scale": 1.7, "rotY": 0,
+  "crop": { "x": [-20, 20], "z": [-20, 20] },
+  "texMax": 1024, "texMaxBig": 2048, "bigTex": ["Bark", "Soil"],
+  "ground": ["Soil", "Water", "Wooden_Planks"],
+  "slopeFrom": ["Soil"],
+  "solid": ["Bark", "Wooden_Planks"],
+  "nav": { "x": [-14, 14], "z": [-14, 14], "step": 0.5 } }

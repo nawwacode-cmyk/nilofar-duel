@@ -1,0 +1,7 @@
+{ "center": [-18, 156.53, 5], "scale": 1, "rotY": 0,
+  "crop": { "x": [-185, 195], "z": [-175, 135] },
+  "texMax": 1024, "texMaxBig": 2048, "bigTex": ["Background_Tree_Atlas", "Dirt_Road", "Aerial_Grass"],
+  "ground": ["Dirt_Road", "Dirt_Road_Bare", "Ground_Dirt", "Aerial_Grass", "Sloped_Rock", "Cobblestone", "Mud_Pile", "Terrain_Far", "Dirt_Road_Trails", "Road_Edge_Gravel_Dusty", "Tall_Cliff"],
+  "slopeFrom": ["Aerial_Grass", "Sloped_Rock", "Tall_Cliff", "Terrain_Far", "Ground_Dirt"],
+  "solid": ["Trunk_Oak", "Trunk_Birch", "Wood_Log", "Metal_Fence", "Wood_Fence", "Broken_Rocks"],
+  "nav": { "x": [-115, 115], "z": [-85, 95], "step": 0.5 } }

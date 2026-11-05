@@ -7,3 +7,4 @@ dist/
 # Raw sources of the Hunters pack (too large for git; processed into public/packs/hunters)
 assets-src/hunters/maps/
 assets-src/hunters/monsters/
+assets-src/hunters/pack/

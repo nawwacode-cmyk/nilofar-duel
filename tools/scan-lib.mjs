@@ -44,8 +44,18 @@ export function primitives(glb) {
         w[k] = m[0] * x + m[4] * y + m[8] * z + m[12]; w[k + 1] = m[1] * x + m[5] * y + m[9] * z + m[13]; w[k + 2] = m[2] * x + m[6] * y + m[10] * z + m[14];
       }
       const uv = p.attributes.TEXCOORD_0 !== undefined ? accessor(glb, p.attributes.TEXCOORD_0) : null;
+      // Normals rotated by the node's matrix (no non-uniform scale in these scenes) and renormalised.
+      let nor = null;
+      if (p.attributes.NORMAL !== undefined) {
+        const n = accessor(glb, p.attributes.NORMAL); nor = new Float32Array(n.length);
+        for (let k = 0; k < n.length; k += 3) {
+          const x = n[k], y = n[k + 1], z = n[k + 2];
+          const nx = m[0] * x + m[4] * y + m[8] * z, ny = m[1] * x + m[5] * y + m[9] * z, nz = m[2] * x + m[6] * y + m[10] * z;
+          const L = Math.hypot(nx, ny, nz) || 1; nor[k] = nx / L; nor[k + 1] = ny / L; nor[k + 2] = nz / L;
+        }
+      }
       const idx = p.indices !== undefined ? accessor(glb, p.indices) : Uint32Array.from({ length: pos.length / 3 }, (_, i) => i);
-      out.push({ pos: w, uv, idx, material: p.material ?? -1 });
+      out.push({ pos: w, uv, nor, idx, material: p.material ?? -1 });
     }
     for (const c of n.children || []) walk(c, m);
   };
