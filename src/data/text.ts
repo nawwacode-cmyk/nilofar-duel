@@ -25,6 +25,7 @@ export const TXT = {
   shieldBroken: 'انكسر الدرع!',
   struggle: 'صراع الشعاع! اضغط أسرع من خصمك',
   loadingFighters: (p: number) => `جارٍ تحميل الساحرَين… ${p}%`,
+  preparing: 'جارٍ تجهيز المبارزة…',
   muteOn: 'صامت',
   muteOff: 'صوت',
   abilitiesOf: (w: WizardDef) => (w.female ? 'قدراتها' : 'قدراته'),

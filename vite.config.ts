@@ -5,6 +5,8 @@ import { resolve } from 'node:path';
 // web/ holds the HTML entry, public/ is copied verbatim (landing page, models, sounds, icons, config.js).
 // Output keeps the original URL layout: /index.html (landing) and /play/ (game).
 export default defineConfig({
+  // Release number of the Android app build (set by .github/workflows/apk.yml); 'dev' elsewhere.
+  define: { __APP_VERSION__: JSON.stringify(process.env.APP_VERSION || 'dev') },
   root: 'web',
   publicDir: '../public',
   base: './',

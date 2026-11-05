@@ -15,6 +15,7 @@ import { CLIP_NAMES, type CastKind, type Fighter, type ProjKind, type Projectile
 import { G } from '../data/rules';
 import { ROSTER } from '../data/roster';
 import { getArena, setArena, type ArenaId } from '../world/arena';
+import { versus } from '../ui/transitions';
 
 /**
  * Online duels over Supabase Realtime (broadcast + presence, no tables).
@@ -68,7 +69,8 @@ export async function onlineStart(host: boolean, code: string) {
       $('onTxt').textContent = TXT.loadingFighters(0);
       // Both play in the host's arena (arenas differ in size, so positions only agree in the same one).
       const arena = host ? getArena() : peer.ar ?? getArena();
-      void Promise.all([ensureModels([a, b]), setArena(arena)]).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
+      const mine = net.me === 0 ? a : b, theirs = net.me === 0 ? b : a;
+      void versus(mine, theirs, Promise.all([ensureModels([a, b]), setArena(arena)])).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
     }
     // A peer missing from presence is handled by checkConnection (it may only be a short network drop).
   });
@@ -153,9 +155,9 @@ function renderRematch() {
 function goRematch(hostRi: number, guestRi: number) {
   rm.active = false; clearInterval(rm.timer);
   const a = hostRi, b = guestRi;
-  void ensureModels([a, b]).then(() => {
+  $('rematch').hidden = true;
+  void versus(net.me === 0 ? a : b, net.me === 0 ? b : a, ensureModels([a, b])).then(() => {
     if (!net.peer) return;
-    $('rematch').hidden = true;
     setupFighters(a, b); startMatch();
   });
 }

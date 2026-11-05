@@ -3,16 +3,16 @@ import { ensureModel, ensureModels } from '../fighters/fighter';
 import { play, unlock, isMuted, setMuted, musicOn } from '../audio/audio';
 import { setupFighters, startMatch, toMenu } from '../game/flow';
 import { code4, leaveNet, onlineStart, requestRematch } from '../net/online';
-import { onDownloadProgress } from '../assets/net';
 import { ROSTER, skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
 import { $ } from '../core/util';
 import { getArena, setArena, type ArenaId } from '../world/arena';
+import { veil, versus } from './transitions';
 
 /** Portraits are pre-rendered images (public/play/models/portraits), so menus never wait for 3D models. */
 const portrait = (i: number) => `models/portraits/${ROSTER[i].id}.webp`;
 
-/** Character select: portrait grid + story, stats and abilities of the selected wizard. */
+/** Character select: portrait grid + the selected wizard's poster, name and opening line (story & abilities in the lore window). */
 export function buildRoster() {
   const roster = $('roster');
   roster.replaceChildren(...ROSTER.map((r, i) => {
@@ -27,16 +27,27 @@ export function buildRoster() {
   const R = ROSTER[S.sel];
   $('detail').style.setProperty('--c', R.css);
   $('dIcon').textContent = R.icon;
-  $('dName').textContent = R.name; $('dElem').textContent = R.elem; $('dStory').textContent = R.story;
-  $('dAbT').textContent = TXT.abilitiesOf(R);
+  $('dName').textContent = R.name; $('dElem').textContent = R.elem;
+  const img = $<HTMLImageElement>('dImg'); if (!img.src.endsWith(portrait(S.sel))) { img.src = portrait(S.sel); img.style.animation = 'none'; void img.offsetWidth; img.style.animation = ''; }
+  // First sentence of the story as a teaser.
+  $('dTag').textContent = (R.story.match(/^[^.!؟]+[.!؟]/)?.[0] ?? R.story).trim();
+  $('bSk').textContent = skillLabel(R);
+}
+
+/** Story and abilities of the selected wizard. */
+function openLore() {
+  const R = ROSTER[S.sel];
+  $('loreBox').style.setProperty('--c', R.css); $('lIcon').textContent = R.icon;
+  $('lName').textContent = R.name; $('lElem').textContent = R.elem; $('lStory').textContent = R.story;
+  $('lAbT').textContent = TXT.abilitiesOf(R);
   const abIcons = ['swords', 'auto_awesome', R.icon, 'auto_awesome'];
-  $('dAb').replaceChildren(...[...R.ab, ...(R.ab2 ? [R.ab2] : [])].map(([k, n, d], i) => {
+  $('lAb').replaceChildren(...[...R.ab, ...(R.ab2 ? [R.ab2] : [])].map(([k, n, d], i) => {
     const row = el('div', 'abl');
     const name = el('b', '', n); name.append(el('small', '', `${k} · ${TXT.abilityKeys[i]}`));
     row.append(el('span', 'ic', abIcons[i]), name, el('span', '', d));
     return row;
   }));
-  $('bSk').textContent = skillLabel(R);
+  $('lore').hidden = false;
 }
 
 function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: string) {
@@ -78,8 +89,11 @@ export function initMenus() {
     $('mute').setAttribute('aria-label', isMuted() ? TXT.muteOn : TXT.muteOff);
     if (!isMuted() && S.state !== 'menu') musicOn();
   };
-  $('enter').onclick = () => { unlock(); $('title').hidden = true; $('menu').hidden = false; S.state = 'menu'; play('m_drums', { vol: 0.6 }); };
-  $('backTitle').onclick = () => { $('menu').hidden = true; $('title').hidden = false; S.state = 'title'; };
+  $('enter').onclick = () => { unlock(); play('m_drums', { vol: 0.6 }); void veil(() => { $('title').hidden = true; $('menu').hidden = false; S.state = 'menu'; }); };
+  $('backTitle').onclick = () => void veil(() => { $('menu').hidden = true; $('title').hidden = false; S.state = 'title'; });
+  $('dLore').onclick = () => { unlock(); openLore(); };
+  $('lClose').onclick = () => { $('lore').hidden = true; };
+  $('lore').onclick = e => { if (e.target === $('lore')) $('lore').hidden = true; };
   $('diff').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.onclick = () => {
     S.diff = +(b.dataset.d || 1);
     $('diff').querySelectorAll('button').forEach(x => x.classList.toggle('on', x === b));
@@ -88,13 +102,17 @@ export function initMenus() {
   const markArena = () => arenaBtns.forEach(x => x.classList.toggle('on', x.dataset.arena === getArena()));
   arenaBtns.forEach(b => b.onclick = () => { void setArena(b.dataset.arena as ArenaId); markArena(); });
   markArena();
-  $('mAI').onclick = () => {
-    unlock(); S.mode = 'ai'; $('menu').hidden = true;
+  $('mAI').onclick = async () => {
+    unlock(); S.mode = 'ai';
     let o = (Math.random() * (ROSTER.length - 1)) | 0; if (o >= S.sel) o++;
-    void startWhenLoaded([S.sel, o], () => { setupFighters(S.sel, o); startMatch(); });
+    // Versus screen while both wizards load, then the duel.
+    const show = versus(S.sel, o, ensureModels([S.sel, o]));
+    $('menu').hidden = true;
+    await show;
+    if (inMenus()) { setupFighters(S.sel, o); startMatch(); }
   };
-  $('mOn').onclick = () => { unlock(); $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; };
-  $('oBack').onclick = () => { leaveNet(); $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; };
+  $('mOn').onclick = () => { unlock(); void veil(() => { $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; }); };
+  $('oBack').onclick = () => { leaveNet(); void veil(() => { $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; }); };
   $('oCreate').onclick = async () => { unlock(); const c = code4(); $('oCode').textContent = c; $('oCreate').hidden = true; $('oWait').hidden = false; $('oErr').hidden = true; await onlineStart(true, c); };
   $('oJoin').onclick = async () => {
     unlock(); const c = $<HTMLInputElement>('code').value.trim().toUpperCase();
@@ -103,21 +121,5 @@ export function initMenus() {
   };
   // Online: both players get 10 s to change wizard in the same room; offline: straight into a new duel.
   $('again').onclick = () => { unlock(); if (S.mode === 'online') { requestRematch(); return; } $('end').hidden = true; startMatch(); };
-  $('toMenu').onclick = toMenu;
-}
-
-
-/**
- * Runs a match once both fighters' models are downloaded. On slow connections the start button shows the
- * download progress meanwhile (the menu stays usable until then).
- */
-export async function startWhenLoaded(ids: number[], go: () => void) {
-  const btn = $<HTMLButtonElement>('mAI'), label = btn.querySelector('.col');
-  const old = label?.innerHTML ?? '';
-  let shown = false;
-  const t = setTimeout(() => { shown = true; btn.disabled = true; }, 150);
-  onDownloadProgress((l, tot) => { if (shown && label) label.textContent = TXT.loadingFighters(Math.round((l / Math.max(1, tot)) * 100)); });
-  try { await ensureModels(ids); }
-  finally { clearTimeout(t); onDownloadProgress(null); btn.disabled = false; if (label) label.innerHTML = old; }
-  if (inMenus()) go();
+  $('toMenu').onclick = () => void veil(toMenu);
 }

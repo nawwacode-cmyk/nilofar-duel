@@ -14,6 +14,7 @@ import { initQuality } from './render/quality';
 import { initInput } from './input/input';
 import { initMenus, buildRoster } from './ui/menus';
 import { initSettingsUI } from './ui/settingsUI';
+import { checkForUpdate } from './ui/update';
 import { startLoop } from './game/loop';
 import { runBalance, trace } from './sim/sim';
 import { ROSTER } from './data/roster';
@@ -54,6 +55,7 @@ async function boot() {
     if (splashLeft > 0) await new Promise(r => setTimeout(r, splashLeft));
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
+    void checkForUpdate();
     // ?debug&shot=<arena>[&edge]: jump straight into a frozen duel there (for headless screenshots of arenas).
     const q = new URLSearchParams(location.search), shot = q.get('shot');
     if (q.has('debug') && shot) {

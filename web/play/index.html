@@ -65,6 +65,7 @@
     <div class="tmenu"><button class="gbtn big pulse" id="enter"><span class="ic">swords</span> ادخل الساحة</button><button class="gbtn dark" id="tSettings"><span class="ic">settings</span> الإعدادات</button></div>
   </div>
   <div class="tline" id="tLine"></div>
+  <button class="upd" id="upd" hidden><span class="ic">replay</span><span id="updTxt"></span></button>
   <p class="credit">الساحة الحجرية: Reials Col·legis، طرطوشة، وفناء القصر: قصر الأسقف، جيرونا، مسح Giravolt (CC BY 4.0) · شرفة القلعة: خامات Poly Haven (CC0) · الشخصيات والحركات: Mixamo · المؤثرات: Kenney (CC0) · الأصوات: Mixkit، Kenney، lentikula · الموسيقى: Heavy Combat من Cosme Leites</p>
 </div>
 
@@ -77,11 +78,11 @@
   <div class="mbody">
     <div class="cards" id="roster"></div>
     <section class="frame info" id="detail">
-      <div class="emblem"><span class="ic" id="dIcon"></span></div>
+      <img class="dimg" id="dImg" alt="">
       <div class="itext">
-        <div class="dhead"><b id="dName"></b><span id="dElem"></span></div>
-        <p id="dStory"></p>
-        <div class="abil"><h4 id="dAbT"></h4><div id="dAb"></div></div>
+        <div class="dtop"><div class="emblem"><span class="ic" id="dIcon"></span></div><div class="dhead"><b id="dName"></b><span id="dElem"></span></div></div>
+        <p class="dtag" id="dTag"></p>
+        <button class="gbtn dark" id="dLore"><span class="ic">auto_awesome</span> القصة والقدرات</button>
       </div>
     </section>
   </div>
@@ -93,6 +94,24 @@
     <button class="gbtn big" id="mAI"><span class="ic">swords</span><span class="col">ابدأ المبارزة<small>ضد الحاسوب</small></span></button>
     <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا<small>عبر الإنترنت</small></span></button>
   </footer>
+</div>
+
+<!-- story & abilities of the selected wizard (opened from the select screen) -->
+<div class="ov clear" id="lore" hidden>
+  <div class="frame lorebox" id="loreBox">
+    <div class="lhead"><div class="emblem"><span class="ic" id="lIcon"></span></div><div class="dhead"><b id="lName"></b><span id="lElem"></span></div></div>
+    <p id="lStory"></p>
+    <div class="abil"><h4 id="lAbT"></h4><div id="lAb"></div></div>
+    <div class="lfoot"><button class="back" id="lClose"><span class="ic">arrow_back</span> عودة</button></div>
+  </div>
+</div>
+
+<!-- loading veil between screens, and the versus screen before every duel -->
+<div class="ov" id="veil" hidden><svg viewBox="0 0 200 200" class="spin"><circle cx="100" cy="100" r="86"/><path d="M100 30 L170 100 L100 170 L30 100 Z"/><path d="M50.5 50.5 H149.5 V149.5 H50.5 Z"/></svg></div>
+<div class="ov scene" id="vs" hidden>
+  <div class="vside l"><img id="vsA" alt=""><b id="vsAn"></b></div>
+  <div class="vsmid"><span class="vsx">ضد</span><svg viewBox="0 0 200 200" class="spin"><circle cx="100" cy="100" r="86"/><path d="M100 30 L170 100 L100 170 L30 100 Z"/><path d="M50.5 50.5 H149.5 V149.5 H50.5 Z"/></svg><span class="lbl" id="vsTxt"></span></div>
+  <div class="vside r"><img id="vsB" alt=""><b id="vsBn"></b></div>
 </div>
 
 <!-- online -->
