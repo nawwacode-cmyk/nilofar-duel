@@ -10,3 +10,6 @@ assets-src/hunters/monsters/
 assets-src/hunters/pack/
 assets-src/fx/*.mov
 assets-src/fx/*.glb
+assets-src/models/ehab_aaa*
+assets-src/models/ehab_edit.blend*
+assets-src/models/ehab_original_backup.glb
