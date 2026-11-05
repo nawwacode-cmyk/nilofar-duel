@@ -260,8 +260,10 @@ let indAt = 0;
  * Also refreshes the connection indicator (bottom left).
  */
 export function checkConnection() {
+  // The indicator is always on (bottom-left), except over the title screen's credits and the loading screen.
   const ind = $('netInd');
-  if (S.mode !== 'online' || !net.peer) { ind.hidden = true; net.waiting = false; return; }
+  if (S.state === 'title' || S.state === 'load') { ind.hidden = true; return; }
+  if (S.mode !== 'online' || !net.peer) { net.waiting = false; showInternet(ind); return; }
   const now = performance.now(), quiet = net.lastRecv ? now - net.lastRecv : 0;
   const inDuel = DUEL_STATES.includes(S.state);
   const lost = inDuel && quiet > FREEZE_MS;
@@ -270,11 +272,33 @@ export function checkConnection() {
   if (lost) banner(net.selfDown ? TXT.online.lostSelf : TXT.online.lostPeer(Math.ceil((GIVE_UP_MS - quiet) / 1000)));
   if (now - indAt < 400) return;
   indAt = now; ind.hidden = false;
-  const down = net.selfDown || quiet > FREEZE_MS, ms = Math.round(net.rtt);
-  const [cls, word, icon] = down ? ['down', TXT.online.net.down, 'wifi_off'] : quiet > 1500 || ms > 600 ? ['bad', TXT.online.net.bad, 'network_wifi_1_bar']
+  paint(ind, net.selfDown || quiet > FREEZE_MS, quiet > 1500, Math.round(net.rtt));
+}
+
+/** Wi-Fi bars and label by quality; the latency sits in an LTR isolate so "82 ms" is not reversed in Arabic. */
+function paint(ind: HTMLElement, down: boolean, stale: boolean, ms: number) {
+  const [cls, word, icon] = down ? ['down', TXT.online.net.down, 'wifi_off'] : stale || ms > 600 ? ['bad', TXT.online.net.bad, 'network_wifi_1_bar']
     : ms > 300 ? ['weak', TXT.online.net.weak, 'network_wifi_2_bar'] : ms > 150 ? ['ok', TXT.online.net.ok, 'network_wifi_3_bar'] : ['good', TXT.online.net.good, 'signal_wifi_4_bar'];
   ind.className = cls; ind.firstElementChild!.textContent = icon;
-  // The latency is wrapped in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
-  // The latency sits in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
-  ind.lastElementChild!.textContent = down || !ms ? word : `${word} · ⁦${ms} ms⁩`;
+  ind.lastElementChild!.textContent = down || !ms ? word : `${word} · \u2066${ms} ms\u2069`;
+}
+
+/**
+ * Outside online duels: the device's own internet connection, timed every 5 s with a tiny request to the game's
+ * server (no data sent). Offline shows the crossed-out Wi-Fi.
+ */
+const inet = { ms: 0, ok: navigator.onLine, at: 0, busy: false };
+async function probe() {
+  const url = window.NILOFAR_CONFIG?.supabaseUrl; if (!url) return;
+  inet.busy = true; const t = performance.now();
+  try { await fetch(url + '/auth/v1/health', { mode: 'no-cors', cache: 'no-store' }); inet.ok = true; inet.ms = Math.round(performance.now() - t); }
+  catch { inet.ok = false; inet.ms = 0; }
+  finally { inet.busy = false; }
+}
+function showInternet(ind: HTMLElement) {
+  const now = performance.now();
+  if (!inet.busy && now - inet.at > 5000) { inet.at = now; void probe(); }
+  if (now - indAt < 400) return;
+  indAt = now; ind.hidden = false;
+  paint(ind, !navigator.onLine || !inet.ok, false, inet.ms);
 }

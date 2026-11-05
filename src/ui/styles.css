@@ -280,7 +280,7 @@ html.editing #mute,html.editing #pauseBtn{display:none}
 
 /* Online connection indicator: bottom-left corner under the joystick, white text and a Wi-Fi glyph whose bars and
    colour follow the connection quality. */
-#netInd{position:fixed;left:calc(var(--safe-l) + 10px);bottom:4px;z-index:4;display:flex;align-items:center;gap:4px;height:16px;font-size:var(--fs-xs);font-weight:600;color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;direction:rtl;pointer-events:none}
+#netInd{position:fixed;left:calc(var(--safe-l) + 10px);bottom:4px;z-index:26;display:flex;align-items:center;gap:4px;height:16px;font-size:var(--fs-xs);font-weight:600;color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;direction:rtl;pointer-events:none}
 #netInd .ic{font-size:16px;filter:drop-shadow(0 1px 2px #000)}
 #netInd.good .ic{color:#3ddc6f}#netInd.ok .ic{color:#b6e04a}#netInd.weak .ic{color:#f2c230}#netInd.bad .ic{color:#ff8a3c}
 #netInd.down .ic{color:#ff3b3b;animation:netBlink 1s steps(2) infinite}

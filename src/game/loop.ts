@@ -31,7 +31,7 @@ let netAcc = 0;
  */
 export function tick(rdt: number) {
   // Online duels freeze while the connection is lost (checkConnection), and resume where they were.
-  if (S.mode === 'online') checkConnection();
+  checkConnection();
   const dt = rdt * S.slowmo * timeScale(rdt) * (net.waiting ? 0 : 1);
   S.T += dt; S.stateT += rdt;
   runScheduled();
