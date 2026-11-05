@@ -48,6 +48,7 @@ export function takeHit(c: Fighter, p: Projectile): HitResult {
   }
   applyDmg(c, p.dmg, att);
   if (p.slow) c.slowT = Math.max(c.slowT, p.slow);
+  if (p.push) { const L = Math.hypot(p.vel.x, p.vel.z) || 1; c.vx = (p.vel.x / L) * p.push; c.vz = (p.vel.z / L) * p.push; c.knockT = 0.35; }
   return 'hit';
 }
 

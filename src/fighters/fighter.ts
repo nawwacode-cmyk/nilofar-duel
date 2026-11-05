@@ -4,6 +4,7 @@ import { scene, BLOB } from '../render/stage';
 import { clips, findBone, loadFbx, loadGlb, retarget } from '../assets/loader';
 import { faceForward, renameTripoBones, retargetClips } from '../assets/retarget';
 import { ROSTER } from '../data/roster';
+import { ensureTornadoModel } from '../fx/tornadoModel';
 import { V } from '../core/util';
 import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 
@@ -97,6 +98,7 @@ function makeWand(col: number) {
 
 export function makeFighter(ri: number, side: 0 | 1): Fighter {
   const R = ROSTER[ri];
+  if (R.skill2?.k === 'tornado') void ensureTornadoModel();
   const m = SkeletonUtils.clone(base[ri]);
   const g = new THREE.Group(); g.add(m); scene.add(g);
   const mixer = new THREE.AnimationMixer(m);

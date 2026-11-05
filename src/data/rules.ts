@@ -33,6 +33,8 @@ export const PSPEC: Record<ProjKind, ProjSpec> = {
   spear: { r: 0.13, dmg: 15, sp: 17, pw: 2, trail: 'spark' },
   curse: { r: 0.15, dmg: 30, sp: 5, pw: 2, trail: 'twirl', home: 2.4, life: 4.5 },
   orb: { r: 0.14, dmg: 6, sp: 10, pw: 2, trail: 'magic', home: 3.2, life: 3 },
+  // Abed's storm blade: a wide crescent of wind, fast, slightly homing, throws the opponent back.
+  gale: { r: 0.32, dmg: 30, sp: 13, pw: 2, trail: 'twirl', home: 0.8, push: 7 },
   // Layla's clones: small, so the skill distracts rather than out-damages.
   shmini: { r: 0.09, dmg: 3, sp: 13, pw: 1, trail: 'twirl' },
 };
@@ -45,7 +47,7 @@ export const DMG = {
   army: 30, armyShielded: 10, melee: 6,
   /** Sara: the bloom heals this much over BLOOM_S; thorns hold for thornsStun. Abed: gust, tornado. */
   bloom: 35, thorns: 18, thornsShielded: 6, thornsStun: 1.2,
-  gust: 8, gustPush: 9, tornado: 25, tornadoShielded: 8, tornadoStun: 1.3,
+  gust: 10, gustPush: 9, tornado: 30, tornadoShielded: 10, tornadoStun: 1.5,
 } as const;
 
 /** AI difficulty table: easy / normal / hard. */

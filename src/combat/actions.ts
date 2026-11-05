@@ -81,6 +81,7 @@ export function castSpecial(c: Fighter) {
         break;
       }
       case 'curse': fire(c, { kind: 'curse', x: s.x, y: s.y + 0.2, z: s.z, dx: d.x, dy: 0.3, dz: d.z }); break;
+      case 'gale': play('m_whoosh', { vol: 0.9, x: c.x, rate: 0.7 }); fire(c, { kind: 'gale', x: s.x, y: s.y, z: s.z, dx: d.x, dy: d.y * 0.3, dz: d.z }); break;
       case 'thunder': fire(c, { kind: 'thunder', x: o.x, y: 0, z: o.z, dx: 0, dy: 0, dz: 0 }); break;
       case 'orbs': {
         // Five golden orbs fan out wide, then curve in on the opponent from every side.

@@ -12,7 +12,7 @@ describe('roster', () => {
       ['qasem', 'spark', 'thunder', 'blink'],
       ['ehab', 'gold', 'orbs', 'veil'],
       ['sara', 'gold', 'spears', 'bloom'],
-      ['abed', 'spark', 'curse', 'gust'],
+      ['abed', 'spark', 'gale', 'gust'],
     ]);
   });
   it('is fair: same health, speed, dodge, attack cadence and skill cost for everyone', () => {

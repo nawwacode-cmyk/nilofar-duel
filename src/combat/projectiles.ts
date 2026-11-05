@@ -19,6 +19,7 @@ export function spawnProj(o: SpawnOrder): Projectile {
   const sp = PSPEC[o.kind]; const pal = ch(o.owner).pal;
   const core = new THREE.Mesh(new THREE.SphereGeometry(sp.r * 0.55, 14, 10), new THREE.MeshBasicMaterial({ color: pal[2].clone().multiplyScalar(1.3), toneMapped: false }));
   if (o.kind === 'spear' || o.kind === 'spark') core.scale.set(0.6, 0.6, 3);
+  if (o.kind === 'gale') core.scale.set(3.2, 0.35, 0.8);
   scene.add(core);
   const d = V(o.dx, o.dy, o.dz).normalize();
   const p: Projectile = { ...sp, id: o.id ?? ++S.projId, owner: o.owner, kind: o.kind, pos: V(o.x, o.y, o.z), vel: d.multiplyScalar(sp.sp), core, pal, life: sp.life || 2.2, remote: !!o.remote, age: 0 };
@@ -58,7 +59,7 @@ export function updProjs(dt: number) {
       p.vel.copy(v.multiplyScalar(Math.min(10, p.vel.length() + dt * 2.5)));
     }
     p.pos.addScaledVector(p.vel, dt); p.core.position.copy(p.pos);
-    if (p.kind === 'spear' || p.kind === 'spark') p.core.lookAt(p.pos.clone().add(p.vel));
+    if (p.kind === 'spear' || p.kind === 'spark' || p.kind === 'gale') p.core.lookAt(p.pos.clone().add(p.vel));
     const n = p.aoe ? 6 : 4;
     for (let i = 0; i < n; i++) emit(p.pos.x + rnd(p.r * 0.4), p.pos.y + rnd(p.r * 0.4), p.pos.z + rnd(p.r * 0.4), -p.vel.x * 0.04 + rnd(0.25), rnd(0.25) + 0.2, -p.vel.z * 0.04 + rnd(0.25), pick(p.pal), p.r * (1 + Math.random() * 1.1), 0.22 + Math.random() * 0.2, { t: p.trail as never, drag: 2 });
     emit(p.pos.x, p.pos.y, p.pos.z, 0, 0, 0, p.pal[1], p.r * 3.2, 0.05, { t: 'glow', spin: 0, a: 0.5 });

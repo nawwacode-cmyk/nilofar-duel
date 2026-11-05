@@ -5,8 +5,8 @@ export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight'
 export type Mode = 'ai' | 'online' | 'train' | 'hunt';
 
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
-export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb';
-export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs';
+export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb' | 'gale';
+export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs' | 'gale';
 export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army' | 'bloom' | 'thorns' | 'gust' | 'tornado';
 /** Everything that can travel over the network as a "cast". */
 export type CastKind = ProjKind | SkillKind | 'thunder' | 'melee';
@@ -83,7 +83,7 @@ export interface CastOrder {
   id?: number | string; remote?: boolean;
 }
 
-export interface ProjSpec { r: number; dmg: number; sp: number; pw: number; trail: string; slow?: number; aoe?: number; home?: number; life?: number }
+export interface ProjSpec { r: number; dmg: number; sp: number; pw: number; trail: string; slow?: number; aoe?: number; home?: number; life?: number; /** Throws the victim back (m/s). */ push?: number }
 
 export interface Projectile extends ProjSpec {
   id: number | string; owner: 0 | 1; kind: ProjKind;

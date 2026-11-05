@@ -56,7 +56,7 @@ export function aiThink(c: Fighter, dt: number) {
     else if (K === 'clones') { castSkill(c); ai.skT = 3; }
     // Vanish when something is incoming or at random, slip aside, then strike from hiding.
     else if (K === 'bloom' && (c.hp < c.R.hp * 0.55 || c.slowT > 0)) { castSkill(c); ai.skT = 3; }
-    else if (K === 'gust' && (dist < 4.2 || (threat && tmin < 0.6))) { castSkill(c); ai.skT = 2; }
+    else if (K === 'gust' && (dist < 9 || threat)) { castSkill(c); ai.skT = 2; }
     else if (K === 'veil' && (threat || Math.random() < 0.25)) { castSkill(c); ai.skT = 4; ai.strafe *= -1; after(1.2 + Math.random(), () => { if (!c.dead) castBolt(c); }); }
   }
   // Fourth ability (Ehab's army) when the opponent is within reach and not mid-dodge.

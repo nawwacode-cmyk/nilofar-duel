@@ -8,3 +8,5 @@ dist/
 assets-src/hunters/maps/
 assets-src/hunters/monsters/
 assets-src/hunters/pack/
+assets-src/fx/*.mov
+assets-src/fx/*.glb
