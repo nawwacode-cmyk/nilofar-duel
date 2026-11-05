@@ -57,7 +57,9 @@ export const BLOB = (() => {
   return new THREE.CanvasTexture(c);
 })();
 
-scene.add(new THREE.HemisphereLight(0x6a80c0, 0x10121a, 1.05));
+/** Sky/ground ambient; each arena sets its own colours (see world/arena.ts). */
+export const hemi = new THREE.HemisphereLight(0x6a80c0, 0x10121a, 1.05);
+scene.add(hemi);
 
 /** Moonlight: the only shadow caster. The shadow frustum covers the fighting area only. */
 export const moon = new THREE.DirectionalLight(0x9db4ff, 1.15);

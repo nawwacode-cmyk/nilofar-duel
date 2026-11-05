@@ -5,6 +5,7 @@ import { getBytes } from '../assets/loader';
 import { FIRE } from '../data/palettes';
 import { C, rnd, pick } from '../core/util';
 import type { ArenaEnv } from './arena';
+import { heightGrid } from './heightgrid';
 
 /** Everything of this arena lives under one group so arenas can be switched by visibility. */
 export const courtRoot = new THREE.Group();
@@ -87,55 +88,13 @@ function patchFloorHole(court: THREE.Mesh, courtMat: THREE.MeshLambertMaterial) 
   courtRoot.add(patch);
 }
 
-/**
- * The scanned floor is not flat (±15 cm). Its height is sampled once on a 25 cm grid over the duel area
- * and read back bilinearly. The centre well opening is covered by the floor patch at y ≈ 0.02.
- *
- * The grid is filled in one pass over the triangles (each triangle only visits the grid points under it):
- * ~1500 ray casts against the 200k-triangle scan used to block the page for half a minute (minutes on phones).
- * Same result as a ray cast down from y = 1.2: the highest surface at or below that height.
- */
+/** Floor heights over the duel area (the centre well opening is covered by the floor patch at y ≈ 0.02). */
 const GRID = { x0: -5.5, z0: -5, step: 0.25, nx: 45, nz: 33 };
-const TOP = 1.2;
-let heights: Float32Array | null = null;
-
-function buildHeightGrid(court: THREE.Mesh) {
-  const p = court.geometry.attributes.position.array as Float32Array;
-  const idx = court.geometry.index?.array;
-  const tris = idx ? idx.length / 3 : p.length / 9;
-  const best = new Float32Array(GRID.nx * GRID.nz).fill(-Infinity);
-  const { x0, z0, step, nx, nz } = GRID;
-  for (let t = 0; t < tris; t++) {
-    const a = (idx ? idx[t * 3] : t * 3) * 3, b = (idx ? idx[t * 3 + 1] : t * 3 + 1) * 3, c = (idx ? idx[t * 3 + 2] : t * 3 + 2) * 3;
-    const ax = p[a], az = p[a + 2], bx = p[b], bz = p[b + 2], cx = p[c], cz = p[c + 2];
-    const i0 = Math.max(0, Math.ceil((Math.min(ax, bx, cx) - x0) / step)), i1 = Math.min(nx - 1, Math.floor((Math.max(ax, bx, cx) - x0) / step));
-    if (i0 > i1) continue;
-    const j0 = Math.max(0, Math.ceil((Math.min(az, bz, cz) - z0) / step)), j1 = Math.min(nz - 1, Math.floor((Math.max(az, bz, cz) - z0) / step));
-    if (j0 > j1) continue;
-    const det = (bz - cz) * (ax - cx) + (cx - bx) * (az - cz);
-    if (Math.abs(det) < 1e-12) continue; // vertical triangle: a vertical ray never hits it
-    for (let j = j0; j <= j1; j++) for (let i = i0; i <= i1; i++) {
-      const x = x0 + i * step, z = z0 + j * step;
-      const l1 = ((bz - cz) * (x - cx) + (cx - bx) * (z - cz)) / det, l2 = ((cz - az) * (x - cx) + (ax - cx) * (z - cz)) / det, l3 = 1 - l1 - l2;
-      if (l1 < 0 || l2 < 0 || l3 < 0) continue;
-      const y = l1 * p[a + 1] + l2 * p[b + 1] + l3 * p[c + 1];
-      const k = j * nx + i;
-      if (y <= TOP && y > best[k]) best[k] = y;
-    }
-  }
-  heights = new Float32Array(nx * nz);
-  // Missing hits (the well) and outliers are clamped to a sane range around the floor.
-  for (let k = 0; k < best.length; k++) heights[k] = Number.isFinite(best[k]) ? Math.max(-0.12, Math.min(0.18, best[k])) : 0.02;
-}
+let sample: ((x: number, z: number) => number) | null = null;
+function buildHeightGrid(court: THREE.Mesh) { sample = heightGrid(court, GRID, 1.2, -0.12, 0.18, 0.02); }
 
 /** Floor height of the stone courtyard at (x, z). */
-export function courtFloorAt(x: number, z: number) {
-  if (!heights) return 0;
-  const fx = Math.max(0, Math.min(GRID.nx - 1.001, (x - GRID.x0) / GRID.step)), fz = Math.max(0, Math.min(GRID.nz - 1.001, (z - GRID.z0) / GRID.step));
-  const i = fx | 0, j = fz | 0, u = fx - i, v = fz - j, n = GRID.nx;
-  const a = heights[j * n + i], b = heights[j * n + i + 1], c = heights[(j + 1) * n + i], d = heights[(j + 1) * n + i + 1];
-  return (a * (1 - u) + b * u) * (1 - v) + (c * (1 - u) + d * u) * v;
-}
+export function courtFloorAt(x: number, z: number) { return sample ? sample(x, z) : 0; }
 
 const torches: { g: THREE.Group; L: THREE.PointLight; s: number }[] = [];
 

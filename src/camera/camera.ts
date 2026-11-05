@@ -8,6 +8,7 @@ import { settings } from '../settings/settings';
 import { S, ch, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
 import { viewSize, updateRotation } from '../core/view';
+import { cameraLimit } from '../world/arena';
 
 /**
  * Fixed side-on camera: always looks from +z, only pans and zooms to frame both wizards.
@@ -15,9 +16,9 @@ import { viewSize, updateRotation } from '../core/view';
  */
 const camPos = V(0, 1.4, 3), camLook = V(0, 1.1, 0);
 const tp = V(), tl = V();
-const LIM = 5.5;
 
 export function updCamera(dt: number) {
+  const LIM = cameraLimit();
   const { w: vw, h: vh } = viewSize();
   const portrait = vw / vh < 1;
   if (S.state === 'menu' || S.state === 'online' || S.state === 'load' || S.state === 'title') {

@@ -15,6 +15,7 @@ import { CLIP_NAMES, type CastKind, type Fighter, type ProjKind, type Projectile
 import { G } from '../data/rules';
 import { ROSTER } from '../data/roster';
 import { remoteFatalHit } from '../combat/finisher';
+import { getArena, setArena, type ArenaId } from '../world/arena';
 
 /**
  * Online duels over Supabase Realtime (broadcast + presence, no tables).
@@ -57,14 +58,16 @@ export async function onlineStart(host: boolean, code: string) {
   net.code = code; net.me = host ? 0 : 1; net.seen.clear(); net.casts = []; net.peer = null;
   const chn = client.channel('duel-' + code.toLowerCase(), { config: { presence: { key: net.myId }, broadcast: { self: false, ack: false } } });
   chn.on('presence', { event: 'sync' }, () => {
-    const st = chn.presenceState<{ role?: string; ch?: number }>();
+    const st = chn.presenceState<{ role?: string; ch?: number; ar?: ArenaId }>();
     const others = Object.entries(st).filter(([k]) => k !== net.myId).map(([k, v]) => ({ key: k, ...(v[0] || {}) }));
     const peer = others.find(p => p.role === (host ? 'g' : 'h'));
     if (peer && !net.peer && (S.state === 'menu' || S.state === 'online')) {
       net.peer = peer.key; net.oppRi = +(peer.ch ?? 0) || 0; $('online').hidden = true; S.mode = 'online';
       const a = net.me === 0 ? S.sel : net.oppRi, b = net.me === 0 ? net.oppRi : S.sel;
       $('onTxt').textContent = TXT.loadingFighters(0);
-      void ensureModels([a, b]).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
+      // Both play in the host's arena (arenas differ in size, so positions only agree in the same one).
+      const arena = host ? getArena() : peer.ar ?? getArena();
+      void Promise.all([ensureModels([a, b]), setArena(arena)]).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
     }
     if (net.peer && !others.some(p => p.key === net.peer)) {
       net.peer = null;
@@ -74,7 +77,7 @@ export async function onlineStart(host: boolean, code: string) {
   chn.on('broadcast', { event: 'st' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) netRecv(payload as Packet); });
   chn.on('broadcast', { event: 'rm' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) onRematch(payload as RmMsg); });
   chn.subscribe(async status => {
-    if (status === 'SUBSCRIBED') await chn.track({ role: host ? 'h' : 'g', ch: S.sel });
+    if (status === 'SUBSCRIBED') await chn.track({ role: host ? 'h' : 'g', ch: S.sel, ar: getArena() });
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') showError(TXT.online.connectFail);
   });
   channel = chn;
