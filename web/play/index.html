@@ -31,6 +31,7 @@
 <div id="combo" hidden><b id="cHits">0</b><span id="cWord">ضربات</span><em id="cDmg">0</em></div>
 <!-- Hunters mode: objective, corner map, stage loading and stage end -->
 <div id="hunt" hidden><div id="hObj"></div><canvas id="mini" width="264" height="264" aria-hidden="true"></canvas></div>
+<div id="bossBar" hidden><b id="bossName"></b><div class="track"><i id="bossFill"></i></div></div>
 <div id="mCard" hidden><b id="mcName"></b><span id="mcTxt"></span></div>
 <div id="hHint" hidden></div>
 <!-- story scene: cinema bars, typed Arabic subtitle of the narrator's line, skip -->
@@ -145,6 +146,11 @@
     <p class="pkdesc">اخرج مع صديقك في رحلة صيدٍ عبر أراضٍ ملعونة، تواجهان فيها وحوشها وتصلان إلى زعيمها المرعب.</p>
     <div class="pkbar" id="pkBar" hidden><div class="pktrack"><i id="pkFill"></i></div><span id="pkPct"></span></div>
     <p class="lbl" id="pkMsg"></p>
+    <div class="prow" id="pkModeRow" hidden><span class="lbl">اللعب</span><div class="seg" id="pkMode"><button data-m="solo">وحدي</button><button data-m="duo">مع صديق</button></div></div>
+    <div class="pkduo" id="pkDuo" hidden>
+      <div class="row"><button class="gbtn" id="pkHost"><span class="ic">add</span> إنشاء رمز</button><span class="codebig" id="pkCode" hidden></span><span class="lbl">أو</span><input id="pkJoinCode" maxlength="4" placeholder="الرمز" autocomplete="off" aria-label="رمز صديقك"><button class="gbtn ice" id="pkJoin">انضم</button></div>
+      <p class="lbl" id="pkDuoMsg">أنشئ رمزًا وأرسله لصديقك، أو أدخل الرمز الذي أرسله لك. يختار صاحب الرمز الصعوبة.</p>
+    </div>
     <div class="prow" id="pkDiffRow" hidden><span class="lbl">الصعوبة</span><div class="seg" id="pkDiff"><button data-d="0">صيّاد مبتدئ</button><button data-d="1">صيّاد</button><button data-d="2">صيّاد أسطوري</button></div></div>
     <div class="pkbtns">
       <button class="gbtn big" id="pkPlay" hidden><span class="ic">explore</span> ابدأ الرحلة</button>

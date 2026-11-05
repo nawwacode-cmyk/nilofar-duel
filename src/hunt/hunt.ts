@@ -4,51 +4,73 @@ import { emit, burst, explosion } from '../render/particles';
 import { lightFlash } from '../render/lights';
 import { S } from '../game/state';
 import { runScheduled, after } from '../game/schedule';
-import { ensureModel, makeFighter, dropFighter, anim, tipPos, chest, applyGrip, applyGroundContact, resetChar } from '../fighters/fighter';
+import { ensureModel, makeFighter, dropFighter, anim, tipPos, chest, applyGrip, applyGroundContact, resetChar, altCostume } from '../fighters/fighter';
 import { shieldMesh, flash, dmgText } from '../fx/effects';
 import { readMove } from '../input/input';
 import { hideArenas, showArena } from '../world/arena';
 import { hud, updateButtons } from '../ui/hud';
 import { play, musicOn, musicOff } from '../audio/audio';
 import { G } from '../data/rules';
-import { V, rnd, pick, clamp, angleDelta, $ } from '../core/util';
+import { V, C, rnd, pick, clamp, angleDelta, $ } from '../core/util';
 import { viewSize, toLocal } from '../core/view';
-import type { Fighter } from '../core/types';
-import { packGltf, packNav } from './assets';
+import { CLIP_NAMES, type Fighter, type Palette } from '../core/types';
+import { packGltf, packNav, dropGltf } from './assets';
 import { navHeight, navMove, navNearestFree, navCorridor, navWalkOn, type Nav } from './nav';
-import { monsters, targetable, tuning, DIFFS, spawnMonster, updateMonster, hurtMonster, clearMonsters, loadMonster, type Monster, type Prey } from './monsters';
-import { STAGES, type StageId, type StageDef } from './stages';
+import { monsters, targetable, tuning, DIFFS, STATES, MONSTERS, spawnMonster, updateMonster, updatePuppet, setNet, hurtMonster, fromBehind, clearMonsters, loadMonster, type Monster, type MonId, type Prey, type Hurter } from './monsters';
+import { STAGES, type StageId, type StageDef, type SpawnGroup } from './stages';
 import { drawMinimap, buildMinimap } from './minimap';
 import { toMenu } from '../game/flow';
-import { playScene, monsterCard, hint, initStory } from './story';
+import { playScene, speak, monsterCard, hint, initStory } from './story';
+import { spawnHazard, updateHazards, clearHazards, type HazardKind } from './hazards';
+import { boss, startBoss, endBoss, bossTick } from './boss';
+import { coop, coopSend, coopLeave, coopOpen, onCoopMessage, onPartnerLeft, online, isHost } from './coop';
 import { veil } from '../ui/transitions';
+import type { SceneId } from './script';
+import { cut, addCutaway } from './cutaway';
 
 /**
- * «رحلة الصيّادين»: the wizard walks a large stage seen from behind (third-person camera the player can turn by
- * dragging), fights the monsters on the way and reaches the stage's gate. Movement is relative to the camera,
- * floors and walls come from the stage's navigation grid.
+ * «رحلة الصيّادين»: forest → village → swamp boss, alone or with a friend.
+ * The wizard walks a large stage seen from behind (third-person camera turned by dragging); movement is relative to
+ * the camera, floors and walls come from the stage's navigation grid. In co-op the host runs the monsters, the boss
+ * and the stage flow (see coop.ts); each device runs its own wizard and health.
  */
 export const H = {
   stage: 'forest' as StageId, def: STAGES.forest as StageDef,
   nav: null as Nav | null, map: null as THREE.Object3D | null,
   /** Camera heading (radians, 0 = looking along +z) and when the player last turned it by hand. */
   yaw: 0, dragAt: -9,
-  phase: 'play' as 'play' | 'dead' | 'won',
+  phase: 'play' as 'play' | 'dead' | 'won' | 'lost',
   kills: 0, ri: 0,
+  /** The friend's wizard in co-op (-1 alone). */
+  partnerRi: -1,
   gate: null as THREE.Group | null,
   /** A story scene is running: monsters and controls wait, the camera circles the wizard. */
   cine: false, cineAt: 0, cineLen: 20,
   /** Kinds of monster already introduced with a name card. */
   seen: new Set<string>(),
+  /** Village waves: current index and when it started; monsters left (shown in the objective). */
+  wave: -1, waveAt: 0, remaining: 0,
+  /** Co-op: the guest has loaded this stage (host), and which stage the partner reported. */
+  ready: false, peerStage: '' as string,
+  /** Seconds standing next to a fallen friend (they revive at REVIVE_S). */
+  reviveT: 0, downAt: 0, bossDownAt: 0,
 };
 
 const BOLT = { dmg: 12, sp: 24, life: 1.4, cost: 4, cd: 0.32 };
 const NOVA = { dmg: 40, radius: 6.5 };
-const DODGE_SPEED = 9;
+const DODGE_SPEED = 9, REVIVE_S = 2.5, REVIVE_R = 2.2, BACKSTAB = 1.6;
+/** Co-op: monsters are tougher with two hunters, the boss most of all. */
+const COOP_HP = 1.3, COOP_BOSS_HP = 1.7;
+const DARK: Palette = [C(0.35, 0.05, 0.05), C(0.2, 0.02, 0.02)];
+const GATE_OBJ = 'ادخل البوابة قرب الطاحونة';
+const GOLDEN: Palette = [C(2.6, 2, 0.7), C(3, 2.6, 1.2)];
+
+const me = () => S.CH[0];
+const mate = () => S.CH[1];
 
 /* ---------- loading and leaving ---------- */
 const FAR0 = camera.far;
-let fogSaved: THREE.Scene["fog"] = null, bgSaved: THREE.Color | THREE.Texture | null = null;
+let saved: { fog: THREE.Scene['fog']; bg: THREE.Scene['background'] } | null = null;
 
 function skyTexture([top, horizon]: [string, string]) {
   const c = document.createElement('canvas'); c.width = 4; c.height = 256;
@@ -60,7 +82,7 @@ function skyTexture([top, horizon]: [string, string]) {
 
 function applyEnv(d: StageDef) {
   const e = d.env;
-  fogSaved = scene.fog; bgSaved = scene.background as THREE.Color | THREE.Texture | null;
+  saved ??= { fog: scene.fog, bg: scene.background };
   scene.fog = new THREE.Fog(new THREE.Color(e.sky[1]).multiplyScalar(0.8), e.fog[0], e.fog[1]);
   scene.background = skyTexture(e.sky);
   moon.color.setHex(e.sunColor); moon.intensity = e.sunI;
@@ -71,12 +93,18 @@ function applyEnv(d: StageDef) {
   camera.far = 400; camera.updateProjectionMatrix();
 }
 
-/** Loads a stage (map, navigation grid, its monster types) and the wizard; `onStep` reports progress text. */
+/** Every monster kind a stage can need (groups, waves, the boss and what it summons). */
+function stageMonsters(d: StageDef): MonId[] {
+  const all = [...d.groups, ...(d.waves ?? []).flat()].flatMap(g => g.m);
+  if (d.boss) all.push(d.boss.id, 'skeleton');
+  return [...new Set(all)];
+}
+
+/** Loads a stage (map, navigation grid, its monster kinds) and the wizards; `onStep` reports progress text. */
 export async function loadHunt(ri: number, stage: StageId, onStep: (t: string) => void = () => {}) {
   const d = STAGES[stage];
   onStep('جارٍ تجهيز ' + d.name + '…');
-  const types = [...new Set(d.groups.flatMap(g => g.m))];
-  const [g, nav] = await Promise.all([packGltf(d.map), packNav(d.map), ensureModel(ri), ...types.map(t => loadMonster(t))]);
+  const [g, nav] = await Promise.all([packGltf(d.map), packNav(d.map), ensureModel(ri), H.partnerRi >= 0 ? ensureModel(H.partnerRi) : null, ...stageMonsters(d).map(t => loadMonster(t))]);
   if (d.corridor) navCorridor(nav, d.paths, d.corridor);
   const map = g.scene;
   if (d.walkOn) {
@@ -89,64 +117,125 @@ export async function loadHunt(ri: number, stage: StageId, onStep: (t: string) =
     });
     navWalkOn(nav, meshes, d.walkPad ?? 1.5);
   }
-  H.stage = stage; H.def = d; H.nav = nav; H.ri = ri;
-  map.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.receiveShadow = true; m.castShadow = false; } });
-  H.map = map;
+  const cutSet = new Set(d.cutaway ?? []);
+  map.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh) return;
+    m.receiveShadow = true; m.castShadow = false;
+    for (const mt of Array.isArray(m.material) ? m.material : [m.material]) if (cutSet.has(mt.name)) addCutaway(mt);
+  });
+  H.stage = stage; H.def = d; H.nav = nav; H.ri = ri; H.map = map;
 }
 
-/** Starts the loaded stage: hides the duel arenas, places the wizard and the monsters, shows the hunt HUD. */
-export async function startHunt() {
+/** Starts the loaded stage: places the wizards and (host) the monsters, shows the HUD, plays the stage's intro. */
+export async function startHunt(retry = false) {
   const d = H.def, nav = H.nav!;
   S.mode = 'hunt'; hideArenas(); applyEnv(d);
   scene.add(H.map!);
   buildMinimap(H.map!, nav, d.paths);
-  const p = makeFighter(H.ri, 0); S.CH = [p, null];
-  resetChar(p); p.mana = 100;
-  [p.x, p.z] = navNearestFree(nav, d.start[0], d.start[1]);
-  p.ry = d.startYaw; H.yaw = d.startYaw; H.phase = 'play'; H.kills = 0;
-  H.gate = makeGate(d.gate[0], d.gate[1]);
-  clearMonsters();
-  for (const gr of d.groups) {
-    if (gr.chance !== undefined && Math.random() > gr.chance) continue;
-    gr.m.forEach((id, k) => void spawnMonster(id, gr.at[0] + Math.cos(k * 2.1) * 1.8 * Math.min(1, k), gr.at[1] + Math.sin(k * 2.1) * 1.8 * Math.min(1, k), nav, gr.rise));
+  dropFighter(S.CH[0]); dropFighter(S.CH[1]);
+  const p = makeFighter(H.ri, 0); resetChar(p); p.mana = 100;
+  [p.x, p.z] = navNearestFree(nav, d.start[0] + (coop.role === 'guest' ? 1.6 : 0), d.start[1]);
+  p.ry = d.startYaw;
+  let q: Fighter | null = null;
+  if (H.partnerRi >= 0 && coop.peer) {
+    q = makeFighter(H.partnerRi, 1); resetChar(q);
+    if (H.partnerRi === H.ri) altCostume(q);
+    [q.x, q.z] = navNearestFree(nav, d.start[0] + (coop.role === 'guest' ? 0 : 1.6), d.start[1]); q.ry = d.startYaw;
+    net = { x: q.x, z: q.z, ry: q.ry, clip: 0, dead: false, dodge: false };
   }
-  document.documentElement.classList.add('hunting');
-  $('hud').hidden = false; $('ctl').hidden = false; $('pauseBtn').hidden = false; $('hunt').hidden = false; $('hEnd').hidden = true;
+  S.CH = [p, q];
+  H.yaw = d.startYaw; H.phase = 'play'; H.kills = 0; H.wave = -1; H.waveAt = 0; H.reviveT = 0; H.bossDownAt = 0;
+  H.ready = !online() || coop.role === 'guest'; H.seen.clear();
+  clearMonsters(); clearBolts(); clearHazards(); endBoss();
+  if (H.gate) { scene.remove(H.gate); H.gate = null; }
+  if (isHost()) {
+    if (!d.waves && !d.boss) H.gate = makeGate(d.gate[0], d.gate[1]);
+    spawnGroups(d.groups);
+    if (d.waves) startWave(0);
+    if (d.boss) void hostSpawn(d.boss.id, d.boss.at[0], d.boss.at[1], false, online() ? COOP_BOSS_HP : 1).then(m => { m.ry = Math.atan2(d.start[0] - m.x, d.start[1] - m.z); startBoss(m); });
+  }
+  const R = document.documentElement;
+  R.classList.add('hunting'); R.classList.toggle('duo', !!q);
+  for (const k of ['hud', 'ctl', 'pauseBtn', 'hunt']) $(k).hidden = false;
+  $('hEnd').hidden = true; $('bossBar').hidden = !d.boss;
   $('n0').textContent = p.R.name; $('e0').textContent = p.R.elem;
   $<HTMLImageElement>('av0').src = `models/portraits/${p.R.id}_face.webp`;
-  document.documentElement.style.setProperty('--p0', p.hex);
+  R.style.setProperty('--p0', p.hex);
+  if (q) {
+    $('n1').textContent = q.R.name + (q.ri === p.ri ? ' (صديقك)' : ''); $('e1').textContent = q.R.elem;
+    $<HTMLImageElement>('av1').src = `models/portraits/${q.R.id}_face.webp`;
+    R.style.setProperty('--p1', q.hex);
+  }
   $('hObj').textContent = d.objective;
+  if (d.boss) $('bossName').textContent = MONSTERS[d.boss.id].name;
   S.state = 'fight'; S.stateT = 0; S.paused = false;
   musicOn();
-  H.seen.clear();
   $('hLoad').hidden = true;
-  if (H.stage === 'forest' && !retrying) await cutscene('intro', 22);
-  retrying = false;
-  hint('اسحب على الشاشة لتدوير الكاميرا، واتبع الطريق الذهبي في الخريطة.');
+  if (coop.role === 'guest') coopSend('ready', { s: H.stage });
+  if (d.intro && !retry) await cutscene(d.intro, d.intro === 'intro' ? 22 : 12);
+  if (H.stage === 'forest') hint('اسحب على الشاشة لتدوير الكاميرا، واتبع الطريق الذهبي في الخريطة.');
+  else if (d.boss) hint('ضرباتك من خلفه أقوى بكثير. والمراوغة تُنجيك من موجاته.');
 }
-let retrying = false;
 
 /** Hides the play HUD, runs a story scene with the camera circling the wizard, then gives control back. */
-async function cutscene(id: Parameters<typeof playScene>[0], len: number) {
+async function cutscene(id: SceneId, len: number) {
   H.cine = true; H.cineAt = S.T; H.cineLen = len; atkHeld = false;
-  for (const k of ['hud', 'ctl', 'pauseBtn', 'hunt']) $(k).hidden = true;
+  for (const k of ['hud', 'ctl', 'pauseBtn', 'hunt', 'bossBar']) $(k).hidden = true;
   await playScene(id);
   H.cine = false;
-  if (H.phase === 'play') for (const k of ['hud', 'ctl', 'pauseBtn', 'hunt']) $(k).hidden = false;
+  if (H.phase === 'play') { for (const k of ['hud', 'ctl', 'pauseBtn', 'hunt']) $(k).hidden = false; $('bossBar').hidden = !H.def.boss; }
+}
+
+/** Removes the current stage's objects (map stays loaded unless `freeMap`). */
+async function clearStage(freeMap: boolean) {
+  clearMonsters(); clearBolts(); clearHazards(); endBoss();
+  if (H.gate) { scene.remove(H.gate); H.gate = null; }
+  if (H.map) scene.remove(H.map);
+  if (freeMap) { await dropGltf(H.def.map); H.map = null; }
 }
 
 /** Back to the menus: removes everything the hunt added and restores the duel arena and camera. */
 export function endHunt() {
-  clearMonsters(); clearBolts();
-  if (H.map) scene.remove(H.map);
-  if (H.gate) { scene.remove(H.gate); H.gate = null; }
-  dropFighter(S.CH[0]); S.CH = [null, null];
-  if (fogSaved !== null) scene.fog = fogSaved;
-  if (bgSaved !== null) scene.background = bgSaved;
+  coopLeave();
+  void clearStage(false);
+  dropFighter(S.CH[0]); dropFighter(S.CH[1]); S.CH = [null, null];
+  if (saved) { scene.fog = saved.fog; scene.background = saved.bg; saved = null; }
   camera.far = FAR0; camera.updateProjectionMatrix();
-  document.documentElement.classList.remove('hunting');
-  $('hunt').hidden = true; $('hEnd').hidden = true;
+  document.documentElement.classList.remove('hunting', 'duo');
+  for (const k of ['hunt', 'hEnd', 'bossBar', 'story', 'mCard', 'hHint']) $(k).hidden = true;
+  H.partnerRi = -1;
   showArena(); musicOff();
+}
+
+/* ---------- spawning (host) ---------- */
+const packSpawn = (m: Monster) => [m.uid, m.id, +m.x.toFixed(2), +m.z.toFixed(2), STATES.indexOf(m.state), Math.round(m.hp)];
+
+async function hostSpawn(id: MonId, x: number, z: number, rise = false, hpMul = online() ? COOP_HP : 1) {
+  const m = await spawnMonster(id, x, z, H.nav!, rise, undefined, false, hpMul);
+  coopSend('spawn', { s: H.stage, l: [packSpawn(m)] });
+  return m;
+}
+
+function spawnGroups(groups: SpawnGroup[]) {
+  for (const gr of groups) {
+    if (gr.chance !== undefined && Math.random() > gr.chance) continue;
+    gr.m.forEach((id, k) => void hostSpawn(id, gr.at[0] + Math.cos(k * 2.1) * 1.8 * Math.min(1, k), gr.at[1] + Math.sin(k * 2.1) * 1.8 * Math.min(1, k), gr.rise));
+  }
+}
+
+function startWave(k: number) {
+  H.wave = k; H.waveAt = S.T;
+  spawnGroups(H.def.waves![k]);
+  const say = H.def.waveSay?.[k];
+  if (say) sayAll(say);
+}
+
+function sayAll(id: SceneId) { void speak(id); coopSend('say', { id }); }
+
+/** Monsters still to beat in a wave stage: the living ones plus every later wave. */
+function remaining() {
+  const alive = monsters.filter(m => m.state !== 'dead' && !m.gone).length;
+  return alive + (H.def.waves ?? []).slice(H.wave + 1).reduce((s, w) => s + w.reduce((t, g) => t + g.m.length, 0), 0);
 }
 
 /* ---------- the gate at the end of a stage ---------- */
@@ -162,8 +251,14 @@ function makeGate(x: number, z: number) {
   return g;
 }
 
-/* ---------- the player's spells ---------- */
-interface Bolt { mesh: THREE.Mesh; pos: THREE.Vector3; vel: THREE.Vector3; life: number; target: Monster | null }
+function openGate() {
+  const [x, z] = H.def.gate;
+  H.gate = makeGate(x, z); coopSend('gate', { x, z });
+  hint('انفتحت البوابة قرب الطاحونة.'); play('m_epic', { vol: 0.6 });
+}
+
+/* ---------- spells ---------- */
+interface Bolt { mesh: THREE.Mesh; pos: THREE.Vector3; vel: THREE.Vector3; life: number; target: Monster | null; pal: Palette; trail: string; mine: boolean }
 const bolts: Bolt[] = [];
 function clearBolts() { bolts.forEach(b => scene.remove(b.mesh)); bolts.length = 0; }
 
@@ -182,6 +277,18 @@ function aimTarget(p: Fighter): Monster | null {
   return best;
 }
 
+const aimPoint = (t: Monster) => V(t.x, navHeight(H.nav!, t.x, t.z) + t.def.h * 0.55 + (t.def.float ?? 0), t.z);
+
+function launch(from: Fighter, to: THREE.Vector3, target: Monster | null, mine: boolean) {
+  const s = tipPos(from);
+  const vel = to.clone().sub(s).normalize().multiplyScalar(BOLT.sp);
+  const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshBasicMaterial({ color: from.pal[2].clone().multiplyScalar(1.3), toneMapped: false }));
+  mesh.position.copy(s); scene.add(mesh);
+  bolts.push({ mesh, pos: s.clone(), vel, life: BOLT.life, target, pal: from.pal, trail: from.R.bolt.kind === 'fire' ? 'flame' : 'spark', mine });
+  flash(from, 8);
+  for (let i = 0; i < 8; i++) emit(s.x, s.y, s.z, rnd(1), rnd(1), rnd(1), pick(from.pal), 0.16, 0.25, { t: 'spark' });
+}
+
 function castBolt(p: Fighter) {
   if (p.dead || p.cdA > 0 || p.dodgeT > 0 || p.shieldOn || p.mana < BOLT.cost || p.castT > 0.1) return;
   p.cdA = BOLT.cd; p.mana -= BOLT.cost; p.castT = 0.3;
@@ -191,28 +298,31 @@ function castBolt(p: Fighter) {
   play(p.R.cs, { vol: 0.4, dur: 1.1 });
   after(0.15, () => {
     if (p.dead || S.mode !== 'hunt') return;
-    const s = tipPos(p);
-    const aim = t && targetable(t) ? V(t.x, navHeight(H.nav!, t.x, t.z) + t.def.h * 0.55 + (t.def.float ?? 0), t.z) : V(p.x + Math.sin(p.ry) * 20, s.y, p.z + Math.cos(p.ry) * 20);
-    const vel = aim.sub(s).normalize().multiplyScalar(BOLT.sp);
-    const mesh = new THREE.Mesh(new THREE.SphereGeometry(0.08, 10, 8), new THREE.MeshBasicMaterial({ color: p.pal[2].clone().multiplyScalar(1.3), toneMapped: false }));
-    mesh.position.copy(s); scene.add(mesh);
-    bolts.push({ mesh, pos: s.clone(), vel, life: BOLT.life, target: t });
-    flash(p, 8);
-    for (let i = 0; i < 8; i++) emit(s.x, s.y, s.z, rnd(1), rnd(1), rnd(1), pick(p.pal), 0.16, 0.25, { t: 'spark' });
+    const to = t && targetable(t) ? aimPoint(t) : V(p.x + Math.sin(p.ry) * 20, tipPos(p).y, p.z + Math.cos(p.ry) * 20);
+    launch(p, to, t, true);
+    coopSend('cast', { k: 'b', x: +to.x.toFixed(2), y: +to.y.toFixed(2), z: +to.z.toFixed(2) });
   });
 }
 
-function updBolts(dt: number, p: Fighter) {
+/** A spell of ours hit a monster: the host applies it (back hits on the boss count more), the guest reports it. */
+function hitMonster(m: Monster, dmg: number, fx: number, fz: number) {
+  if (!isHost()) {
+    coopSend('hit', { u: m.uid, d: dmg, x: +fx.toFixed(2), z: +fz.toFixed(2) });
+    m.flash = 1; burst(V(m.x, m.root.position.y + m.def.h * 0.6, m.z), m.def.blood, 10, 2, 0.4, 0.08);
+    return;
+  }
+  if (boss.m === m && fromBehind(m, fx, fz)) { dmg = Math.round(dmg * BACKSTAB); floatText(m, 'من الخلف!', '#ffd76a'); }
+  if (hurtMonster(m, dmg, fx, fz)) H.kills++;
+}
+
+function updBolts(dt: number) {
   for (let i = bolts.length - 1; i >= 0; i--) {
     const b = bolts[i];
     b.life -= dt;
     // Gentle homing on the chosen target so aiming on a phone stays forgiving.
-    if (b.target && targetable(b.target)) {
-      const t = b.target, want = V(t.x, navHeight(H.nav!, t.x, t.z) + t.def.h * 0.55 + (t.def.float ?? 0), t.z).sub(b.pos).normalize();
-      b.vel.lerp(want.multiplyScalar(BOLT.sp), Math.min(1, dt * 5));
-    }
+    if (b.target && targetable(b.target)) b.vel.lerp(aimPoint(b.target).sub(b.pos).normalize().multiplyScalar(BOLT.sp), Math.min(1, dt * 5));
     b.pos.addScaledVector(b.vel, dt); b.mesh.position.copy(b.pos);
-    for (let k = 0; k < 3; k++) emit(b.pos.x + rnd(0.05), b.pos.y + rnd(0.05), b.pos.z + rnd(0.05), -b.vel.x * 0.03 + rnd(0.2), rnd(0.2), -b.vel.z * 0.03 + rnd(0.2), pick(p.pal), 0.12 + Math.random() * 0.1, 0.25, { t: p.R.bolt.kind === 'fire' ? 'flame' : 'spark', drag: 2 });
+    for (let k = 0; k < 3; k++) emit(b.pos.x + rnd(0.05), b.pos.y + rnd(0.05), b.pos.z + rnd(0.05), -b.vel.x * 0.03 + rnd(0.2), rnd(0.2), -b.vel.z * 0.03 + rnd(0.2), pick(b.pal), 0.12 + Math.random() * 0.1, 0.25, { t: b.trail as never, drag: 2 });
     let hit: Monster | null = null;
     for (const m of monsters) {
       if (!targetable(m)) continue;
@@ -221,11 +331,19 @@ function updBolts(dt: number, p: Fighter) {
     }
     const ground = b.pos.y < navHeight(H.nav!, b.pos.x, b.pos.z);
     if (hit || ground || b.life <= 0) {
-      if (hit && hurtMonster(hit, BOLT.dmg, p.x, p.z)) onKill(hit);
-      if (hit || ground) { burst(b.pos, p.pal, 22, 2.5, 0.4, 0.09); play('m_blast', { vol: 0.25, rate: 1.4 }); }
+      // Only our own spells deal damage here; the friend's are drawn for show (their device reports the hits).
+      if (hit && b.mine) { const p = me(); hitMonster(hit, BOLT.dmg, p?.x ?? b.pos.x, p?.z ?? b.pos.z); }
+      if (hit || ground) { burst(b.pos, b.pal, 22, 2.5, 0.4, 0.09); play('m_blast', { vol: 0.25, rate: 1.4 }); }
       scene.remove(b.mesh); b.mesh.geometry.dispose(); bolts.splice(i, 1);
     }
   }
+}
+
+function novaFx(p: Fighter) {
+  const c = V(p.x, navHeight(H.nav!, p.x, p.z) + 0.6, p.z);
+  explosion(c, p.pal, 2.2); lightFlash(c.x, c.y + 1, c.z, p.pal, 20, 0.4);
+  emit(p.x, c.y - 0.5, p.z, 0, 0, 0, p.pal[1], 1, 0.7, { t: 'rune', spin: 1.5, grow: 9 });
+  play('m_fire_expl', { vol: 0.9 }); S.shake = Math.max(S.shake, 0.18);
 }
 
 /** The special: a burst of the wizard's element around them that hits every monster close by. */
@@ -235,14 +353,11 @@ function castNova(p: Fighter) {
   anim(p, 'special', { once: true, speed: 1.3, force: true }); play(p.R.ss, { vol: 0.8 });
   after(0.45, () => {
     if (p.dead || S.mode !== 'hunt') return;
-    const c = V(p.x, navHeight(H.nav!, p.x, p.z) + 0.6, p.z);
-    explosion(c, p.pal, 2.2); lightFlash(c.x, c.y + 1, c.z, p.pal, 20, 0.4);
-    emit(p.x, c.y - 0.5, p.z, 0, 0, 0, p.pal[1], 1, 0.7, { t: 'rune', spin: 1.5, grow: 9 });
-    play('m_fire_expl', { vol: 0.9 }); S.shake = Math.max(S.shake, 0.18);
+    novaFx(p); coopSend('cast', { k: 'n' });
     for (const m of monsters) {
       if (!targetable(m)) continue;
       const d = Math.hypot(m.x - p.x, m.z - p.z);
-      if (d < NOVA.radius + m.def.r && hurtMonster(m, Math.round(NOVA.dmg * (d < 3 ? 1 : 0.7)), p.x, p.z)) onKill(m);
+      if (d < NOVA.radius + m.def.r) hitMonster(m, Math.round(NOVA.dmg * (d < 3 ? 1 : 0.7)), p.x, p.z);
     }
   });
 }
@@ -268,7 +383,7 @@ function setShield(p: Fighter, on: boolean) {
 
 /** Button presses while hunting (the duel's input layer forwards them here). */
 export function huntPress(a: string, on: boolean) {
-  const p = S.CH[0]; if (!p || H.phase !== 'play' || H.cine) return;
+  const p = me(); if (!p || p.dead || H.phase !== 'play' || H.cine) return;
   if (a === 'atk') atkHeld = on;
   if (a === 'sh') p.wantShield = on;
   if (!on) return;
@@ -278,16 +393,22 @@ export function huntPress(a: string, on: boolean) {
 }
 let atkHeld = false, lastHurt = -99;
 
-/* ---------- monsters hurting the player ---------- */
-function onKill(m: Monster) {
-  H.kills++;
-  void m;
+/** Short floating text above a monster (back hits). */
+function floatText(m: Monster, txt: string, col: string) {
+  const v = V(m.x, m.root.position.y + m.def.h + 0.3, m.z).project(camera);
+  if (v.z > 1) return;
+  const el = document.createElement('div'); el.className = 'dmg'; el.style.color = col; el.textContent = txt;
+  const { w, h } = viewSize();
+  el.style.left = ((v.x + 1) / 2) * w + 'px'; el.style.top = ((1 - v.y) / 2) * h + 'px';
+  document.body.appendChild(el); setTimeout(() => el.remove(), 1100);
 }
 
-const prey: Prey = {
+/* ---------- monsters hurting the players ---------- */
+/** Our own wizard, as monsters and hazards see it. */
+const myPrey: Prey = {
   x: 0, z: 0, dead: false, dodging: false,
-  hurt(dmg: number, from: Monster) {
-    const p = S.CH[0]; if (!p || p.dead) return;
+  hurt(dmg: number, from: Hurter) {
+    const p = me(); if (!p || p.dead || H.phase !== 'play') return;
     const d = Math.max(1, Math.round(dmg * tuning.dmg * (p.shieldOn ? 0.25 : 1)));
     p.hp -= d; p.hitFlash = 1; lastHurt = S.T;
     dmgText(p, '−' + d, '#ff6a5c');
@@ -298,34 +419,137 @@ const prey: Prey = {
     burst(chest(p), from.def.blood, 12, 2, 0.4, 0.08);
     play('c_hit' + (1 + ((Math.random() * 3) | 0)), { vol: 0.5 });
     S.shake = Math.max(S.shake, 0.08 + d * 0.004);
-    if (p.hp <= 0) die(p);
+    if (p.hp <= 0) fall(p);
   },
 };
+/** The friend's wizard on the host: hits are sent to their device, which applies them. */
+const matePrey: Prey = {
+  x: 0, z: 0, dead: false, dodging: false,
+  hurt(dmg: number, from: Hurter) { coopSend('hurt', { d: dmg, x: +from.x.toFixed(2), z: +from.z.toFixed(2) }); },
+};
 
-function die(p: Fighter) {
-  p.hp = 0; p.dead = true; setShield(p, false); H.phase = 'dead';
+/** Down to zero: alone that is the end of the attempt; with a friend we lie down until they revive us. */
+function fall(p: Fighter) {
+  p.hp = 0; p.dead = true; setShield(p, false); atkHeld = false;
   anim(p, 'death', { once: true, force: true });
-  play('c_huge', { vol: 0.5 }); musicOff();
-  after(2.2, () => { if (H.phase === 'dead') showEnd(false); });
+  play('c_huge', { vol: 0.5 });
+  if (!mate()) { H.phase = 'dead'; musicOff(); after(2.2, () => { if (H.phase === 'dead') showEnd('dead'); }); return; }
+  H.downAt = S.T;
+  hint('سقطتَ! يستطيع صديقك إنعاشك إن وقف بجانبك.', 6000);
 }
 
-function showEnd(won: boolean) {
-  $('hEndT').textContent = won ? 'عبرتَ ' + H.def.name : 'سقطتَ في ' + H.def.name;
-  $('hEndP').textContent = won ? (H.kills ? `هزمتَ ${H.kills} من وحوشها. ` : 'عبرتَها دون قتال. ') + 'المرحلة التالية قيد الإنشاء.' : 'الوحوش هنا لا ترحم. خذ نفَسًا، ثم حاول مجددًا.';
-  $('hRetry').hidden = won;
+function revive(p: Fighter) {
+  p.dead = false; p.hp = Math.round(p.R.hp * 0.4); H.reviveT = 0;
+  anim(p, 'idle', { force: true });
+  burst(chest(p), GOLDEN, 40, 3, 0.8, 0.12, 'star'); play('m_sparkle', { vol: 0.7 });
+  hint('عُدتَ إلى القتال!');
+}
+
+type EndKind = 'dead' | 'wipe' | 'left' | 'final';
+function showEnd(kind: EndKind) {
+  const name = H.def.name;
+  const T: Record<EndKind, [string, string]> = {
+    dead: ['سقطتَ في ' + name, 'الوحوش هنا لا ترحم. خذ نفَسًا، ثم حاول مجددًا.'],
+    wipe: ['سقطتما في ' + name, isHost() ? 'لا بأس، ستعودان معًا إلى بداية المرحلة.' : 'بانتظار صديقك ليعيد المحاولة…'],
+    left: ['انقطع الاتصال بصديقك', 'غادر صديقك الرحلة أو انقطع اتصاله.'],
+    final: ['انتهت الرحلة', (H.partnerRi >= 0 ? 'هزمتما الموء معًا' : 'هزمتَ الموء') + '، ونامتِ الغابة أخيرًا.'],
+  };
+  $('hEndT').textContent = T[kind][0]; $('hEndP').textContent = T[kind][1];
+  $('hRetry').hidden = !(kind === 'dead' || (kind === 'wipe' && isHost()));
   $('hEnd').hidden = false;
-  for (const k of ['ctl', 'hud', 'hunt', 'pauseBtn', 'mCard', 'hHint']) $(k).hidden = true;
+  for (const k of ['ctl', 'hud', 'hunt', 'pauseBtn', 'mCard', 'hHint', 'bossBar']) $(k).hidden = true;
+  if (kind === 'final') { musicOff(); play('m_epic', { vol: 0.9 }); }
 }
 
-/** Restarts the current stage from its beginning (after a defeat). */
+/** Starts the current stage over (after a defeat), keeping the map loaded. */
 export function retryHunt() {
-  const keep = H.map;
-  clearMonsters(); clearBolts();
-  if (H.gate) { scene.remove(H.gate); H.gate = null; }
-  dropFighter(S.CH[0]); S.CH = [null, null];
-  scene.remove(keep!);
-  retrying = true;
-  void startHunt();
+  if (online() && isHost()) coopSend('retry');
+  $('hEnd').hidden = true;
+  void clearStage(false).then(() => startHunt(true));
+}
+
+/** The stage is done (gate reached or boss beaten): its closing scene, then the next stage or the journey's end. */
+async function advance() {
+  if (H.phase === 'won') return;
+  H.phase = 'won'; atkHeld = false;
+  const p = me(); if (p) { p.vx = p.vz = 0; if (p.dead) revive(p); anim(p, 'idle'); }
+  if (isHost()) coopSend('stage', { s: H.stage });
+  play('m_epic', { vol: 0.8 });
+  await cutscene(H.def.end, 10);
+  const next = H.def.next;
+  if (!next) { showEnd('final'); return; }
+  const d = STAGES[next];
+  $('hlName').textContent = d.name; $('hlTxt').textContent = 'جارٍ التجهيز…'; $('hLoad').hidden = false;
+  try {
+    await clearStage(true);
+    await loadHunt(H.ri, next, t => { $('hlTxt').textContent = t; });
+    await startHunt();
+  } catch (e) {
+    console.error(e);
+    $('hlTxt').textContent = 'تعذّر فتح المرحلة: ' + (e instanceof Error ? e.message : String(e));
+    setTimeout(() => { $('hLoad').hidden = true; void veil(toMenu); }, 3500);
+  }
+}
+
+/* ---------- co-op messages ---------- */
+/** The friend's wizard as last reported (interpolated every frame). */
+let net = { x: 0, z: 0, ry: 0, clip: 0, dead: false, dodge: false };
+let pending: { u: number; d: number; x: number; z: number }[] = [];
+let sendAt = 0, snapAt = 0;
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function onMessage(ev: string, p: any) {
+  const q = mate();
+  switch (ev) {
+    case 'go':
+      if (coop.role === 'guest' && S.mode !== 'hunt' && $('hLoad').hidden) {
+        const lv = DIFFS[p.diff] ?? DIFFS[1]; tuning.hp = lv.hp; tuning.dmg = lv.dmg;
+        void playHunt('forest', p.ri);
+      }
+      break;
+    case 'pl': if (q) {
+      const a = p.a as number[];
+      net = { x: a[0], z: a[1], ry: a[2], clip: a[3], dead: !!a[6], dodge: !!a[8] };
+      q.hp = a[4]; q.mana = a[5];
+      if (a[7] && !q.shieldOn) { q.shieldOn = true; q.shield = shieldMesh(q); }
+      if (!a[7] && q.shieldOn) { q.shieldOn = false; q.shield?.off(); q.shield = null; }
+      if (net.dead && !q.dead) { q.dead = true; anim(q, 'death', { once: true, force: true }); if (!me()?.dead) hint('سقط صديقك! قف بجانبه لتُنعشه.', 6000); }
+      if (!net.dead && q.dead) { q.dead = false; anim(q, 'idle', { force: true }); }
+    } break;
+    case 'ready': H.peerStage = p.s; break;
+    case 'cast': if (q && H.nav) { if (p.k === 'n') novaFx(q); else launch(q, V(p.x, p.y, p.z), null, false); } break;
+    case 'hit': if (isHost()) pending.push({ u: p.u, d: p.d, x: p.x, z: p.z }); break;
+    case 'hurt': { const m = me(); if (m && m.dodgeT <= 0) myPrey.hurt(p.d, { x: p.x, z: p.z, def: { blood: DARK } }); } break;
+    case 'hz': if (H.nav) spawnHazard(p.k as HazardKind, p.x, p.z, H.nav); break;
+    case 'say': void speak(p.id as SceneId); break;
+    case 'gate': if (!H.gate && H.nav) { H.gate = makeGate(p.x, p.z); hint('انفتحت البوابة قرب الطاحونة.'); $('hObj').textContent = GATE_OBJ; } break;
+    case 'stage': if (p.s === H.stage) void advance(); break;
+    case 'wipe': H.phase = 'lost'; showEnd('wipe'); break;
+    case 'retry': retryHunt(); break;
+    case 'spawn': case 'sync':
+      if (p.s === H.stage && H.nav) for (const [u, id, x, z, st, hp] of p.l as [number, MonId, number, number, number, number][]) {
+        if (monsters.some(m => m.uid === u)) continue;
+        void spawnMonster(id, x, z, H.nav, STATES[st] === 'buried', u, true).then(m => { m.hp = hp; setNet(m, x, z, m.ry, st, hp); });
+      }
+      break;
+    case 'snap':
+      if (H.nav) {
+        for (const [u, x, z, ry, st, hp] of p.m as number[][]) { const m = monsters.find(k => k.uid === u); if (m) setNet(m, x, z, ry, st, hp); }
+        H.kills = p.k;
+        if (p.r !== undefined) $('hObj').textContent = `${H.def.objective} — بقي ${p.r}`;
+      }
+      break;
+  }
+}
+
+function partnerLeft() {
+  const q = mate(); if (!q && S.mode !== 'hunt') return;
+  if (q) { dropFighter(q); S.CH[1] = null; }
+  document.documentElement.classList.remove('duo');
+  if (S.mode !== 'hunt') return;
+  if (coop.role === 'guest') { H.phase = 'lost'; showEnd('left'); return; }
+  hint('غادر صديقك الرحلة. تستطيع المتابعة وحدك.', 6000);
+  H.ready = true;
 }
 
 /* ---------- per frame ---------- */
@@ -336,6 +560,17 @@ function worldMove(ix: number, iz: number): [number, number] {
 }
 
 const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'cdS', 'invT', 'stunT', 'slowT'] as const;
+
+/** Feet on the floor, animation, wand light: shared by our wizard and the friend's. */
+function poseFighter(p: Fighter, dt: number) {
+  const fy = navHeight(H.nav!, p.x, p.z);
+  p.root.position.set(p.x, fy, p.z); p.root.rotation.y = p.ry; p.blob.position.set(p.x, fy + 0.03, p.z);
+  p.mixer.update(dt);
+  applyGroundContact(p); applyGrip(p);
+  tipPos(p, p.light.position);
+  p.light.intensity *= Math.pow(0.12, dt); p.light.intensity = Math.max(p.light.intensity, 1.4);
+  if (!p.dead && Math.random() < 0.4) { const t = p.light.position; emit(t.x, t.y, t.z, rnd(0.05), 0.15, rnd(0.05), pick(p.pal), 0.08, 0.4, { t: 'magic' }); }
+}
 
 function updPlayer(p: Fighter, dt: number) {
   const nav = H.nav!;
@@ -370,13 +605,16 @@ function updPlayer(p: Fighter, dt: number) {
       }
     }
   }
-  const fy = navHeight(nav, p.x, p.z);
-  p.root.position.set(p.x, fy, p.z); p.root.rotation.y = p.ry; p.blob.position.set(p.x, fy + 0.03, p.z);
-  p.mixer.update(dt);
-  applyGroundContact(p); applyGrip(p);
-  tipPos(p, p.light.position);
-  p.light.intensity *= Math.pow(0.12, dt); p.light.intensity = Math.max(p.light.intensity, 1.4);
-  if (!p.dead && Math.random() < 0.4) { const t = p.light.position; emit(t.x, t.y, t.z, rnd(0.05), 0.15, rnd(0.05), pick(p.pal), 0.08, 0.4, { t: 'magic' }); }
+  poseFighter(p, dt);
+}
+
+/** The friend's wizard glides to their last reported state. */
+function updMate(q: Fighter, dt: number) {
+  const k = Math.min(1, dt * 12);
+  q.x += (net.x - q.x) * k; q.z += (net.z - q.z) * k; q.ry += angleDelta(q.ry, net.ry) * k;
+  if (!q.dead) { const c = CLIP_NAMES[net.clip]; if (c && c !== q.curName) anim(q, c, { once: c === 'bolt' || c === 'special' || c === 'evade' || c === 'hit' }); }
+  poseFighter(q, dt);
+  matePrey.x = q.x; matePrey.z = q.z; matePrey.dead = q.dead; matePrey.dodging = net.dodge;
 }
 
 let uiAt = 0;
@@ -384,41 +622,92 @@ export function huntTick(rdt: number) {
   const dt = rdt * S.slowmo;
   S.T += dt; S.stateT += rdt;
   runScheduled();
-  const p = S.CH[0]; if (!p || !H.nav) return dt;
+  const p = me(), q = mate(); if (!p || !H.nav) return dt;
   updPlayer(p, dt);
+  if (q) updMate(q, dt);
+  // Our state for the friend, ~12 times a second.
+  if (q && S.T - sendAt > 0.08) {
+    sendAt = S.T;
+    coopSend('pl', { a: [+p.x.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), p.curName ? CLIP_NAMES.indexOf(p.curName) : 0, Math.round(p.hp), Math.round(p.mana), p.dead ? 1 : 0, p.shieldOn ? 1 : 0, p.dodgeT > 0 ? 1 : 0] });
+  }
   if (H.cine) { p.root.updateMatrixWorld(); return dt; }
-  prey.x = p.x; prey.z = p.z; prey.dead = p.dead; prey.dodging = p.dodgeT > 0;
-  for (const m of monsters.slice()) if (!m.gone) updateMonster(m, dt, H.nav, prey);
+  myPrey.x = p.x; myPrey.z = p.z; myPrey.dead = p.dead || H.phase !== 'play'; myPrey.dodging = p.dodgeT > 0;
+  const nav = H.nav;
+  if (isHost()) {
+    // The guest just loaded this stage: send it everything alive, then the monsters may move.
+    if (!H.ready && H.peerStage === H.stage) {
+      H.ready = true;
+      coopSend('sync', { s: H.stage, l: monsters.filter(m => !m.gone && m.state !== 'dead').map(packSpawn) });
+      if (H.gate) coopSend('gate', { x: H.gate.position.x, z: H.gate.position.z });
+    }
+    for (const h of pending) { const m = monsters.find(k => k.uid === h.u); if (m && targetable(m)) hitMonster(m, h.d, h.x, h.z); }
+    pending = [];
+    const preys = q ? [myPrey, matePrey] : [myPrey];
+    if (H.ready) {
+      for (const m of monsters.slice()) if (!m.gone) updateMonster(m, dt, nav, preys);
+      bossTick(dt, preys, {
+        summon: (id, x, z) => void hostSpawn(id, x, z, true),
+        hazard: (k, x, z) => { spawnHazard(k, x, z, nav); coopSend('hz', { k, x: +x.toFixed(2), z: +z.toFixed(2) }); },
+        say: id => sayAll(id),
+      });
+    }
+    // Waves: the next one once the current is beaten; the gate after the last.
+    if (H.def.waves && H.phase === 'play' && S.T - H.waveAt > 1.5 && !monsters.some(m => m.state !== 'dead' && !m.gone)) {
+      if (H.wave < H.def.waves.length - 1) startWave(H.wave + 1); else if (!H.gate) openGate();
+    }
+    if (H.def.waves) { H.remaining = remaining(); $('hObj').textContent = H.gate ? GATE_OBJ : `${H.def.objective} — بقي ${H.remaining}`; }
+    // The boss falls: a moment of silence, then the end of the journey.
+    if (boss.m && boss.m.state === 'dead' && H.phase === 'play') { if (!H.bossDownAt) H.bossDownAt = S.T; if (S.T - H.bossDownAt > 2.5) void advance(); }
+    // Both hunters down: the attempt is over.
+    if (q && p.dead && q.dead && H.phase === 'play' && S.T - H.downAt > 1.2) { H.phase = 'lost'; coopSend('wipe'); showEnd('wipe'); }
+    if (q && S.T - snapAt > 0.1) {
+      snapAt = S.T;
+      coopSend('snap', { m: monsters.filter(m => !m.gone).map(m => [m.uid, +m.x.toFixed(2), +m.z.toFixed(2), +m.ry.toFixed(2), STATES.indexOf(m.state), Math.round(m.hp)]), k: H.kills, r: H.def.waves && !H.gate ? H.remaining : undefined });
+    }
+  } else for (const m of monsters.slice()) if (!m.gone) updatePuppet(m, dt, nav);
   for (let i = monsters.length - 1; i >= 0; i--) if (monsters[i].gone) monsters.splice(i, 1);
-  updBolts(dt, p);
-  // First time a kind of monster comes for the player: its name card.
+  updBolts(dt);
+  updateHazards(dt, nav, p.dead ? null : myPrey);
+  // Reviving: our fallen wizard stands up after the friend stayed next to us for a moment.
+  if (q && p.dead && H.phase === 'play') {
+    const close = !q.dead && Math.hypot(q.x - p.x, q.z - p.z) < REVIVE_R;
+    H.reviveT = close ? H.reviveT + dt : Math.max(0, H.reviveT - dt);
+    if (close && Math.random() < 0.6) emit(p.x + rnd(0.6), navHeight(nav, p.x, p.z) + 0.2, p.z + rnd(0.6), 0, 1.2, 0, pick(GOLDEN), 0.15, 0.8, { t: 'star' });
+    if (H.reviveT >= REVIVE_S) revive(p);
+  }
+  // First time a kind of monster comes for us: its name card.
   for (const m of monsters) if (m.state === 'chase' && !H.seen.has(m.id)) {
-    if (!H.seen.size) hint('الهجوم يصوّب تلقائيًا نحو أقرب وحش أمامك. المراوغة تُفلتك من قفزاتها.');
+    if (!H.seen.size && H.stage === 'forest') hint('الهجوم يصوّب تلقائيًا نحو أقرب وحش أمامك. المراوغة تُفلتك من قفزاتها.');
     H.seen.add(m.id); monsterCard(m.def.name, m.id);
   }
-  // Gate: shimmer, and the stage is won on stepping into it.
+  // Boss bar (the guest learns the boss's full health from the highest value it has seen).
+  if (H.def.boss) {
+    const b = monsters.find(m => m.id === H.def.boss!.id);
+    if (b) { const full = boss.m === b ? boss.maxHp : bossMaxSeen(b); $('bossFill').style.transform = `scaleX(${Math.max(0, b.hp) / Math.max(1, full)})`; }
+  }
+  // Gate: shimmer, and (host) the stage is won when either hunter steps into it.
   if (H.gate) {
-    H.gate.children[0].rotation.z += dt * 0.6;
-    if (Math.random() < 0.5) emit(H.gate.position.x + rnd(1.4), H.gate.position.y + 0.4 + Math.random() * 3, H.gate.position.z + rnd(0.3), 0, 0.4, 0, new THREE.Color(2.4, 1.7, 0.6), 0.12, 1, { t: 'magic' });
-    if (H.phase === 'play' && Math.hypot(p.x - H.gate.position.x, p.z - H.gate.position.z) < 2.2) {
-      H.phase = 'won'; play('m_epic', { vol: 0.8 });
-      p.vx = p.vz = 0; anim(p, 'idle');
-      void cutscene(H.stage === 'forest' ? 'forestEnd' : 'forestEnd', 10).then(() => showEnd(true));
-    }
+    const g = H.gate;
+    g.children[0].rotation.z += dt * 0.6;
+    if (Math.random() < 0.5) emit(g.position.x + rnd(1.4), g.position.y + 0.4 + Math.random() * 3, g.position.z + rnd(0.3), 0, 0.4, 0, new THREE.Color(2.4, 1.7, 0.6), 0.12, 1, { t: 'magic' });
+    const inGate = (f: Fighter | null) => !!f && !f.dead && Math.hypot(f.x - g.position.x, f.z - g.position.z) < 2.2;
+    if (isHost() && H.phase === 'play' && (inGate(p) || inGate(q))) void advance();
   }
   // Shadows follow the wizard (the frustum covers only the area around them).
-  const fy = navHeight(H.nav, p.x, p.z), e = H.def.env.sun;
+  const fy = navHeight(nav, p.x, p.z), e = H.def.env.sun;
   moon.position.set(p.x + e[0], fy + e[1], p.z + e[2]); moon.target.position.set(p.x, fy, p.z); moon.target.updateMatrixWorld();
   hud(); updateButtons();
-  if (S.T - uiAt > 0.1) { uiAt = S.T; drawMinimap(p, H.yaw, monsters, H.gate?.position ?? null); }
+  if (S.T - uiAt > 0.1) { uiAt = S.T; drawMinimap(p, H.yaw, monsters, H.gate?.position ?? null, q); }
   return dt;
 }
+const maxSeen = new WeakMap<Monster, number>();
+function bossMaxSeen(m: Monster) { const v = Math.max(maxSeen.get(m) ?? 0, m.hp); maxSeen.set(m, v); return v; }
 
 /* ---------- camera ---------- */
 const camPos = V(), camLook = V(), tp = V(), tl = V();
 let camInit = false;
 export function huntCamera(dt: number) {
-  const p = S.CH[0]; if (!p || !H.nav) return;
+  const p = me(); if (!p || !H.nav) return;
   const { w, h } = viewSize(), portrait = w < h;
   const dist = portrait ? 7.5 : 6.2, hgt = portrait ? 3.6 : 2.8;
   const fy = navHeight(H.nav, p.x, p.z), fx = Math.sin(H.yaw), fz = Math.cos(H.yaw);
@@ -429,8 +718,7 @@ export function huntCamera(dt: number) {
     const th = H.yaw + Math.PI + (1 - e) * 0.35, r = dist + (1 - e) * 3;
     tp.set(p.x + Math.sin(th) * r, fy + hgt + (1 - e) * 7, p.z + Math.cos(th) * r);
   }
-  // Hills: never under the ground, and if a slope hides the wizard, come in front of it.
-  // First rise over the hill (like a crane), and only if that is not enough, move in front of it.
+  // Hills: first rise over the hill (like a crane), and only if that is not enough, move in front of it.
   const hy = fy + 1.5, nav = H.nav;
   const blocked = (cx: number, cy: number, cz: number) => {
     for (let k = 1; k <= 12; k++) { const u = k / 12; if (navHeight(nav, p.x + (cx - p.x) * u, p.z + (cz - p.z) * u) + 0.5 > hy + (cy - hy) * u) return u; }
@@ -451,6 +739,7 @@ export function huntCamera(dt: number) {
   if (S.shake > 0) { camera.position.x += rnd(S.shake); camera.position.y += rnd(S.shake); }
   S.shake *= Math.pow(0.02, dt);
   camera.lookAt(camLook);
+  cut.cam.value.copy(camera.position); cut.target.value.set(p.x, fy + 1.2, p.z);
 }
 
 /** Dragging anywhere outside the joystick and the buttons turns the camera. */
@@ -467,33 +756,38 @@ export function initHunt() {
   cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
   // Keyboard: Q/E would clash with skills, so the camera turns with the mouse drag or the , and . keys.
   addEventListener('keydown', e => { if (S.mode !== 'hunt') return; if (e.code === 'Comma') { H.yaw += 0.2; H.dragAt = S.T; } if (e.code === 'Period') { H.yaw -= 0.2; H.dragAt = S.T; } });
-  $('hRetry').onclick = () => { $('hEnd').hidden = true; retryHunt(); };
+  $('hRetry').onclick = () => retryHunt();
   $('hMenu').onclick = () => void veil(toMenu);
   initStory();
+  onCoopMessage(onMessage);
+  onPartnerLeft(partnerLeft);
 }
 
 /**
- * From the menus into a stage: a loading screen with the stage's name while the map, its monsters and the wizard
- * are read from the device, then the stage. On failure the reason is shown and the menu comes back.
+ * From the menus into the journey: a loading screen with the stage's name while the map, its monsters and the
+ * wizards are read from the device, then the stage. `partnerRi` is the friend's wizard in co-op.
  */
-export async function playHunt(stage: StageId = 'forest') {
+export async function playHunt(stage: StageId = 'forest', partnerRi = -1) {
   const d = STAGES[stage];
-  const lv = DIFFS[huntDiff()]; tuning.hp = lv.hp; tuning.dmg = lv.dmg;
+  if (!online()) { const lv = DIFFS[huntDiff()]; tuning.hp = lv.hp; tuning.dmg = lv.dmg; }
+  H.partnerRi = partnerRi;
   $('hlName').textContent = d.name; $('hlTxt').textContent = 'جارٍ التجهيز…';
   $('hLoad').hidden = false; $('menu').hidden = true; $('pack').hidden = true; $('title').hidden = true;
   try {
     await loadHunt(S.sel, stage, t => { $('hlTxt').textContent = t; });
     await startHunt();
-    $('hLoad').hidden = true;
   } catch (e) {
     console.error(e);
     $('hlTxt').textContent = 'تعذّر فتح المرحلة: ' + (e instanceof Error ? e.message : String(e));
-    setTimeout(() => { $('hLoad').hidden = true; $('menu').hidden = false; S.state = 'menu'; }, 3500);
+    setTimeout(() => { $('hLoad').hidden = true; coopLeave(); $('menu').hidden = false; S.state = 'menu'; }, 3500);
   }
 }
 
+/** Co-op is live: the game must not freeze on pause (the friend keeps playing). */
+export const huntOnline = () => S.mode === 'hunt' && online() && !!coop.peer;
+
 // ?debug: the hunt's internals for automated browser checks.
-if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __hunt: { H, monsters, spawnMonster, packGltf, huntTick, huntPress, huntCamera, navHeight, updPlayer: (dt: number) => updPlayer(S.CH[0]!, dt) } });
+if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __hunt: { H, monsters, boss, spawnMonster, packGltf, huntTick, huntPress, huntCamera, navHeight, playHunt, advance, coop, coopOpen, coopSend, updPlayer: (dt: number) => updPlayer(S.CH[0]!, dt) } });
 
 const DIFF_KEY = 'asrar.huntDiff';
 /** Chosen difficulty (0..2, default the middle one), kept on the device. */

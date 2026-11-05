@@ -43,7 +43,7 @@ function line(key: string, ar: string, cancelled: () => boolean) {
 export async function playScene(id: SceneId) {
   const box = $('story');
   let cancelled = false;
-  box.hidden = false; box.classList.remove('out');
+  box.hidden = false; box.classList.remove('out', 'say');
   await new Promise<void>(r => { skip = () => { cancelled = true; r(); }; void (async () => {
     await wait(500);
     for (const l of SCENES[id]) {
@@ -82,4 +82,14 @@ export function hint(t: string, ms = 4500) {
   h.textContent = t; h.hidden = false; h.classList.remove('out');
   clearTimeout(hintTimer);
   hintTimer = window.setTimeout(() => { h.classList.add('out'); hintTimer = window.setTimeout(() => { h.hidden = true; }, 400); }, ms);
+}
+
+/** A narrator line during play: subtitle only (no bars, no skip), the game keeps running. Ignored during a scene. */
+export async function speak(id: SceneId) {
+  if (skip) return;
+  const box = $('story');
+  box.hidden = false; box.classList.add('say'); box.classList.remove('out');
+  for (const l of SCENES[id]) { await line(l.key, l.ar, () => skip !== null); $('stSub').classList.add('out'); await wait(250); }
+  if (skip) return; // a scene took over the box
+  box.hidden = true; box.classList.remove('say'); $('stSub').textContent = '';
 }

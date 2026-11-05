@@ -1,6 +1,7 @@
 import { S, inMenus } from '../game/state';
 import { settings, setSetting, resetSettings, onSettingChange, type QualityMode, type Settings } from '../settings/settings';
 import { toMenu } from '../game/flow';
+import { huntOnline } from '../hunt/hunt';
 import { unlock } from '../audio/audio';
 import { $ } from '../core/util';
 import { toLocal } from '../core/view';
@@ -168,10 +169,11 @@ function initEditorDrag() {
 /* =================== pause =================== */
 export function showPause() {
   if (S.state === 'end' || inMenus() || editing) return;
-  const online = S.mode === 'online';
+  const online = S.mode === 'online' || huntOnline();
   if (!online) S.paused = true;
   $('pNote').hidden = !online;
-  $('pQuitTxt').textContent = online ? 'مغادرة المبارزة' : 'الخروج إلى القائمة';
+  $('pQuitTxt').textContent = online ? (S.mode === 'hunt' ? 'مغادرة الرحلة' : 'مغادرة المبارزة') : 'الخروج إلى القائمة';
+  $('pNote').textContent = S.mode === 'hunt' ? 'الرحلة مستمرة عند صديقك أثناء فتح هذه القائمة.' : 'المبارزة مستمرة عند صديقك أثناء فتح هذه القائمة.';
   $('pTrain').hidden = S.mode !== 'train';
   if (S.mode === 'train') $('tStats').textContent = trainSummary();
   $('pause').hidden = false;

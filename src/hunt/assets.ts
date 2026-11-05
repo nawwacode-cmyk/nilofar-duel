@@ -46,3 +46,18 @@ export function packClips() {
   });
   return animsP;
 }
+
+/** Frees a stage map from memory (GPU buffers and textures) when the journey moves on to the next stage. */
+export async function dropGltf(name: string) {
+  const p = gltfs.get(name); if (!p) return;
+  gltfs.delete(name);
+  const g = await p.catch(() => null); if (!g) return;
+  g.scene.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh) return;
+    m.geometry.dispose();
+    for (const mt of (Array.isArray(m.material) ? m.material : [m.material]) as THREE.MeshStandardMaterial[]) {
+      for (const t of [mt.map, mt.normalMap, mt.roughnessMap, mt.metalnessMap, mt.emissiveMap, mt.aoMap]) t?.dispose();
+      mt.dispose();
+    }
+  });
+}

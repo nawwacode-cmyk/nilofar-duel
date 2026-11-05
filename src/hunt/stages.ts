@@ -1,4 +1,5 @@
 import type { MonId } from './monsters';
+import type { SceneId } from './script';
 
 /**
  * Stages of «رحلة الصيّادين». Coordinates are metres in the stage's own space (as written by tools/slim-map.mjs):
@@ -26,8 +27,20 @@ export interface StageDef {
   paths: [number, number][][]; corridor?: number;
   /** Walkable only within `walkPad` metres of these (detailed ground) materials; the rest is scenery. */
   walkOn?: string[]; walkPad?: number;
+  /** Materials dithered away when they come between the camera and the wizard (trees, branches, bushes). */
+  cutaway?: string[];
   objective: string;
   groups: SpawnGroup[];
+  /** Waves: each starts when the previous one is all dead; the gate appears after the last (village). */
+  waves?: SpawnGroup[][];
+  /** The stage's boss and where it waits; the stage ends when it falls (no gate). */
+  boss?: { id: MonId; at: [number, number] };
+  /** Story scene when the stage starts, and when it is completed. */
+  intro?: SceneId; end: SceneId;
+  /** Spoken (during play) when a given wave starts, e.g. the mill's warden. */
+  waveSay?: Record<number, SceneId>;
+  /** The stage after this one (none: the journey ends). */
+  next?: StageId;
   /** Light and sky: sun direction/colour/intensity, ambient sky/ground, sky gradient top→horizon, fog near/far. */
   env: { sun: [number, number, number]; sunColor: number; sunI: number; hemi: [number, number, number]; sky: [string, string]; fog: [number, number]; exposure: number };
 }
@@ -43,8 +56,10 @@ export const STAGES: Record<StageId, StageDef> = {
       [[50, 38], [30, 44], [10, 56], [-8, 68], [-15, 77]],
     ],
     corridor: 8,
+    cutaway: ['Background_Tree_Atlas', 'Trunk_Birch', 'Trunk_Oak', 'Forest_Bush', 'Grass_Vegetation_Dry', 'Grass_Vegetation_Green', 'Grass_Close', 'Wood_Log'],
     walkOn: ['Dirt_Road', 'Dirt_Road_Bare', 'Dirt_Road_Trails', 'Road_Edge_Gravel_Dusty', 'Puddle_Streaks', 'Mud_Pile', 'Cobblestone', 'Ground_Dirt', 'Fallen_Generic_Leaves', 'Fallen_Maple_Leaves', 'Rock_Decal'], walkPad: 1.5,
     objective: 'اعبُر الغابة إلى البوابة',
+    intro: 'intro', end: 'forestEnd', next: 'village',
     groups: [
       { at: [-85, -70], m: ['wolf', 'wolf'] },
       { at: [-45, -77], m: ['skeleton', 'skeleton', 'skeleton'], rise: true },
@@ -61,12 +76,26 @@ export const STAGES: Record<StageId, StageDef> = {
     ],
     env: { sun: [-40, 30, 25], sunColor: 0xffc890, sunI: 2.2, hemi: [0x8aa0c8, 0x2a2418, 1.1], sky: ['#2a3550', '#c99a6a'], fog: [60, 240], exposure: 1.0 },
   },
+  // A walled farm (about 30 × 33 m): the cobbled path enters from the south (+z) and ends at the mill (north).
   village: {
-    name: 'القرية الملعونة', map: 'village', start: [0, -20], startYaw: 0, gate: [0, 20], paths: [], objective: 'طهِّر القرية', groups: [],
+    name: 'القرية الملعونة', map: 'village', start: [-0.8, 12.5], startYaw: Math.PI, gate: [3.5, -8.5], paths: [],
+    cutaway: ['Leaf', 'Thatched', 'scarecrow', 'Tool'],
+    objective: 'طهِّر القرية', intro: 'villageIntro', end: 'villageEnd', next: 'swamp',
+    groups: [],
+    waves: [
+      [{ at: [-4, 4], m: ['villager'] }, { at: [3, 2], m: ['villager'] }, { at: [6, 8], m: ['villager'] }, { at: [-6, -2], m: ['villager'] }, { at: [-7, 6], m: ['parasite'] }],
+      [{ at: [0, -2], m: ['villager'], rise: true }, { at: [5, 5], m: ['villager'], rise: true }, { at: [-5, 8], m: ['villager'], rise: true }, { at: [7, -5], m: ['villager'], rise: true }, { at: [-3, -6], m: ['parasite', 'parasite'] }],
+      [{ at: [5, -9], m: ['warden'] }],
+    ],
+    waveSay: { 2: 'warden' },
     env: { sun: [-30, 25, 20], sunColor: 0xffb070, sunI: 1.8, hemi: [0x7080a8, 0x221a12, 1], sky: ['#1d2238', '#8a6050'], fog: [40, 160], exposure: 1.0 },
   },
+  // A small swamp around a shack (about 22 × 22 m); the boss waits on the far (north) side.
   swamp: {
-    name: 'المستنقع', map: 'swamp', start: [0, -10], startYaw: 0, gate: [0, 0], paths: [], objective: 'اهزم الموء', groups: [],
-    env: { sun: [-20, 30, 10], sunColor: 0xa0b8ff, sunI: 1.2, hemi: [0x506080, 0x101410, 1], sky: ['#0c1020', '#304050'], fog: [25, 110], exposure: 1.05 },
+    name: 'المستنقع', map: 'swamp', start: [0, 9], startYaw: Math.PI, gate: [0, 0], paths: [],
+    cutaway: ['Bark', 'Foliage_DeadGrass'],
+    objective: 'اهزم الموء', intro: 'bossIntro', end: 'victory',
+    groups: [], boss: { id: 'mutant', at: [0, -7] },
+    env: { sun: [-20, 30, 10], sunColor: 0xb0c4ff, sunI: 1.9, hemi: [0x6a7ca8, 0x181c14, 1.45], sky: ['#0c1020', '#304050'], fog: [25, 110], exposure: 1.3 },
   },
 };

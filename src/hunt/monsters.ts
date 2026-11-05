@@ -67,8 +67,18 @@ export const MONSTERS: Record<MonId, MonDef> = {
     clips: { idle: 'MutantIdle', walk: 'MutantWalking', run: 'MutantRun', attack: 'MutantSwiping', die: 'MutantDying', roar: 'MutantRoaring' }, gait: 0.3, blood: ICHOR },
 };
 
-type MonState = 'buried' | 'rise' | 'idle' | 'wander' | 'chase' | 'attack' | 'hurt' | 'dead';
+/** Monster states; their index is what travels over the network. */
+export const STATES = ['buried', 'rise', 'idle', 'wander', 'chase', 'attack', 'hurt', 'dead'] as const;
+export type MonState = typeof STATES[number];
 export interface Monster {
+  /** Same number on both devices in co-op (given by the host). */
+  uid: number;
+  /** Moved by the host's snapshots instead of its own AI (co-op guest). */
+  puppet: boolean; nx: number; nz: number; nry: number;
+  /** Rage multiplier of speed (the boss). */
+  speedMul: number;
+  /** Which player it is after (index into the preys). */
+  target: number;
   id: MonId; def: MonDef; root: THREE.Group; model: THREE.Object3D; mixer: THREE.AnimationMixer;
   acts: Partial<Record<ClipKey, THREE.AnimationAction>>; cur: THREE.AnimationAction | null;
   blob: THREE.Mesh; mats: THREE.MeshStandardMaterial[];
@@ -128,7 +138,10 @@ export const monsters: Monster[] = [];
 /** Can be seen, aimed at and hit (not dead, not still under the ground). */
 export const targetable = (m: Monster) => !m.gone && m.state !== 'dead' && m.state !== 'buried';
 
-export async function spawnMonster(id: MonId, x: number, z: number, nav: Nav, rise = false): Promise<Monster> {
+let nextUid = 1;
+/** Spawns a monster. `uid` comes from the host in co-op; `puppet` makes it follow snapshots (guest). */
+export async function spawnMonster(id: MonId, x: number, z: number, nav: Nav, rise = false, uid = nextUid++, puppet = false, hpMul = 1): Promise<Monster> {
+  nextUid = Math.max(nextUid, uid + 1);
   const d = MONSTERS[id], b = await loadMonster(id);
   const model = SkeletonUtils.clone(b.scene);
   const inner = new THREE.Group(); inner.add(model);
@@ -151,15 +164,17 @@ export async function spawnMonster(id: MonId, x: number, z: number, nav: Nav, ri
   for (const [k, c] of Object.entries(b.clips) as [ClipKey, THREE.AnimationClip][]) acts[k] = mixer.clipAction(c);
   const blob = new THREE.Mesh(new THREE.PlaneGeometry(d.r * 3, d.r * 3), new THREE.MeshBasicMaterial({ map: BLOB, transparent: true, depthWrite: false }));
   blob.rotation.x = -Math.PI / 2; scene.add(blob);
-  [x, z] = navNearestFree(nav, x, z, d.r * 0.6);
+  if (!puppet) [x, z] = navNearestFree(nav, x, z, d.r * 0.6);
   const m: Monster = {
+    uid, puppet, nx: x, nz: z, nry: 0, speedMul: 1, target: 0,
     id, def: d, root, model, mixer, acts, cur: null, blob, mats,
-    x, z, ry: Math.random() * Math.PI * 2, vx: 0, vz: 0, hp: Math.round(d.hp * tuning.hp), state: 'idle', t: Math.random() * 3, hitT: 0, flash: 0,
+    x, z, ry: Math.random() * Math.PI * 2, vx: 0, vz: 0, hp: Math.round(d.hp * tuning.hp * hpMul), state: 'idle', t: Math.random() * 3, hitT: 0, flash: 0,
     homeX: x, homeZ: z, wx: x, wz: z, struck: false, lx: 0, lz: 0, gone: false,
   };
   // Risers wait under the ground until the player comes close (see updateMonster).
   if (rise && acts.rise) { m.state = 'buried'; root.visible = false; blob.visible = false; }
   else act(m, 'idle');
+  m.nry = m.ry;
   monsters.push(m);
   return m;
 }
@@ -182,11 +197,14 @@ export function removeMonster(m: Monster) {
 export function clearMonsters() { monsters.forEach(removeMonster); monsters.length = 0; }
 
 /** What a monster needs from the hunt: where the player is and how to hurt them. */
-export interface Prey { x: number; z: number; dead: boolean; dodging: boolean; hurt: (dmg: number, from: Monster) => void }
+/** Something that hurts a player: where it came from and what it bleeds (a monster, or a boss hazard). */
+export interface Hurter { x: number; z: number; def: { blood: Palette } }
+/** A player as the monsters see it: where they are and how to hurt them. */
+export interface Prey { x: number; z: number; dead: boolean; dodging: boolean; hurt: (dmg: number, from: Hurter) => void }
 
 /** Damage from the player's spells. Returns true when it killed the monster. */
 export function hurtMonster(m: Monster, dmg: number, fromX: number, fromZ: number) {
-  if (m.state === 'dead') return false;
+  if (m.state === 'dead' || m.state === 'buried') return false;
   m.hp -= dmg; m.flash = 1;
   const p = V(m.x, m.def.h * 0.6 + (m.def.float ?? 0), m.z);
   burst(p, m.def.blood, 14, 2.2, 0.5, 0.09);
@@ -195,7 +213,7 @@ export function hurtMonster(m: Monster, dmg: number, fromX: number, fromZ: numbe
   if (m.state === 'idle' || m.state === 'wander') { m.state = 'chase'; roar(m); }
   // Small monsters flinch; big ones only when the hit is heavy.
   if (m.state !== 'attack' && (m.def.hp < 150 || dmg >= 25)) {
-    m.state = 'hurt'; m.hitT = 0.35;
+    m.state = 'hurt'; m.hitT = 0.35; m.t = 0;
     if (m.acts.hit) act(m, 'hit', true, 1.4);
     const dx = m.x - fromX, dz = m.z - fromZ, L = Math.hypot(dx, dz) || 1;
     m.vx = (dx / L) * 2.2; m.vz = (dz / L) * 2.2;
@@ -214,12 +232,21 @@ function kill(m: Monster) {
   play('m_whoosh', { vol: 0.35 });
 }
 
+function tintFlash(m: Monster) {
+  for (const mt of m.mats) if (mt.emissive && mt.userData.e0) mt.emissive.copy(mt.userData.e0 as THREE.Color).lerp(C(1, 0.25, 0.2), m.flash);
+}
+
 const tmp = V();
 /** Per-frame update of one monster: senses, steering on the nav grid, attacks, animation and death. */
-export function updateMonster(m: Monster, dt: number, nav: Nav, prey: Prey) {
+export function updateMonster(m: Monster, dt: number, nav: Nav, preys: Prey[]) {
   const d = m.def;
   m.t += dt; m.flash = Math.max(0, m.flash - dt * 4);
-  for (const mt of m.mats) if (mt.emissive && mt.userData.e0) mt.emissive.copy(mt.userData.e0 as THREE.Color).lerp(C(1, 0.25, 0.2), m.flash);
+  tintFlash(m);
+  // After the closest living player; keeps the current one unless another is clearly closer.
+  let best = -1, bd = Infinity;
+  preys.forEach((q, i) => { if (q.dead) return; const e = Math.hypot(q.x - m.x, q.z - m.z) - (i === m.target ? 2 : 0); if (e < bd) { bd = e; best = i; } });
+  if (best >= 0) m.target = best;
+  const prey = preys[m.target] ?? preys[0];
   const dx = prey.x - m.x, dz = prey.z - m.z, dist = Math.hypot(dx, dz);
   let want = 0, face: number | null = null;
 
@@ -243,10 +270,10 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, prey: Prey) {
     }
     case 'chase': {
       // Give up far from home or when the player is down; walk back.
-      if (prey.dead || Math.hypot(m.x - m.homeX, m.z - m.homeZ) > 45) { m.state = 'wander'; m.t = 0; m.wx = m.homeX; m.wz = m.homeZ; break; }
+      if (prey.dead || (d.hp < 500 && Math.hypot(m.x - m.homeX, m.z - m.homeZ) > 45)) { m.state = 'wander'; m.t = 0; m.wx = m.homeX; m.wz = m.homeZ; break; }
       face = Math.atan2(dx, dz);
       if (dist < d.range * 0.85) { m.state = 'attack'; m.t = 0; m.struck = false; act(m, d.lunge ? 'run' : 'attack', true, d.lunge ? 1.6 : 1.1); }
-      else want = dist > 6 ? d.run : Math.max(d.walk, d.run * 0.7);
+      else want = (dist > 6 ? d.run : Math.max(d.walk, d.run * 0.7)) * m.speedMul;
       break;
     }
     case 'attack': {
@@ -288,7 +315,11 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, prey: Prey) {
     const ex = m.x - o.x, ez = m.z - o.z, e = Math.hypot(ex, ez), min = (d.r + o.def.r) * 0.8;
     if (e < min && e > 1e-3) { const [a, b] = navMove(nav, m.x, m.z, (ex / e) * (min - e) * 0.5, (ez / e) * (min - e) * 0.5, d.r * 0.5); m.x = a; m.z = b; }
   }
-  if (!prey.dead && dist < d.r + 0.35 && dist > 1e-3) { m.x -= (dx / dist) * (d.r + 0.35 - dist); m.z -= (dz / dist) * (d.r + 0.35 - dist); }
+  for (const q of preys) {
+    if (q.dead) continue;
+    const ex = q.x - m.x, ez = q.z - m.z, e = Math.hypot(ex, ez);
+    if (e < d.r + 0.35 && e > 1e-3) { m.x -= (ex / e) * (d.r + 0.35 - e); m.z -= (ez / e) * (d.r + 0.35 - e); }
+  }
 
   // Animation by speed (attack/hurt/rise play their own).
   const spd = Math.hypot(m.vx, m.vz);
@@ -303,3 +334,52 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, prey: Prey) {
   m.mixer.update(dt);
   if (d.ghost && Math.random() < 0.3) { tmp.set(m.x + rnd(0.4), fy + fl + Math.random() * d.h, m.z + rnd(0.4)); emit(tmp.x, tmp.y, tmp.z, 0, 0.3, 0, SPIRIT[0], 0.12, 0.8, { t: 'magic' }); }
 }
+
+/**
+ * Co-op guest: the host runs the monsters; here they glide to the last snapshot and play the matching animation.
+ * `setNet` applies a snapshot entry, `updatePuppet` runs every frame.
+ */
+export function setNet(m: Monster, x: number, z: number, ry: number, st: number, hp: number) {
+  const state = STATES[st] ?? 'idle', was = m.state;
+  m.nx = x; m.nz = z; m.nry = ry; if (hp < m.hp) m.flash = 1; m.hp = hp;
+  if (state === was) return;
+  m.state = state; m.t = 0;
+  if (state === 'buried') { m.root.visible = m.blob.visible = false; return; }
+  m.root.visible = m.blob.visible = true;
+  if (was === 'buried') { m.x = x; m.z = z; m.ry = ry; }
+  if (state === 'rise') act(m, 'rise', true, 1.3);
+  else if (state === 'attack') act(m, m.def.lunge ? 'run' : 'attack', true, m.def.lunge ? 1.6 : 1.1);
+  else if (state === 'hurt' && m.acts.hit) act(m, 'hit', true, 1.4);
+  else if (state === 'dead') kill(m);
+}
+
+export function updatePuppet(m: Monster, dt: number, nav: Nav) {
+  const d = m.def;
+  m.t += dt; m.flash = Math.max(0, m.flash - dt * 4); tintFlash(m);
+  if (m.state === 'buried') return;
+  if (m.state === 'dead') {
+    if (m.t > 2.2) m.root.position.y -= dt * 0.6;
+    if (m.t > 4.5) removeMonster(m);
+    m.mixer.update(dt); return;
+  }
+  const px = m.x, pz = m.z, k = Math.min(1, dt * 10);
+  m.x += (m.nx - m.x) * k; m.z += (m.nz - m.z) * k; m.ry += angleDelta(m.ry, m.nry) * k;
+  const spd = Math.hypot(m.x - px, m.z - pz) / Math.max(dt, 1e-3);
+  if (m.state !== 'attack' && m.state !== 'hurt' && m.state !== 'rise') {
+    if (spd < 0.3) act(m, 'idle');
+    else if (spd < (d.walk + d.run) / 2) act(m, 'walk');
+    else act(m, 'run', false, clamp(spd / d.run, 0.7, 1.4));
+  }
+  const fy = navHeight(nav, m.x, m.z), fl = d.float ? d.float + Math.sin(m.t * 2) * 0.08 : 0;
+  m.root.position.set(m.x, fy + fl, m.z); m.root.rotation.y = m.ry; m.blob.position.set(m.x, fy + 0.03, m.z);
+  m.mixer.update(dt);
+}
+
+/** True when a hit from (x, z) lands on the monster's back (the boss's weak spot). */
+export function fromBehind(m: Monster, x: number, z: number) {
+  const dx = x - m.x, dz = z - m.z, L = Math.hypot(dx, dz) || 1;
+  return (dx * Math.sin(m.ry) + dz * Math.cos(m.ry)) / L < -0.35;
+}
+
+/** Plays a one-off clip (the boss's roar when it changes phase). */
+export function playClip(m: Monster, k: ClipKey) { return act(m, k, true); }

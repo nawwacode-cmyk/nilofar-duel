@@ -28,7 +28,7 @@ let sb: SupabaseClient | null = null;
 let channel: RealtimeChannel | null = null;
 
 /** The Supabase library is only downloaded when someone opens online play (keeps the first load small). */
-async function getClient() {
+export async function getClient() {
   if (sb) return sb;
   const C = window.NILOFAR_CONFIG || {};
   if (!C.supabaseUrl || !C.supabaseKey) return null;

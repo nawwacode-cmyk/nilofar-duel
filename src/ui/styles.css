@@ -490,3 +490,16 @@ html.compact #mini{width:104px;height:104px}
 #stSkip .ic{font-size:18px}
 @media (prefers-reduced-motion:reduce){#story .lb{animation:none}}
 html.compact #hObj{top:calc(var(--safe-t) + 124px);width:104px}
+#story.say .lb,#story.say #stSkip{display:none}
+#story.say #stSub{bottom:calc(var(--safe-b) + 150px)}
+html.hunting.duo .side.r{visibility:visible}
+#bossBar{position:fixed;left:50%;top:calc(var(--safe-t) + 44px);transform:translateX(-50%);width:min(420px,40vw);z-index:3;display:flex;flex-direction:column;align-items:center;gap:3px;pointer-events:none;direction:rtl}
+#bossBar b{font-family:var(--display);font-weight:700;font-size:var(--fs-md);line-height:1.4;color:#ffb0a0;text-shadow:0 1px 3px #000,0 0 10px #000}
+#bossBar .track{width:100%;height:9px;border-radius:5px;background:#000a;box-shadow:inset 0 0 0 1px #ffffff30;overflow:hidden}
+#bossBar .track i{display:block;height:100%;width:100%;transform-origin:right;background:linear-gradient(90deg,#5a0d0d,#c0392b,#ff7a4d)}
+html.hunting #bossBar:not([hidden])~#mCard{top:calc(var(--safe-t) + 96px)}
+.pkduo{display:flex;flex-direction:column;gap:var(--g2);align-items:center}
+.pkduo .row{display:flex;gap:var(--g2);align-items:center;flex-wrap:wrap;justify-content:center}
+#pkJoinCode{height:var(--btn-h);font-family:var(--display);font-weight:700;font-size:var(--fs-lg);letter-spacing:5px;text-align:center;width:110px;padding:0 4px;border-radius:6px;border:none;box-shadow:inset 0 0 0 1px var(--gold-lo);background:#0006;color:var(--gold-hi);text-transform:uppercase;direction:ltr}
+html.hunting #hud{padding-right:calc(var(--safe-r) + 154px)}
+html.hunting.compact #hud{padding-right:calc(var(--safe-r) + 126px)}

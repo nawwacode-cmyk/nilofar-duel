@@ -41,7 +41,7 @@ export function buildMinimap(map: THREE.Object3D, nav: Nav, paths: [number, numb
   scene.fog = fog;
 }
 
-export function drawMinimap(p: Fighter, yaw: number, mons: readonly Monster[], gate: THREE.Vector3 | null) {
+export function drawMinimap(p: Fighter, yaw: number, mons: readonly Monster[], gate: THREE.Vector3 | null, mate: Fighter | null = null) {
   const cv = $<HTMLCanvasElement>('mini'); if (!img) return;
   const S = cv.width, x = cv.getContext('2d')!, k = S / 2 / RANGE;
   x.clearRect(0, 0, S, S);
@@ -56,11 +56,15 @@ export function drawMinimap(p: Fighter, yaw: number, mons: readonly Monster[], g
     if (m.state === 'dead' || m.state === 'buried' || m.gone || Math.hypot(m.x - p.x, m.z - p.z) > RANGE * 1.1) continue;
     x.beginPath(); x.arc(m.x, m.z, (m.def.hp >= 200 ? 4.5 : 3) / k, 0, Math.PI * 2); x.fill();
   }
-  // Wizard: an arrow along their facing.
-  x.save(); x.translate(p.x, p.z); x.rotate(-p.ry); x.scale(1 / k, 1 / k);
-  x.fillStyle = '#fff3c4'; x.strokeStyle = '#000'; x.lineWidth = 1.5;
-  x.beginPath(); x.moveTo(0, 8); x.lineTo(5.5, -5); x.lineTo(0, -2); x.lineTo(-5.5, -5); x.closePath(); x.fill(); x.stroke();
-  x.restore();
+  // Wizards: arrows along their facing (the friend in blue, ours on top).
+  const arrow = (f: Fighter, col: string) => {
+    x.save(); x.translate(f.x, f.z); x.rotate(-f.ry); x.scale(1 / k, 1 / k);
+    x.fillStyle = col; x.strokeStyle = '#000'; x.lineWidth = 1.5;
+    x.beginPath(); x.moveTo(0, 8); x.lineTo(5.5, -5); x.lineTo(0, -2); x.lineTo(-5.5, -5); x.closePath(); x.fill(); x.stroke();
+    x.restore();
+  };
+  if (mate) arrow(mate, mate.dead ? '#888' : '#7cc8ff');
+  arrow(p, '#fff3c4');
   x.restore();
   // Gate: on the map when close, otherwise pinned to the rim in its direction.
   if (gate) {
