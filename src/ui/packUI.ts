@@ -1,5 +1,6 @@
 import { packState, packSize, packUpdateSize, downloadPack, cancelDownload, removePack, downloading, packsAvailable } from '../assets/packs';
-import { playHunt, huntDiff, setHuntDiff } from '../hunt/hunt';
+import { playHunt, huntDiff, setHuntDiff, huntHero, setHuntHero, heroRi } from '../hunt/hunt';
+import type { Hero } from '../hunt/kits';
 import { coopOpen, coopSend, coopLeave, coop } from '../hunt/coop';
 import { code4 } from '../net/online';
 import { S } from '../game/state';
@@ -21,6 +22,7 @@ async function refresh() {
   $('pkDl').hidden = busy || (st.installed && !update) || !packsAvailable();
   $('pkPlay').hidden = busy || !st.installed;
   $('pkModeRow').hidden = $('pkPlay').hidden;
+  $('pkHeroRow').hidden = $('pkPlay').hidden;
   $('pkDuo').hidden = $('pkPlay').hidden || !duo;
   $('pkDiffRow').hidden = $('pkPlay').hidden || (duo && coop.role === 'guest');
   if (duo) $('pkPlay').hidden = true;
@@ -62,6 +64,11 @@ export function initPackUI() {
   $('pkStop').onclick = () => cancelDownload();
   $('pkPlay').onclick = () => { void playHunt('forest'); };
   // Alone or with a friend: the host makes a code, the guest types it; the game starts when both are in.
+  // The journey is played by one of three heroes.
+  const hBtns = $('pkHero').querySelectorAll<HTMLButtonElement>('button');
+  const markHero = () => hBtns.forEach(b => b.classList.toggle('on', b.dataset.h === huntHero()));
+  hBtns.forEach(b => b.onclick = () => { setHuntHero(b.dataset.h as Hero); markHero(); });
+  markHero();
   const mBtns = $('pkMode').querySelectorAll<HTMLButtonElement>('button');
   const markMode = () => mBtns.forEach(b => b.classList.toggle('on', (b.dataset.m === 'duo') === duo));
   mBtns.forEach(b => b.onclick = () => { duo = b.dataset.m === 'duo'; if (!duo) coopLeave(); markMode(); void refresh(); });
@@ -70,10 +77,10 @@ export function initPackUI() {
   $('pkHost').onclick = () => {
     const code = code4(); $('pkCode').textContent = code; $('pkCode').hidden = false;
     duoMsg('أرسل هذا الرمز لصديقك… بانتظار دخوله.');
-    void coopOpen(true, code, S.sel, ri => {
+    void coopOpen(true, code, heroRi(), ri => {
       duoMsg('دخل صديقك! تبدأ الرحلة…');
       // Sent a few times: the guest may still be finishing its subscription.
-      for (const t of [0, 800, 1800]) setTimeout(() => coopSend('go', { diff: huntDiff(), ri: S.sel }), t);
+      for (const t of [0, 800, 1800]) setTimeout(() => coopSend('go', { diff: huntDiff(), ri: heroRi() }), t);
       setTimeout(() => void playHunt('forest', ri), 300);
     }, duoMsg);
   };
@@ -81,7 +88,7 @@ export function initPackUI() {
     const code = $<HTMLInputElement>('pkJoinCode').value.trim().toUpperCase();
     if (code.length !== 4) { duoMsg('الرمز أربعة أحرف.'); return; }
     duoMsg('جارٍ البحث عن صديقك…'); $('pkCode').hidden = true;
-    void coopOpen(false, code, S.sel, () => duoMsg('وجدنا صديقك! بانتظار أن يبدأ…'), duoMsg);
+    void coopOpen(false, code, heroRi(), () => duoMsg('وجدنا صديقك! بانتظار أن يبدأ…'), duoMsg);
   };
   const dBtns = $('pkDiff').querySelectorAll<HTMLButtonElement>('button');
   const markDiff = () => dBtns.forEach(b => b.classList.toggle('on', +(b.dataset.d ?? 1) === huntDiff()));

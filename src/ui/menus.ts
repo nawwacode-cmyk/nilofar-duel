@@ -78,7 +78,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: stri
 }
 
 /** Wizards fanned out on the title screen (the archmage in the middle); tapping one opens the select screen on it. */
-const LINEUP = ['siraj', 'reem', 'ehab', 'layla', 'qasem'];
+const LINEUP = ['abed', 'siraj', 'reem', 'ehab', 'layla', 'qasem', 'sara'];
 function buildTitle() {
   const n = LINEUP.length, mid = (n - 1) / 2;
   $('tLine').replaceChildren(...LINEUP.map((id, k) => {

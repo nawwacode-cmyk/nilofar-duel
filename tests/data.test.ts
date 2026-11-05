@@ -11,6 +11,8 @@ describe('roster', () => {
       ['layla', 'shadow', 'curse', 'clones'],
       ['qasem', 'spark', 'thunder', 'blink'],
       ['ehab', 'gold', 'orbs', 'veil'],
+      ['sara', 'gold', 'spears', 'bloom'],
+      ['abed', 'spark', 'curse', 'gust'],
     ]);
   });
   it('is fair: same health, speed, dodge, attack cadence and skill cost for everyone', () => {
@@ -35,14 +37,14 @@ describe('roster', () => {
     expect(G.spCost).toBeLessThanOrEqual(100);
   });
   it('only Ehab has a fourth ability (the illusion army), worth a special', () => {
-    expect(ROSTER.filter(r => r.skill2).map(r => [r.id, r.skill2!.k, r.ab2![1]])).toEqual([['ehab', 'army', 'جيش الأوهام']]);
+    expect(ROSTER.filter(r => r.skill2).map(r => [r.id, r.skill2!.k, r.ab2![1]])).toEqual([['ehab', 'army', 'جيش الأوهام'], ['sara', 'thorns', 'سجن الأشواك'], ['abed', 'tornado', 'الإعصار']]);
     expect(DMG.army).toBe(30);
   });
   it('every basic bolt kind has a projectile spec', () => {
     for (const r of ROSTER) expect(PSPEC[r.bolt.kind]).toBeDefined();
   });
   it('skill button labels are single words', () => {
-    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة', 'حجاب']);
+    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة', 'حجاب', 'زهرة', 'عصف']);
   });
 });
 

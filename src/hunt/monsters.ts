@@ -200,7 +200,7 @@ export function clearMonsters() { monsters.forEach(removeMonster); monsters.leng
 /** Something that hurts a player: where it came from and what it bleeds (a monster, or a boss hazard). */
 export interface Hurter { x: number; z: number; def: { blood: Palette } }
 /** A player as the monsters see it: where they are and how to hurt them. */
-export interface Prey { x: number; z: number; dead: boolean; dodging: boolean; hurt: (dmg: number, from: Hurter) => void }
+export interface Prey { x: number; z: number; dead: boolean; dodging: boolean; hurt: (dmg: number, from: Hurter) => void; /** Unseen (Ehab's veil): monsters lose track. */ hidden?: boolean }
 
 /** Damage from the player's spells. Returns true when it killed the monster. */
 export function hurtMonster(m: Monster, dmg: number, fromX: number, fromZ: number) {
@@ -244,7 +244,7 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, preys: Prey[]) {
   tintFlash(m);
   // After the closest living player; keeps the current one unless another is clearly closer.
   let best = -1, bd = Infinity;
-  preys.forEach((q, i) => { if (q.dead) return; const e = Math.hypot(q.x - m.x, q.z - m.z) - (i === m.target ? 2 : 0); if (e < bd) { bd = e; best = i; } });
+  preys.forEach((q, i) => { if (q.dead || q.hidden) return; const e = Math.hypot(q.x - m.x, q.z - m.z) - (i === m.target ? 2 : 0); if (e < bd) { bd = e; best = i; } });
   if (best >= 0) m.target = best;
   const prey = preys[m.target] ?? preys[0];
   const dx = prey.x - m.x, dz = prey.z - m.z, dist = Math.hypot(dx, dz);
@@ -260,7 +260,7 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, preys: Prey[]) {
       return;
     case 'rise': if (m.t > (m.acts.rise?.getClip().duration ?? 1) / 1.3 * 0.9) { m.state = 'chase'; } break;
     case 'idle': case 'wander': {
-      if (!prey.dead && dist < d.aggro) { m.state = 'chase'; roar(m); break; }
+      if (!prey.dead && !prey.hidden && dist < d.aggro) { m.state = 'chase'; roar(m); break; }
       // Stroll between random points near home.
       const wd = Math.hypot(m.wx - m.x, m.wz - m.z);
       if (m.state === 'idle') { if (m.t > 2.5 + Math.random() * 3) { m.state = 'wander'; m.t = 0; m.wx = m.homeX + rnd(6); m.wz = m.homeZ + rnd(6); } }
@@ -270,7 +270,7 @@ export function updateMonster(m: Monster, dt: number, nav: Nav, preys: Prey[]) {
     }
     case 'chase': {
       // Give up far from home or when the player is down; walk back.
-      if (prey.dead || (d.hp < 500 && Math.hypot(m.x - m.homeX, m.z - m.homeZ) > 45)) { m.state = 'wander'; m.t = 0; m.wx = m.homeX; m.wz = m.homeZ; break; }
+      if (prey.dead || prey.hidden || (d.hp < 500 && Math.hypot(m.x - m.homeX, m.z - m.homeZ) > 45)) { m.state = 'wander'; m.t = 0; m.wx = m.homeX; m.wz = m.homeZ; break; }
       face = Math.atan2(dx, dz);
       if (dist < d.range * 0.85) { m.state = 'attack'; m.t = 0; m.struck = false; act(m, d.lunge ? 'run' : 'attack', true, d.lunge ? 1.6 : 1.1); }
       else want = (dist > 6 ? d.run : Math.max(d.walk, d.run * 0.7)) * m.speedMul;
@@ -383,3 +383,17 @@ export function fromBehind(m: Monster, x: number, z: number) {
 
 /** Plays a one-off clip (the boss's roar when it changes phase). */
 export function playClip(m: Monster, k: ClipKey) { return act(m, k, true); }
+
+/** Spells that hold monsters in place (thorns, illusions): bosses shrug it off. */
+export function stunMonster(m: Monster, seconds: number) {
+  if (m.state === 'dead' || m.state === 'buried' || m.def.hp >= 500) return;
+  m.state = 'hurt'; m.hitT = Math.max(m.hitT, seconds); m.t = 0; m.vx = m.vz = 0;
+  if (m.acts.hit) act(m, 'hit', true, 0.6);
+}
+/** Thrown back (wind): a short stagger with a slide; bosses only slide a little. */
+export function pushMonster(m: Monster, dx: number, dz: number, speed: number) {
+  if (m.state === 'dead' || m.state === 'buried') return;
+  const k = m.def.hp >= 500 ? 0.25 : 1;
+  m.vx = dx * speed * k; m.vz = dz * speed * k;
+  if (k === 1) { m.state = 'hurt'; m.hitT = Math.max(m.hitT, 0.6); m.t = 0; }
+}

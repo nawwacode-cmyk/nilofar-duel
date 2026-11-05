@@ -463,7 +463,7 @@ html.compact .mbfoot{padding-top:4px}
 html.compact .mbfoot .round{width:30px;height:30px}
 
 /* ---------- Hunters mode ---------- */
-html.hunting .side.r,html.hunting #bSk,html.hunting #bSk2{visibility:hidden}
+html.hunting .side.r{visibility:hidden}
 #hunt{position:fixed;inset:0;pointer-events:none;z-index:2}
 #mini{position:absolute;top:calc(var(--safe-t) + 10px);right:calc(var(--safe-r) + 10px);width:132px;height:132px;border-radius:50%;box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-lo),0 0 0 3px #000,0 4px 14px #000a}
 html.compact #mini{width:104px;height:104px}
@@ -503,3 +503,8 @@ html.hunting #bossBar:not([hidden])~#mCard{top:calc(var(--safe-t) + 96px)}
 #pkJoinCode{height:var(--btn-h);font-family:var(--display);font-weight:700;font-size:var(--fs-lg);letter-spacing:5px;text-align:center;width:110px;padding:0 4px;border-radius:6px;border:none;box-shadow:inset 0 0 0 1px var(--gold-lo);background:#0006;color:var(--gold-hi);text-transform:uppercase;direction:ltr}
 html.hunting #hud{padding-right:calc(var(--safe-r) + 154px)}
 html.hunting.compact #hud{padding-right:calc(var(--safe-r) + 126px)}
+.heroes{display:flex;gap:10px}
+.heroes button{display:flex;align-items:center;gap:6px;height:40px;padding:0 12px 0 4px;border:none;border-radius:999px;background:#0b0912cc;box-shadow:inset 0 0 0 1px var(--gold-lo);color:var(--muted);font-family:var(--body);font-size:var(--fs-sm);cursor:pointer}
+.heroes button img{width:32px;height:32px;border-radius:50%;object-fit:cover}
+.heroes button.on{box-shadow:inset 0 0 0 2px var(--gold);color:var(--gold-hi)}
+.heroes button b{font-weight:700}

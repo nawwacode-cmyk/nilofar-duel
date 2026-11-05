@@ -43,6 +43,9 @@ export const DMG = {
   aoe: 15, aoeShielded: 6, meteorThroughShield: 0.35,
   struggleWin: 42, struggleDraw: 15,
   army: 30, armyShielded: 10, melee: 6,
+  /** Sara: the bloom heals this much over BLOOM_S; thorns hold for thornsStun. Abed: gust, tornado. */
+  bloom: 35, thorns: 18, thornsShielded: 6, thornsStun: 1.2,
+  gust: 8, gustPush: 9, tornado: 25, tornadoShielded: 8, tornadoStun: 1.3,
 } as const;
 
 /** AI difficulty table: easy / normal / hard. */

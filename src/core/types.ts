@@ -7,7 +7,7 @@ export type Mode = 'ai' | 'online' | 'train' | 'hunt';
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
 export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb';
 export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs';
-export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army';
+export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army' | 'bloom' | 'thorns' | 'gust' | 'tornado';
 /** Everything that can travel over the network as a "cast". */
 export type CastKind = ProjKind | SkillKind | 'thunder' | 'melee';
 
@@ -18,7 +18,7 @@ export type ClipName = typeof CLIP_NAMES[number];
 export type Ability = readonly [string, string, string];
 
 export interface WizardDef {
-  id: 'reem' | 'siraj' | 'layla' | 'qasem' | 'ehab';
+  id: 'reem' | 'siraj' | 'layla' | 'qasem' | 'ehab' | 'sara' | 'abed';
   name: string;
   female: boolean;
   file: string;

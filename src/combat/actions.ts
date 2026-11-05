@@ -153,6 +153,8 @@ export function castSkill(c: Fighter) {
   if (K.k === 'wall') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'wall', x: c.x + d.x * 1.5, y: Math.atan2(d.x, d.z), z: c.z + d.z * 1.5, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'clones') fire(c, { kind: 'clones', x: c.x, y: (Math.random() * 1e5) | 0, z: c.z, dx: 0, dy: 0, dz: 0 });
   if (K.k === 'veil') { const [ex, ez] = behind(); fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: ex, dy: 0, dz: ez }); }
+  if (K.k === 'bloom') { c.castT = 0.4; anim(c, 'special', { once: true, speed: 1.8, force: true }); fire(c, { kind: 'bloom', x: c.x, y: 0, z: c.z, dx: 0, dy: 0, dz: 0 }); }
+  if (K.k === 'gust') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); c.castT = 0.35; anim(c, 'bolt', { once: true, speed: 1.6, force: true }); fire(c, { kind: 'gust', x: c.x, y: 0, z: c.z, dx: d.x, dy: 0, dz: d.z }); }
 }
 
 /** The optional fourth ability (Y): Ehab's illusion army. */
@@ -162,5 +164,7 @@ export function castSkill2(c: Fighter) {
   c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5;
   anim(c, 'special', { once: true, speed: 1.6, force: true });
   const o = opp(c);
+  // The tornado starts at Abed and chases; the others appear at the opponent.
+  if (K.k === 'tornado') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'tornado', x: c.x + d.x, y: 0, z: c.z + d.z, dx: d.x, dy: 0, dz: d.z }); return; }
   fire(c, { kind: K.k, x: o.x, y: (Math.random() * 1e5) | 0, z: o.z, dx: 0, dy: 0, dz: 0 });
 }

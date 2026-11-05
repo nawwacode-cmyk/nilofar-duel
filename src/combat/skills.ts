@@ -11,7 +11,10 @@ import { portalRing } from '../fx/effects';
 import { applyDmg } from './damage';
 import { fire } from './actions';
 import { G, DMG } from '../data/rules';
-import { ICE, SHADOW, LIGHT, ARCH } from '../data/palettes';
+import { ICE, SHADOW, LIGHT, ARCH, FLORA, WIND } from '../data/palettes';
+import { projs } from '../game/state';
+import { killProj } from './projectiles';
+import { dmgText } from '../fx/effects';
 import { V, C, rnd, pick, clamp, angleDelta } from '../core/util';
 import type { CastOrder, Fighter, Projectile, Wall, Clone } from '../core/types';
 import { after } from '../game/schedule';
@@ -43,6 +46,10 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
   army(c, o) { spawnArmy(c, o.x, o.z, o.y); },
+  bloom(c, o) { bloom(c, o.x, o.z); },
+  thorns(c, o) { thorns(c, o.x, o.z); },
+  gust(c, o) { gust(c, o.x, o.z, o.dx, o.dz); },
+  tornado(c, o) { tornado(c, o.x, o.z, o.dx, o.dz); },
   melee(c, o) { meleeHit(c, o.dx, o.dz, MELEE[o.y] ?? MELEE[0]); },
   veil(c, o) {
     // Ehab leaves a perfect illusion of himself where he stood and, unseen, steps out behind his opponent.
@@ -309,4 +316,93 @@ export function updStrikes(dt: number) {
     }
   }
   for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].done) strikes.splice(i, 1);
+}
+
+/* ---------- Sara: bloom and thorns ---------- */
+/** Flowers open around her: health over a moment, and slow/stun fall away. Healing runs on her own device. */
+function bloom(c: Fighter, x: number, z: number) {
+  play('m_sparkle', { vol: 0.7, x }); play('m_light', { vol: 0.4, x, rate: 1.2 });
+  for (let i = 0; i < 40; i++) { const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.2; emit(x + Math.cos(a) * r, 0.05, z + Math.sin(a) * r, 0, 0.6 + Math.random(), 0, pick(FLORA), 0.16, 1.1, { t: 'star' }); }
+  emit(x, 0.04, z, 0, 0, 0, FLORA[1], 0.6, 1, { t: 'rune', spin: 0.8, grow: 3 });
+  if (!isLocal(c)) return;
+  c.slowT = 0; c.stunT = 0;
+  const step = DMG.bloom / 8;
+  for (let k = 1; k <= 8; k++) after(k * 0.25, () => { if (!c.dead) c.hp = Math.min(c.R.hp, c.hp + step); });
+  dmgText(c, '+' + DMG.bloom, '#c7f59a');
+}
+
+/** A marked circle under the opponent, then thorns burst out: held and cut unless they dodged in time. */
+function thorns(c: Fighter, x: number, z: number) {
+  const v = opp(c), WARN = 0.6, R = 1.3;
+  const ring = new THREE.Mesh(new THREE.RingGeometry(R * 0.85, R, 40), new THREE.MeshBasicMaterial({ color: FLORA[1].clone(), transparent: true, opacity: 0.8, side: THREE.DoubleSide, depthWrite: false, toneMapped: false }));
+  ring.rotation.x = -Math.PI / 2; ring.position.set(x, 0.05, z); scene.add(ring);
+  play('m_whoosh', { vol: 0.5, x, rate: 0.8 });
+  let t = 0, done = false;
+  fx.push(dt => {
+    t += dt;
+    (ring.material as THREE.MeshBasicMaterial).opacity = 0.4 + 0.5 * Math.abs(Math.sin(t * 14));
+    if (!done && t >= WARN) {
+      done = true;
+      for (let i = 0; i < 30; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * R; emit(x + Math.cos(a) * r, 0.1, z + Math.sin(a) * r, 0, 3 + Math.random() * 3, 0, pick(FLORA), 0.14, 0.6, { t: 'spark', drag: 3 }); }
+      play('m_blast', { vol: 0.6, x, rate: 1.3 });
+      if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0 && Math.hypot(v.x - x, v.z - z) < R) {
+        if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.thornsShielded, c); }
+        else { applyDmg(v, DMG.thorns, c); v.stunT = Math.max(v.stunT, DMG.thornsStun); v.vx = v.vz = 0; }
+      }
+    }
+    if (t > WARN + 0.5) { scene.remove(ring); ring.geometry.dispose(); (ring.material as THREE.Material).dispose(); return false; }
+    return true;
+  });
+}
+
+/* ---------- Abed: gust and tornado ---------- */
+/** A cone of wind ahead: throws the opponent back, breaks their cast, and blows away spells coming at him. */
+function gust(c: Fighter, x: number, z: number, dx: number, dz: number) {
+  const RANGE = 4.5, CONE = 0.5;
+  play('m_whoosh', { vol: 0.9, x, rate: 0.8 }); play('m_waves', { vol: 0.4, x });
+  for (let i = 0; i < 50; i++) {
+    const a = Math.atan2(dx, dz) + rnd(0.5), sp = 6 + Math.random() * 6;
+    emit(x + dx * 0.6, 0.3 + Math.random() * 1.4, z + dz * 0.6, Math.sin(a) * sp, rnd(0.5), Math.cos(a) * sp, pick(WIND), 0.14, 0.45, { t: 'twirl', drag: 2.5 });
+  }
+  const inCone = (px: number, pz: number) => { const ex = px - x, ez = pz - z, L = Math.hypot(ex, ez); return L < RANGE && (ex * dx + ez * dz) / (L || 1) > CONE; };
+  for (const p of projs) if (!p.dead && p.owner !== c.idx && inCone(p.pos.x, p.pos.z)) killProj(p);
+  const v = opp(c);
+  if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0 && inCone(v.x, v.z)) {
+    const push = v.shieldOn ? DMG.gustPush * 0.5 : DMG.gustPush;
+    if (!v.shieldOn) { applyDmg(v, DMG.gust, c); v.castT = 0; anim(v, 'shoved', { once: true, speed: 1.6, force: true }); v.hitT = Math.max(v.hitT, 0.5); }
+    v.vx = dx * push; v.vz = dz * push; v.knockT = 0.4;
+  }
+}
+
+/** A tornado that chases the opponent for a few seconds; touching it lifts them up (stun) and hurts. */
+function tornado(c: Fighter, x: number, z: number, dx: number, dz: number) {
+  const LIFE = 3.2, SPEED = 4.2, TURN = 2.2;
+  const g = new THREE.Mesh(new THREE.ConeGeometry(0.75, 2.6, 20, 1, true), new THREE.MeshBasicMaterial({ color: WIND[1].clone().multiplyScalar(0.7), transparent: true, opacity: 0.35, side: THREE.DoubleSide, depthWrite: false, blending: THREE.AdditiveBlending, toneMapped: false }));
+  g.rotation.x = Math.PI; g.position.set(x, 1.3, z); scene.add(g);
+  play('m_waves', { vol: 0.8, x, rate: 0.7, dur: LIFE });
+  let t = 0, px = x, pz = z, vx = dx, vz = dz, hit = false;
+  const v = opp(c);
+  fx.push(dt => {
+    t += dt;
+    // Steers towards the opponent, at a limited turn rate so it can be outrun sideways.
+    const ex = v.x - px, ez = v.z - pz, L = Math.hypot(ex, ez) || 1;
+    const want = Math.atan2(ex / L, ez / L), cur = Math.atan2(vx, vz), a = cur + clamp(angleDelta(cur, want), -TURN * dt, TURN * dt);
+    vx = Math.sin(a); vz = Math.cos(a);
+    px = clamp(px + vx * SPEED * dt, -G.bx - 1, G.bx + 1); pz = clamp(pz + vz * SPEED * dt, G.zMin - 1, G.zMax + 1);
+    g.position.set(px, 1.3, pz); g.rotation.y += dt * 12;
+    for (let i = 0; i < 4; i++) { const r = Math.random(), ang = Math.random() * Math.PI * 2; emit(px + Math.cos(ang) * (0.2 + r * 0.6), r * 2.6, pz + Math.sin(ang) * (0.2 + r * 0.6), -Math.sin(ang) * 3, 0.8, Math.cos(ang) * 3, pick(WIND), 0.12, 0.4, { t: 'twirl' }); }
+    if (!hit && Math.hypot(v.x - px, v.z - pz) < 0.9) {
+      hit = true;
+      if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0) {
+        if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.tornadoShielded, c); }
+        else { applyDmg(v, DMG.tornado, c); v.stunT = Math.max(v.stunT, DMG.tornadoStun); v.vx = v.vz = 0; }
+      }
+      burst(V(px, 1.2, pz), WIND, 40, 4, 0.6, 0.12, 'twirl');
+      t = Math.max(t, LIFE - 0.3);
+    }
+    const fade = Math.min(1, (LIFE - t) / 0.3);
+    (g.material as THREE.MeshBasicMaterial).opacity = 0.35 * Math.max(0, fade);
+    if (t >= LIFE) { scene.remove(g); g.geometry.dispose(); (g.material as THREE.Material).dispose(); return false; }
+    return true;
+  });
 }

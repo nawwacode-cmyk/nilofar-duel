@@ -1,5 +1,5 @@
 import type { WizardDef } from '../core/types';
-import { FIRE, ICE, SHADOW, LIGHT, ARCH } from './palettes';
+import { FIRE, ICE, SHADOW, LIGHT, ARCH, FLORA, WIND } from './palettes';
 
 /**
  * The wizards. Fair like Mortal Kombat: every wizard has the same health, speed, dodge cost, attack cadence
@@ -75,6 +75,36 @@ export const ROSTER: readonly WizardDef[] = [
     // The archmage's extra ability (owner's request): a ring of illusions that holds the opponent, then strikes.
     skill2: { k: 'army', cost: 40, cd: 14 },
     ab2: ['قدرة', 'جيش الأوهام', 'تتكاثر أوهامه حول خصمه فتشلّه لحظة ثم تنقضّ عليه'],
+  },
+  {
+    id: 'sara', icon: 'local_florist', name: 'سارة', female: true, file: 'sara', rig: 'tripo', elem: 'ساحرة الزهر',
+    hp: FAIR.hp, speed: FAIR.speed, pal: FLORA, css: '#d58cff', lc: 0xc77dff,
+    bolt: { kind: 'gold', cd: FAIR.boltCd }, spec: 'spears', dodgeCost: FAIR.dodgeCost,
+    snd: 'shadow', cs: 'm_sparkle', ss: 'm_light', stat: [3, 3, 3],
+    story: 'أميرةُ الحديقة البنفسجية في قصر الأكاديمية، التي لم تذبل زهورها منذ ألف عام. حين ضربت اللعنةُ الغابة، رأت زهورها تموت واحدةً بعد أخرى، فخرجت لتحمي ما بقي. يظنّها خصومها رقيقة، حتى تنشقّ الأرض تحت أقدامهم أشواكًا.',
+    ab: [
+      ['هجوم', 'بتلة الشوك', 'بتلةٌ حادّة كالنصل'],
+      ['خاصة', 'عاصفة البتلات', 'ثلاث بتلات تنطلق معًا في مروحة'],
+      ['مهارة', 'زهرة الشفاء', 'تُزهر حولها فتستعيد شيئًا من صحتها وتتحرّر من البطء والشلل'],
+    ],
+    skill: { k: 'bloom', ...FAIR.skill },
+    skill2: { k: 'thorns', cost: 40, cd: 14 },
+    ab2: ['قدرة', 'سجن الأشواك', 'تنشقّ الأرض تحت خصمها أشواكًا تقيّده وتجرحه، ما لم يفرّ في اللحظة'],
+  },
+  {
+    id: 'abed', icon: 'air', name: 'عابد', female: false, file: 'abed', rig: 'tripo', elem: 'سيّد الرياح',
+    hp: FAIR.hp, speed: FAIR.speed, pal: WIND, css: '#8cc4ff', lc: 0x7fb8ff,
+    bolt: { kind: 'spark', cd: FAIR.boltCd }, spec: 'curse', dodgeCost: FAIR.dodgeCost,
+    snd: 'ice', cs: 'm_whoosh', ss: 'm_waves', stat: [3, 3, 3],
+    story: 'راعٍ من الهضاب العالية، علّمته الريحُ لغتها قبل أن يتعلّم القراءة. جاء إلى الأكاديمية حافيًا، وخرج منها سيّدًا للعواصف. هادئٌ كسماءٍ صافية، لكنّه إذا غضب لم يترك لخصمه أرضًا يقف عليها.',
+    ab: [
+      ['هجوم', 'نصل الريح', 'شفرةٌ من هواءٍ مضغوط'],
+      ['خاصة', 'دوّامة', 'كرةُ ريحٍ بطيئة تلاحق الخصم'],
+      ['مهارة', 'عصف الريح', 'دفعةُ هواءٍ تُبعد خصمه وتقطع سحره وتبدّد ما يأتيه من أمامه'],
+    ],
+    skill: { k: 'gust', ...FAIR.skill },
+    skill2: { k: 'tornado', cost: 40, cd: 14 },
+    ab2: ['قدرة', 'الإعصار', 'إعصارٌ يطارد خصمه، فإن لحقه رفعه في الهواء وجرحه'],
   },
 ];
 

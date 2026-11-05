@@ -11,7 +11,7 @@ import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 export const base: THREE.Object3D[] = [];
 
 /** Approximate gzipped sizes, for the progress bar before the server answers. */
-const MODEL_BYTES: Record<string, number> = { arissa: 2_280_000, ganfaul: 1_270_000, nightshade: 1_220_000, pelegrini: 985_000, ehab: 530_000 };
+const MODEL_BYTES: Record<string, number> = { arissa: 2_280_000, ganfaul: 1_270_000, nightshade: 1_220_000, pelegrini: 985_000, ehab: 530_000, sara: 1_260_000, abed: 930_000 };
 /** Mixamo model whose skeleton drives the retargeting of Tripo rigs (Qasem: a man of similar build). */
 const RETARGET_SRC = 3;
 /** Clips baked for models with their own skeleton (Tripo); others use the shared clips renamed. */

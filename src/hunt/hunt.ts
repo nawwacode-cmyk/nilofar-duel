@@ -27,6 +27,9 @@ import { coop, coopSend, coopLeave, coopOpen, onCoopMessage, onPartnerLeft, onli
 import { veil } from '../ui/transitions';
 import type { SceneId } from './script';
 import { cut, addCutaway } from './cutaway';
+import { castKit, kitArgs, updateKits, clearKits, healFx, KIT_NAMES, HEROES, type Hero, type Slot, type KitCtx } from './kits';
+import { stunMonster, pushMonster } from './monsters';
+import { ROSTER } from '../data/roster';
 
 /**
  * «رحلة الصيّادين»: forest → village → swamp boss, alone or with a friend.
@@ -54,10 +57,14 @@ export const H = {
   ready: false, peerStage: '' as string,
   /** Seconds standing next to a fallen friend (they revive at REVIVE_S). */
   reviveT: 0, downAt: 0, bossDownAt: 0,
+  /** Ehab's veil: unseen until this time; the next spell from hiding is doubled. */
+  hiddenUntil: 0, veilBonus: false,
 };
 
 const BOLT = { dmg: 12, sp: 24, life: 1.4, cost: 4, cd: 0.32 };
-const NOVA = { dmg: 40, radius: 6.5 };
+/** Story mode is its own fight: much more health than a duel, and monsters hit and last far harder
+ *  (on top of the chosen difficulty) — the heroes' four abilities make up for it. */
+const HUNT_HP = 600, MON_HP = 1.6, MON_DMG = 2.4;
 const DODGE_SPEED = 9, REVIVE_S = 2.5, REVIVE_R = 2.2, BACKSTAB = 1.6;
 /** Co-op: monsters are tougher with two hunters, the boss most of all. */
 const COOP_HP = 1.3, COOP_BOSS_HP = 1.7;
@@ -133,12 +140,12 @@ export async function startHunt(retry = false) {
   scene.add(H.map!);
   buildMinimap(H.map!, nav, d.paths);
   dropFighter(S.CH[0]); dropFighter(S.CH[1]);
-  const p = makeFighter(H.ri, 0); resetChar(p); p.mana = 100;
+  const p = storyFighter(H.ri, 0); p.mana = 100;
   [p.x, p.z] = navNearestFree(nav, d.start[0] + (coop.role === 'guest' ? 1.6 : 0), d.start[1]);
   p.ry = d.startYaw;
   let q: Fighter | null = null;
   if (H.partnerRi >= 0 && coop.peer) {
-    q = makeFighter(H.partnerRi, 1); resetChar(q);
+    q = storyFighter(H.partnerRi, 1);
     if (H.partnerRi === H.ri) altCostume(q);
     [q.x, q.z] = navNearestFree(nav, d.start[0] + (coop.role === 'guest' ? 0 : 1.6), d.start[1]); q.ry = d.startYaw;
     net = { x: q.x, z: q.z, ry: q.ry, clip: 0, dead: false, dodge: false };
@@ -146,8 +153,11 @@ export async function startHunt(retry = false) {
   S.CH = [p, q];
   H.yaw = d.startYaw; H.phase = 'play'; H.kills = 0; H.wave = -1; H.waveAt = 0; H.reviveT = 0; H.bossDownAt = 0;
   H.ready = !online() || coop.role === 'guest'; H.seen.clear();
-  clearMonsters(); clearBolts(); clearHazards(); endBoss();
+  clearMonsters(); clearBolts(); clearHazards(); clearKits(); endBoss(); unhide(p);
   if (H.gate) { scene.remove(H.gate); H.gate = null; }
+  const hero = heroOf(p);
+  $('bSk').textContent = KIT_NAMES[hero].sk.split(' ')[0]; $('bSk2').textContent = KIT_NAMES[hero].sk2.split(' ')[0];
+  $('bSk2').hidden = false;
   if (isHost()) {
     if (!d.waves && !d.boss) H.gate = makeGate(d.gate[0], d.gate[1]);
     spawnGroups(d.groups);
@@ -188,7 +198,7 @@ async function cutscene(id: SceneId, len: number) {
 
 /** Removes the current stage's objects (map stays loaded unless `freeMap`). */
 async function clearStage(freeMap: boolean) {
-  clearMonsters(); clearBolts(); clearHazards(); endBoss();
+  clearMonsters(); clearBolts(); clearHazards(); clearKits(); endBoss();
   if (H.gate) { scene.remove(H.gate); H.gate = null; }
   if (H.map) scene.remove(H.map);
   if (freeMap) { await dropGltf(H.def.map); H.map = null; }
@@ -291,7 +301,7 @@ function launch(from: Fighter, to: THREE.Vector3, target: Monster | null, mine: 
 
 function castBolt(p: Fighter) {
   if (p.dead || p.cdA > 0 || p.dodgeT > 0 || p.shieldOn || p.mana < BOLT.cost || p.castT > 0.1) return;
-  p.cdA = BOLT.cd; p.mana -= BOLT.cost; p.castT = 0.3;
+  p.cdA = BOLT.cd; p.mana -= BOLT.cost; p.castT = 0.3; unhide(p);
   const t = aimTarget(p);
   if (t) p.ry = Math.atan2(t.x - p.x, t.z - p.z);
   anim(p, 'bolt', { once: true, speed: 1.8, force: true });
@@ -305,14 +315,19 @@ function castBolt(p: Fighter) {
 }
 
 /** A spell of ours hit a monster: the host applies it (back hits on the boss count more), the guest reports it. */
-function hitMonster(m: Monster, dmg: number, fx: number, fz: number) {
+type HitOpts = { stun?: number; push?: [number, number, number] };
+function hitMonster(m: Monster, dmg: number, fx: number, fz: number, o: HitOpts = {}, local = true) {
+  // Ehab's first spell from hiding hits twice as hard.
+  if (local && dmg > 0 && H.veilBonus) { dmg *= 2; H.veilBonus = false; floatText(m, 'من الخفاء!', '#ffd76a'); }
   if (!isHost()) {
-    coopSend('hit', { u: m.uid, d: dmg, x: +fx.toFixed(2), z: +fz.toFixed(2) });
-    m.flash = 1; burst(V(m.x, m.root.position.y + m.def.h * 0.6, m.z), m.def.blood, 10, 2, 0.4, 0.08);
+    coopSend('hit', { u: m.uid, d: dmg, x: +fx.toFixed(2), z: +fz.toFixed(2), st: o.stun, p: o.push });
+    if (dmg > 0) { m.flash = 1; burst(V(m.x, m.root.position.y + m.def.h * 0.6, m.z), m.def.blood, 10, 2, 0.4, 0.08); }
     return;
   }
-  if (boss.m === m && fromBehind(m, fx, fz)) { dmg = Math.round(dmg * BACKSTAB); floatText(m, 'من الخلف!', '#ffd76a'); }
-  if (hurtMonster(m, dmg, fx, fz)) H.kills++;
+  if (dmg > 0 && boss.m === m && fromBehind(m, fx, fz)) { dmg = Math.round(dmg * BACKSTAB); floatText(m, 'من الخلف!', '#ffd76a'); }
+  if (dmg > 0 && hurtMonster(m, dmg, fx, fz)) { H.kills++; return; }
+  if (o.stun) stunMonster(m, o.stun);
+  if (o.push) pushMonster(m, o.push[0], o.push[1], o.push[2]);
 }
 
 function updBolts(dt: number) {
@@ -346,22 +361,6 @@ function novaFx(p: Fighter) {
   play('m_fire_expl', { vol: 0.9 }); S.shake = Math.max(S.shake, 0.18);
 }
 
-/** The special: a burst of the wizard's element around them that hits every monster close by. */
-function castNova(p: Fighter) {
-  if (p.dead || p.dodgeT > 0 || p.mana < G.spCost || p.castT > 0.1) return;
-  p.mana -= G.spCost; p.castT = 0.8;
-  anim(p, 'special', { once: true, speed: 1.3, force: true }); play(p.R.ss, { vol: 0.8 });
-  after(0.45, () => {
-    if (p.dead || S.mode !== 'hunt') return;
-    novaFx(p); coopSend('cast', { k: 'n' });
-    for (const m of monsters) {
-      if (!targetable(m)) continue;
-      const d = Math.hypot(m.x - p.x, m.z - p.z);
-      if (d < NOVA.radius + m.def.r) hitMonster(m, Math.round(NOVA.dmg * (d < 3 ? 1 : 0.7)), p.x, p.z);
-    }
-  });
-}
-
 function dodge(p: Fighter) {
   if (p.dead || p.cdD > 0 || p.mana < p.R.dodgeCost || p.dodgeT > 0) return;
   setShield(p, false);
@@ -388,7 +387,7 @@ export function huntPress(a: string, on: boolean) {
   if (a === 'sh') p.wantShield = on;
   if (!on) return;
   if (a === 'atk') castBolt(p);
-  if (a === 'sp') castNova(p);
+  if (a === 'sp' || a === 'sk' || a === 'sk2') castSlot(p, a);
   if (a === 'dg') dodge(p);
 }
 let atkHeld = false, lastHurt = -99;
@@ -494,7 +493,7 @@ async function advance() {
 /* ---------- co-op messages ---------- */
 /** The friend's wizard as last reported (interpolated every frame). */
 let net = { x: 0, z: 0, ry: 0, clip: 0, dead: false, dodge: false };
-let pending: { u: number; d: number; x: number; z: number }[] = [];
+let pending: { u: number; d: number; x: number; z: number; st?: number; p?: [number, number, number] }[] = [];
 let sendAt = 0, snapAt = 0;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -503,13 +502,14 @@ function onMessage(ev: string, p: any) {
   switch (ev) {
     case 'go':
       if (coop.role === 'guest' && S.mode !== 'hunt' && $('hLoad').hidden) {
-        const lv = DIFFS[p.diff] ?? DIFFS[1]; tuning.hp = lv.hp; tuning.dmg = lv.dmg;
+        setTuning(DIFFS[p.diff] ? p.diff : 1);
         void playHunt('forest', p.ri);
       }
       break;
     case 'pl': if (q) {
       const a = p.a as number[];
       net = { x: a[0], z: a[1], ry: a[2], clip: a[3], dead: !!a[6], dodge: !!a[8] };
+      matePrey.hidden = !!a[9]; setAlpha(q, a[9] ? 0.15 : 1);
       q.hp = a[4]; q.mana = a[5];
       if (a[7] && !q.shieldOn) { q.shieldOn = true; q.shield = shieldMesh(q); }
       if (!a[7] && q.shieldOn) { q.shieldOn = false; q.shield?.off(); q.shield = null; }
@@ -518,7 +518,9 @@ function onMessage(ev: string, p: any) {
     } break;
     case 'ready': H.peerStage = p.s; break;
     case 'cast': if (q && H.nav) { if (p.k === 'n') novaFx(q); else launch(q, V(p.x, p.y, p.z), null, false); } break;
-    case 'hit': if (isHost()) pending.push({ u: p.u, d: p.d, x: p.x, z: p.z }); break;
+    case 'hit': if (isHost()) pending.push({ u: p.u, d: p.d, x: p.x, z: p.z, st: p.st, p: p.p }); break;
+    case 'kit': if (q && H.nav) castKit(p.h as Hero, p.s as Slot, q, { a: p.a, x: p.x, z: p.z, u: p.u }, false, kitCtx()); break;
+    case 'heal': { const m = me(); if (m && !m.dead) healMe(m, p.v); } break;
     case 'hurt': { const m = me(); if (m && m.dodgeT <= 0) myPrey.hurt(p.d, { x: p.x, z: p.z, def: { blood: DARK } }); } break;
     case 'hz': if (H.nav) spawnHazard(p.k as HazardKind, p.x, p.z, H.nav); break;
     case 'say': void speak(p.id as SceneId); break;
@@ -578,7 +580,7 @@ function updPlayer(p: Fighter, dt: number) {
   if (!p.dead) {
     p.mana = Math.min(100, p.mana + G.regen * dt);
     // Out of combat for a while: wounds close slowly.
-    if (S.T - lastHurt > 6) p.hp = Math.min(p.R.hp, p.hp + 6 * dt);
+    if (S.T - lastHurt > 6) p.hp = Math.min(p.R.hp, p.hp + 12 * dt);
     if (p.shieldOn) { p.mana -= G.shieldDrain * dt; if (p.mana <= 0 || S.T - p.shieldT > G.shMax * 2) setShield(p, false); }
     if (p.wantShield && !p.shieldOn) setShield(p, true);
     if (!p.wantShield && p.shieldOn) setShield(p, false);
@@ -628,7 +630,7 @@ export function huntTick(rdt: number) {
   // Our state for the friend, ~12 times a second.
   if (q && S.T - sendAt > 0.08) {
     sendAt = S.T;
-    coopSend('pl', { a: [+p.x.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), p.curName ? CLIP_NAMES.indexOf(p.curName) : 0, Math.round(p.hp), Math.round(p.mana), p.dead ? 1 : 0, p.shieldOn ? 1 : 0, p.dodgeT > 0 ? 1 : 0] });
+    coopSend('pl', { a: [+p.x.toFixed(2), +p.z.toFixed(2), +p.ry.toFixed(2), p.curName ? CLIP_NAMES.indexOf(p.curName) : 0, Math.round(p.hp), Math.round(p.mana), p.dead ? 1 : 0, p.shieldOn ? 1 : 0, p.dodgeT > 0 ? 1 : 0, H.hiddenUntil > S.T ? 1 : 0] });
   }
   if (H.cine) { p.root.updateMatrixWorld(); return dt; }
   myPrey.x = p.x; myPrey.z = p.z; myPrey.dead = p.dead || H.phase !== 'play'; myPrey.dodging = p.dodgeT > 0;
@@ -640,7 +642,7 @@ export function huntTick(rdt: number) {
       coopSend('sync', { s: H.stage, l: monsters.filter(m => !m.gone && m.state !== 'dead').map(packSpawn) });
       if (H.gate) coopSend('gate', { x: H.gate.position.x, z: H.gate.position.z });
     }
-    for (const h of pending) { const m = monsters.find(k => k.uid === h.u); if (m && targetable(m)) hitMonster(m, h.d, h.x, h.z); }
+    for (const h of pending) { const m = monsters.find(k => k.uid === h.u); if (m && targetable(m)) hitMonster(m, h.d, h.x, h.z, { stun: h.st, push: h.p }, false); }
     pending = [];
     const preys = q ? [myPrey, matePrey] : [myPrey];
     if (H.ready) {
@@ -667,6 +669,9 @@ export function huntTick(rdt: number) {
   } else for (const m of monsters.slice()) if (!m.gone) updatePuppet(m, dt, nav);
   for (let i = monsters.length - 1; i >= 0; i--) if (monsters[i].gone) monsters.splice(i, 1);
   updBolts(dt);
+  updateKits(dt);
+  if (H.hiddenUntil && S.T > H.hiddenUntil) unhide(p);
+  myPrey.hidden = H.hiddenUntil > S.T;
   updateHazards(dt, nav, p.dead ? null : myPrey);
   // Reviving: our fallen wizard stands up after the friend stayed next to us for a moment.
   if (q && p.dead && H.phase === 'play') {
@@ -769,12 +774,12 @@ export function initHunt() {
  */
 export async function playHunt(stage: StageId = 'forest', partnerRi = -1) {
   const d = STAGES[stage];
-  if (!online()) { const lv = DIFFS[huntDiff()]; tuning.hp = lv.hp; tuning.dmg = lv.dmg; }
+  if (!online()) setTuning(huntDiff());
   H.partnerRi = partnerRi;
   $('hlName').textContent = d.name; $('hlTxt').textContent = 'جارٍ التجهيز…';
   $('hLoad').hidden = false; $('menu').hidden = true; $('pack').hidden = true; $('title').hidden = true;
   try {
-    await loadHunt(S.sel, stage, t => { $('hlTxt').textContent = t; });
+    await loadHunt(heroRi(), stage, t => { $('hlTxt').textContent = t; });
     await startHunt();
   } catch (e) {
     console.error(e);
@@ -793,3 +798,71 @@ const DIFF_KEY = 'asrar.huntDiff';
 /** Chosen difficulty (0..2, default the middle one), kept on the device. */
 export function huntDiff() { const v = +(localStorage.getItem(DIFF_KEY) ?? 1); return v >= 0 && v <= 2 ? v : 1; }
 export function setHuntDiff(v: number) { localStorage.setItem(DIFF_KEY, String(v)); }
+
+/* ---------- story heroes ---------- */
+const HERO_KEY = 'asrar.huntHero';
+/** The chosen story hero (Ehab, Sara or Abed), kept on the device. */
+export function huntHero(): Hero { const v = localStorage.getItem(HERO_KEY) as Hero | null; return v && HEROES.includes(v) ? v : 'ehab'; }
+export function setHuntHero(h: Hero) { localStorage.setItem(HERO_KEY, h); }
+export const heroRi = (h: Hero = huntHero()) => ROSTER.findIndex(r => r.id === h);
+const heroOf = (f: Fighter): Hero => (HEROES.includes(f.R.id as Hero) ? f.R.id : 'ehab') as Hero;
+
+function setTuning(level: number) { const lv = DIFFS[level] ?? DIFFS[1]; tuning.hp = lv.hp * MON_HP; tuning.dmg = lv.dmg * MON_DMG; }
+
+/** A wizard with story-mode health (their own copy of the roster entry, so duels keep theirs). */
+function storyFighter(ri: number, side: 0 | 1) {
+  const f = makeFighter(ri, side);
+  f.R = { ...f.R, hp: HUNT_HP };
+  resetChar(f);
+  return f;
+}
+
+function setAlpha(f: Fighter, a: number) {
+  if ((f.alpha ?? 1) === a) return;
+  f.alpha = a;
+  f.model.traverse(o => {
+    const m = o as THREE.Mesh; if (!m.isMesh) return;
+    for (const mt of Array.isArray(m.material) ? m.material : [m.material]) { mt.transparent = a < 1; mt.opacity = a; mt.depthWrite = a >= 1; }
+  });
+}
+function unhide(p: Fighter) { if (H.hiddenUntil) { H.hiddenUntil = 0; setAlpha(p, 1); } }
+
+function healMe(p: Fighter, amount: number) {
+  const step = amount / 6;
+  for (let k = 1; k <= 6; k++) after(k * 0.25, () => { if (!p.dead) p.hp = Math.min(p.R.hp, p.hp + step); });
+  p.slowT = 0; p.stunT = 0;
+  dmgText(p, '+' + amount, '#c7f59a'); healFx(p, amount);
+}
+
+function kitCtx(): KitCtx {
+  return {
+    nav: H.nav!,
+    mate: mate(),
+    hit: (m, dmg, o) => { const p = me(); hitMonster(m, dmg, p?.x ?? m.x, p?.z ?? m.z, o); },
+    heal: (who, n) => { if (who === 'me') { const p = me(); if (p) healMe(p, n); } else { coopSend('heal', { v: n }); const q = mate(); if (q) healFx(q, n); } },
+    hide: s => { const p = me(); if (!p) return; H.hiddenUntil = S.T + s; H.veilBonus = true; setAlpha(p, 0.3); },
+  };
+}
+
+/** Special, skill and power: mana and cooldowns like the duel's, effect from the hero's kit. */
+function castSlot(p: Fighter, slot: Slot) {
+  if (p.dead || p.dodgeT > 0 || p.castT > 0.1) return;
+  const K = slot === 'sk' ? p.R.skill : slot === 'sk2' ? p.R.skill2 : null;
+  const cost = slot === 'sp' ? G.spCost : K!.cost;
+  if (p.mana < cost) return;
+  if (slot === 'sk' && p.cdK > 0) return;
+  if (slot === 'sk2' && (p.cdK2 > 0 || !K)) return;
+  p.mana -= cost; setShield(p, false);
+  if (slot === 'sk') p.cdK = K!.cd;
+  if (slot === 'sk2') p.cdK2 = K!.cd;
+  const hero = heroOf(p), args = kitArgs(p, slot, hero);
+  if (!(hero === 'ehab' && slot === 'sk')) unhide(p);
+  p.ry = args.a; p.castT = slot === 'sp' ? 0.7 : 0.45;
+  anim(p, slot === 'sk' && hero !== 'abed' ? 'block' : 'special', { once: true, speed: 1.5, force: true });
+  play(p.R.ss, { vol: 0.7 });
+  after(slot === 'sp' ? 0.4 : 0.2, () => {
+    if (p.dead || S.mode !== 'hunt' || !H.nav) return;
+    castKit(hero, slot, p, args, true, kitCtx());
+    coopSend('kit', { h: hero, s: slot, ...args });
+  });
+}

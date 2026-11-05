@@ -50,7 +50,7 @@ export function updateHazards(dt: number, nav: Nav, me: Prey | null) {
     } else {
       // Warning ring that pulses and closes in, then the burst.
       if (h.t < ROOT.warn) { const k = h.t / ROOT.warn; h.mesh.scale.setScalar(1.6 - k * 0.6); mat.opacity = 0.4 + 0.5 * Math.abs(Math.sin(h.t * 12)); }
-      else if (!h.hitMe && h.t - dt < ROOT.warn) {
+      else if (!h.hitMe) {
         h.hitMe = true; mat.opacity = 0;
         const y = navHeight(nav, h.x, h.z);
         for (let i = 0; i < 26; i++) emit(h.x + rnd(ROOT.radius * 0.8), y + 0.1, h.z + rnd(ROOT.radius * 0.8), rnd(0.6), 2.5 + Math.random() * 2.5, rnd(0.6), MUD[(Math.random() * 2) | 0], 0.35, 0.9, { t: 'smoke', smoke: 1, grow: 0.6, a: 0.6 });
