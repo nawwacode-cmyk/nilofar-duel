@@ -37,8 +37,8 @@ export function shieldMesh(c: Fighter): ShieldFx {
   fx.push(dt => {
     t += dt; u.uT.value = t; u.uHit.value *= Math.pow(0.02, dt);
     u.uO.value = off ? Math.max(0, u.uO.value - dt * 5) : Math.min(1, u.uO.value + dt * 8);
-    m.position.set(c.x, 1, c.z);
-    if (Math.random() < 0.3) emit(c.x + rnd(0.7), 0.2 + Math.random() * 1.6, c.z + rnd(0.7), 0, 0.3, 0, pick(c.pal), 0.12, 0.4, { t: 'rune' });
+    const y = c.root.position.y; m.position.set(c.x, y + 1, c.z);
+    if (Math.random() < 0.3) emit(c.x + rnd(0.7), y + 0.2 + Math.random() * 1.6, c.z + rnd(0.7), 0, 0.3, 0, pick(c.pal), 0.12, 0.4, { t: 'rune' });
     if (off && u.uO.value <= 0) { scene.remove(m); m.geometry.dispose(); (m.material as THREE.Material).dispose(); return false; }
     return true;
   });

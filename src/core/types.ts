@@ -2,7 +2,7 @@ import type * as THREE from 'three';
 
 export type Palette = readonly THREE.Color[];
 export type GameState = 'load' | 'title' | 'menu' | 'online' | 'intro' | 'fight' | 'ko' | 'struggle' | 'end';
-export type Mode = 'ai' | 'online' | 'train';
+export type Mode = 'ai' | 'online' | 'train' | 'hunt';
 
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
 export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb';

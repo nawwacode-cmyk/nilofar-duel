@@ -1,4 +1,5 @@
 import { packState, packSize, downloadPack, cancelDownload, removePack, downloading, packsAvailable } from '../assets/packs';
+import { playHunt, huntDiff, setHuntDiff } from '../hunt/hunt';
 import { $ } from '../core/util';
 
 /**
@@ -15,11 +16,13 @@ async function refresh() {
   const msg = $('pkMsg');
   $('pkStop').hidden = !busy;
   $('pkDl').hidden = busy || st.installed || !packsAvailable();
+  $('pkPlay').hidden = busy || !st.installed;
+  $('pkDiffRow').hidden = $('pkPlay').hidden;
   $('pkDel').hidden = busy || (!st.installed && !st.have);
   $('pkBar').hidden = !busy && (st.installed || !st.have);
   $('pkDlTxt').textContent = st.have && !st.installed ? 'متابعة التنزيل' : 'تنزيل الطور';
   if (!packsAvailable()) msg.textContent = 'هذا الطور متوفّر في تطبيق أندرويد فقط.';
-  else if (st.installed) msg.textContent = 'تم التنزيل. الطور قيد الإنشاء، وسيُفتح من هنا فور اكتماله.';
+  else if (st.installed) msg.textContent = 'الطور جاهز على جهازك. المرحلة الأولى: غابة الأرواح.';
   else if (busy) msg.textContent = 'جارٍ التنزيل… يمكنك الإيقاف والمتابعة لاحقًا من حيث توقّفت.';
   else if (failed) msg.textContent = 'انقطع التنزيل. تحقّق من اتصالك ثم اضغط «متابعة التنزيل».';
   else if (st.have) msg.textContent = 'التنزيل متوقّف. اضغط «متابعة التنزيل» لإكماله.';
@@ -49,5 +52,10 @@ export function initPackUI() {
     await refresh();
   };
   $('pkStop').onclick = () => cancelDownload();
+  $('pkPlay').onclick = () => { void playHunt('forest'); };
+  const dBtns = $('pkDiff').querySelectorAll<HTMLButtonElement>('button');
+  const markDiff = () => dBtns.forEach(b => b.classList.toggle('on', +(b.dataset.d ?? 1) === huntDiff()));
+  dBtns.forEach(b => b.onclick = () => { setHuntDiff(+(b.dataset.d ?? 1)); markDiff(); });
+  markDiff();
   $('pkDel').onclick = async () => { await removePack(PACK); progress(0, size); await refresh(); };
 }

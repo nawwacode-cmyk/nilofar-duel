@@ -11,6 +11,7 @@ import { skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
 import { trainKo, trainReset } from './training';
 import { restoreArena } from '../world/arena';
+import { endHunt } from '../hunt/hunt';
 import { $ } from '../core/util';
 import type { Fighter } from '../core/types';
 
@@ -86,6 +87,7 @@ export function clearFighters() {
 
 export function toMenu() {
   if (S.mode === 'train') restoreArena();
+  if (S.mode === 'hunt') endHunt();
   S.state = 'menu'; musicOff();
   ['end', 'hud', 'ctl', 'sWrap', 'pauseBtn', 'pause', 'rematch', 'combo'].forEach(id => { $(id).hidden = true; });
   S.paused = false;
