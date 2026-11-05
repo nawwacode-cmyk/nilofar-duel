@@ -45,30 +45,3 @@ export async function loadScan(name: string, tint = 0xffffff) {
   mesh.frustumCulled = false; mesh.receiveShadow = true;
   return mesh;
 }
-
-/** A canvas radial gradient used by fog banks. */
-let fogTex: THREE.CanvasTexture | null = null;
-function fogTexture() {
-  if (fogTex) return fogTex;
-  const c = document.createElement('canvas'); c.width = c.height = 128;
-  const x = c.getContext('2d')!; const gr = x.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gr.addColorStop(0, '#ffffffff'); gr.addColorStop(0.45, '#ffffffaa'); gr.addColorStop(1, '#ffffff00');
-  x.fillStyle = gr; x.fillRect(0, 0, 128, 128);
-  fogTex = new THREE.CanvasTexture(c); return fogTex;
-}
-
-/**
- * Soft fog banks hiding where a scan simply ends (cut walls, holes, missing roofs): a few overlapping,
- * camera-facing puffs per spot. `spots` are [x, y, z, size].
- */
-export function fogBanks(root: THREE.Object3D, spots: [number, number, number, number][], color: number, opacity: number) {
-  const mat = new THREE.SpriteMaterial({ map: fogTexture(), color, transparent: true, opacity, depthWrite: false, fog: false });
-  for (const [x, y, z, s] of spots) {
-    for (let k = 0; k < 3; k++) {
-      const sp = new THREE.Sprite(mat);
-      sp.position.set(x + (k - 1) * s * 0.35, y + (k % 2) * s * 0.15, z + (k - 1) * 0.3);
-      sp.scale.set(s * (1.1 + k * 0.15), s * 0.8, 1);
-      sp.renderOrder = 2; root.add(sp);
-    }
-  }
-}

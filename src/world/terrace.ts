@@ -4,7 +4,6 @@ import { emit } from '../render/particles';
 import { FIRE } from '../data/palettes';
 import { C, rnd, pick } from '../core/util';
 import type { ArenaEnv } from './arena';
-import { fogBanks } from './scan';
 
 export const terraceRoot = new THREE.Group();
 /** Moonlight from the painted moon's side (upper left, behind); warm braziers answer from the front. */
@@ -32,7 +31,7 @@ async function pbr(name: string, repeat: [number, number]) {
 }
 
 /** Balustrade line (z) and the edge of the terrace floor. */
-const RAIL_Z = -5.4, FLOOR = { w: 40, d: 17, z: -1.6 };
+const RAIL_Z = -5.4, FLOOR = { w: 70, d: 17, z: -1.6 };
 
 export async function loadTerrace() {
   const [floorTex, stoneTex, backTex] = await Promise.all([
@@ -51,17 +50,13 @@ export async function loadTerrace() {
 
   // Painted castle + moon + sky, far behind the balustrade (unlit, no fog: it already has its own atmosphere).
   backTex.colorSpace = THREE.SRGBColorSpace; backTex.anisotropy = aniso();
-  const W = 58, H = W * (632 / 1672);
+  const W = 70, H = W * (632 / 1672); // tall enough to fill the top of the widest view
   const back = new THREE.Mesh(new THREE.PlaneGeometry(W, H), new THREE.MeshBasicMaterial({ map: backTex, fog: false, color: 0xd8dcff }));
   back.position.set(0, -10.5 + H / 2, -24); back.renderOrder = -1;
   terraceRoot.add(back);
-  // The painted backdrop and the floor end beyond the widened duel area: soft night fog at both sides.
-  const sides: [number, number, number, number][] = [];
-  for (const sx of [-1, 1]) {
-    sides.push([sx * 13, 3, -7, 10]);
-    for (let z = -8; z <= 5; z += 2.6) sides.push([sx * 15.5, 0.9, z, 7]);
-  }
-  fogBanks(terraceRoot, sides, 0x111a36, 0.85);
+  // The wide duel area lets the camera see past the painting's edges: a mirrored copy on each side continues it
+  // seamlessly (the edges match exactly), so the scene never ends in a hard line.
+  for (const sx of [-1, 1]) { const m = back.clone(); m.position.x = sx * W; m.scale.x = -1; terraceRoot.add(m); }
   scene.add(terraceRoot);
 }
 
@@ -70,7 +65,8 @@ const BALUSTER = [[0, 0], [0.09, 0], [0.09, 0.06], [0.06, 0.1], [0.05, 0.16], [0
 
 function buildBalustrade(tex: Awaited<ReturnType<typeof pbr>>) {
   const mat = new THREE.MeshStandardMaterial({ ...tex, color: 0x7d86a3, roughness: 0.85 });
-  const span = 22, posts = 7;
+  // Long enough that its ends stay out of view; posts every 3.67 m (two of them carry the rail braziers).
+  const span = 44, posts = 13;
   const g = new THREE.Group(); g.position.z = RAIL_Z;
   const box = (w: number, h: number, d: number, x: number, y: number) => {
     const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y, 0); m.castShadow = m.receiveShadow = true; g.add(m); return m;

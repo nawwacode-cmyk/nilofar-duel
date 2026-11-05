@@ -1,6 +1,6 @@
 import * as THREE from 'three';
 import { scene } from '../render/stage';
-import { loadScan, fogBanks } from './scan';
+import { loadScan } from './scan';
 import { emit } from '../render/particles';
 import { C, rnd } from '../core/util';
 import { heightGrid } from './heightgrid';
@@ -24,8 +24,6 @@ export const PALACE_ENV: ArenaEnv = {
 export async function loadPalace() {
   const mesh = await loadScan('girona');
   palaceRoot.add(mesh);
-  // Daylight haze over the gap left where a modern museum banner was cut out of the scan (right side).
-  fogBanks(palaceRoot, [[9.8, 2.2, -2, 5], [10.2, 1, -1, 4]], 0xdfe8f2, 0.55);
   sample = heightGrid(mesh, GRID, 1.2, -0.15, 0.25, 0);
   scene.add(palaceRoot);
 }
