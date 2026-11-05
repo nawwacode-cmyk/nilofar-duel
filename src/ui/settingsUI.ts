@@ -4,6 +4,7 @@ import { toMenu } from '../game/flow';
 import { unlock } from '../audio/audio';
 import { $ } from '../core/util';
 import { toLocal } from '../core/view';
+import { trainSummary } from '../game/training';
 
 /* =================== settings screen =================== */
 type Row =
@@ -167,6 +168,8 @@ export function showPause() {
   if (!online) S.paused = true;
   $('pNote').hidden = !online;
   $('pQuitTxt').textContent = online ? 'مغادرة المبارزة' : 'الخروج إلى القائمة';
+  $('pTrain').hidden = S.mode !== 'train';
+  if (S.mode === 'train') $('tStats').textContent = trainSummary();
   $('pause').hidden = false;
 }
 function hidePause() { $('pause').hidden = true; S.paused = false; }

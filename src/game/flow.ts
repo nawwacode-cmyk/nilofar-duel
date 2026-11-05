@@ -9,6 +9,8 @@ import { leaveNet } from '../net/online';
 import { banner, hud } from '../ui/hud';
 import { skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
+import { trainKo, trainReset } from './training';
+import { restoreArena } from '../world/arena';
 import { $ } from '../core/util';
 import type { Fighter } from '../core/types';
 
@@ -34,6 +36,7 @@ export function startMatch() {
   S.CH.forEach(c => { if (c) c.wins = 0; });
   S.round = 0;
   $('end').hidden = true; $('hud').hidden = false; $('ctl').hidden = false; $('pauseBtn').hidden = false; $('rematch').hidden = true;
+  if (S.mode === 'train') trainReset();
   $('bSk').textContent = skillLabel(me().R);
   const R = me().R; $('bSk2').hidden = !R.skill2; if (R.ab2) $('bSk2').textContent = R.ab2[1].split(' ')[0];
   walls.slice().forEach(killWall); clones.slice().forEach(c => killClone(c, false));
@@ -51,12 +54,13 @@ export function newRound() {
   clearArena();
   S.CH.forEach(c => c && resetChar(c));
   hud(); S.state = 'intro'; S.stateT = 0; S.slowmo = 1;
-  banner(TXT.round(S.round), TXT.versus(label(ch(0)), label(ch(1))));
+  if (S.mode === 'train') banner(TXT.training, TXT.versus(label(ch(0)), label(ch(1))));
+  else banner(TXT.round(S.round), TXT.versus(label(ch(0)), label(ch(1))));
   play('m_drums', { vol: 0.9 }); play('c_chant', { vol: 0.35 });
 }
 
 export function ko(c: Fighter) {
-  if (S.state !== 'fight') return;
+  if (S.state !== 'fight' || trainKo(c)) return;
   c.dead = true; anim(c, 'death', { once: true, force: true }); setShield(c, false);
   const w = opp(c); w.wins = (w.wins || 0) + 1; hud();
   S.state = 'ko'; S.stateT = 0; S.slowmo = 0.35;
@@ -81,8 +85,9 @@ export function clearFighters() {
 }
 
 export function toMenu() {
+  if (S.mode === 'train') restoreArena();
   S.state = 'menu'; musicOff();
-  ['end', 'hud', 'ctl', 'sWrap', 'pauseBtn', 'pause', 'rematch'].forEach(id => { $(id).hidden = true; });
+  ['end', 'hud', 'ctl', 'sWrap', 'pauseBtn', 'pause', 'rematch', 'combo'].forEach(id => { $(id).hidden = true; });
   S.paused = false;
   banner(''); clearProjectiles(); strikes.length = 0;
   leaveNet(); S.mode = 'ai'; clearFighters(); $('menu').hidden = false;

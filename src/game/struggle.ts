@@ -68,7 +68,7 @@ export function updStruggle(dt: number) {
   const a = ch(0), b = ch(1);
   // Note: the main loop also advances stateT, so the struggle clock runs at double speed (5.5 units ≈ 2.75 s). Kept as-is for identical timing.
   S.stateT += dt;
-  if (S.mode === 'ai') {
+  if (S.mode !== 'online') {
     strug.acc += dt * strug.ai * (1 + Math.sin(S.stateT * 3) * 0.25);
     while (strug.acc >= 1) { strug.acc -= 1; strug.s = clamp(strug.s + (me().idx === 0 ? -0.05 : 0.05), -1, 1); }
     // Simulator: side 0 is the computer too and mashes at the same average rate (button-mashing skill is

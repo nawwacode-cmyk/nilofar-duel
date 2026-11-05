@@ -133,6 +133,16 @@ export function initMenus() {
     await show;
     if (inMenus()) { setupFighters(S.sel, o); startMatch(); }
   };
+  // Training: always in the sunlit palace courtyard (the player's arena choice is kept for duels);
+  // the dummy is the next wizard in the gallery.
+  $('mTrain').onclick = async () => {
+    unlock(); S.mode = 'train';
+    const o = (S.sel + 1) % ROSTER.length;
+    const show = versus(S.sel, o, Promise.all([ensureModels([S.sel, o]), setArena('palace', false)]), 1000);
+    $('menu').hidden = true;
+    await show;
+    if (inMenus()) { setupFighters(S.sel, o); startMatch(); }
+  };
   $('mOn').onclick = () => { unlock(); void veil(() => { $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; }); };
   $('oBack').onclick = () => { leaveNet(); void veil(() => { $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; }); };
   $('oCreate').onclick = async () => { unlock(); const c = code4(); $('oCode').textContent = c; $('oCreate').hidden = true; $('oWait').hidden = false; $('oErr').hidden = true; await onlineStart(true, c); };

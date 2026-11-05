@@ -27,6 +27,8 @@
   <div class="side r"><img class="av" id="av1" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n1"></span><span class="el" id="e1"></span><span class="pips" id="pw1"><i></i><i></i></span></div><div class="bar hp"><i id="hp1"></i><span class="num" id="hn1"></span></div><div class="bar mp"><i id="mp1"></i></div></div></div>
 </div>
 <div id="banner"></div>
+<!-- training: a fighting-game combo counter under the player's health bar (options live in the pause menu) -->
+<div id="combo" hidden><b id="cHits">0</b><span id="cWord">ضربات</span><em id="cDmg">0</em></div>
 <div id="ctl" hidden>
   <div id="stickZone"><div id="stick"><div id="knob"></div></div></div>
   <div id="btns">
@@ -75,6 +77,7 @@
     <div class="logo">أسرار الظلام</div>
     <button class="gbtn" id="mAI"><span class="ic">swords</span><span class="col">ضد الحاسوب</span></button>
     <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا</span></button>
+    <button class="gbtn dark" id="mTrain"><span class="ic">shield</span><span class="col">تدريب</span></button>
     <h4>الساحة</h4>
     <div class="alist" id="arena">
       <button data-arena="terrace"><img src="models/arenas/terrace.webp" alt=""><span>شرفة القلعة</span></button>
@@ -154,6 +157,12 @@
   <div class="frame pbox">
     <h2 class="gtext" id="pTitle">إيقاف مؤقت</h2>
     <p id="pNote" hidden>المبارزة مستمرة عند صديقك أثناء فتح هذه القائمة.</p>
+    <div class="ptrain" id="pTrain" hidden>
+      <h4>خيارات التدريب</h4>
+      <div class="prow"><span class="lbl">الدمية</span><div class="seg" id="tDummy"><button data-b="idle">ثابتة</button><button data-b="move">تتحرك</button><button data-b="block">تصدّ</button><button data-b="fight">تقاتل</button></div></div>
+      <div class="prow"><button class="chip" id="tMana">طاقة لا نهائية</button><button class="chip" id="tCd">بلا انتظار</button><button class="chip" id="tReset"><span class="ic">replay</span> إعادة الموضع</button></div>
+      <div class="prow lbl" id="tStats"></div>
+    </div>
     <div class="pbtns">
       <button class="gbtn big" id="pResume"><span class="ic">play_arrow</span> استئناف</button>
       <button class="gbtn dark" id="pSettings"><span class="ic">settings</span> الإعدادات</button>

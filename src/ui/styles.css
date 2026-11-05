@@ -426,3 +426,16 @@ html.compact .mbar h4{margin:0}
 html.compact .flow{bottom:calc(var(--safe-b) + 106px)}
 html.compact .minfo b{font-size:24px}
 html.compact .minfo .gbtn{height:28px}
+
+/* ================= training: options inside the pause menu, combo counter under the player's bar ================= */
+.chip{height:30px;padding:0 14px;border:none;border-radius:999px;cursor:pointer;font-family:var(--body);font-weight:600;font-size:var(--fs-sm);color:var(--muted);background:#0b0912cc;box-shadow:inset 0 0 0 1px var(--gold-lo);transition:background .2s,color .2s}
+.chip.on{color:#241503;background:linear-gradient(180deg,#f0c46a,#b7802f)}
+.ptrain{display:flex;flex-direction:column;align-items:center;gap:var(--g2);padding-bottom:var(--g2);border-bottom:1px solid #e0b45a33}
+.ptrain h4{margin:0;font-family:var(--display);font-weight:700;color:var(--gold);font-size:var(--fs-lg);line-height:1.5}
+.prow{display:flex;align-items:center;justify-content:center;gap:var(--g2);flex-wrap:wrap}
+#combo{position:fixed;left:calc(var(--safe-l) + 70px);top:calc(var(--safe-t) + 74px);z-index:3;display:flex;align-items:baseline;gap:6px;direction:rtl;pointer-events:none;text-shadow:0 2px 8px #000,0 0 14px #000;animation:pop .2s ease-out}
+#combo b{font-family:var(--display);font-weight:800;font-size:clamp(26px,6vh,38px);line-height:1.4;background:var(--gold-text);-webkit-background-clip:text;background-clip:text;color:transparent}
+#combo span{font-family:var(--display);font-weight:700;color:var(--ink);font-size:var(--fs-md)}
+#combo em{font-style:normal;color:#ff9a6a;font-weight:700;font-size:var(--fs-md)}
+#combo.fade{opacity:0;transition:opacity .5s}
+

@@ -89,7 +89,7 @@ export function updProjs(dt: number) {
     const a = projs[i], b = projs[j];
     if (a.dead || b.dead || a.owner === b.owner) continue;
     if (a.pos.distanceTo(b.pos) < a.r + b.r + 0.05) {
-      if (S.state === 'fight' && S.T > S.strugReady && (S.mode === 'ai' || net.me === 0)) { startStruggle(a, b); break; }
+      if (S.state === 'fight' && S.T > S.strugReady && (S.mode !== 'online' || net.me === 0)) { startStruggle(a, b); break; }
       burst(a.pos.clone().lerp(b.pos, 0.5), WHITE, 30, 3, 0.4, 0.12, 'star'); play('m_blast', { vol: 0.5 });
       if (a.pw <= b.pw) killProj(a);
       if (b.pw <= a.pw) killProj(b);

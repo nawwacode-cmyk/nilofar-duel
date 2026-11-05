@@ -26,6 +26,7 @@ export const TXT = {
   struggle: 'صراع الشعاع! اضغط أسرع من خصمك',
   loadingFighters: (p: number) => `جارٍ تحميل الساحرَين… ${p}%`,
   preparing: 'جارٍ تجهيز المبارزة…',
+  training: 'تدريب',
   muteOn: 'صامت',
   muteOff: 'صوت',
   abilitiesOf: (w: WizardDef) => (w.female ? 'قدراتها' : 'قدراته'),

@@ -10,6 +10,7 @@ import { opp } from '../game/state';
 import { G, DMG } from '../data/rules';
 import { GOLD } from '../data/palettes';
 import { TXT } from '../data/text';
+import { trainHit } from '../game/training';
 import { V, pick, clamp } from '../core/util';
 import type { Fighter, Projectile } from '../core/types';
 
@@ -60,6 +61,7 @@ function breakShield(c: Fighter) {
 export function applyDmg(c: Fighter, d: number, att: Fighter) {
   if (c.dead || S.state !== 'fight') return;
   c.hp = Math.max(0, c.hp - d); dmgText(c, '−' + d, att.hex); c.hitT = 0.35;
+  if (S.mode === 'train') trainHit(c, d);
   if (S.mode === 'online' && c.idx === net.me) net.urgent = true;
   S.shake = Math.max(S.shake, d > 15 ? 0.15 : 0.06); flash(c, 12);
   if (c.castT <= 0 && !c.shieldOn && c.dodgeT <= 0) anim(c, 'hit', { once: true, speed: 1.4, force: true });

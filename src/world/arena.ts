@@ -69,8 +69,8 @@ function applyEnv(e: ArenaEnv) {
 }
 
 /** Shows one arena (loading it if needed) and hides the other. */
-export async function setArena(id: ArenaId) {
-  current = id; localStorage.setItem(KEY, id);
+export async function setArena(id: ArenaId, remember = true) {
+  current = id; if (remember) localStorage.setItem(KEY, id);
   await ensure(id);
   if (current !== id) return; // a later choice won
   for (const [k, a] of Object.entries(ARENAS)) a.root.visible = k === id;
@@ -88,6 +88,13 @@ export async function loadArenas(onLoaded: () => void) {
   setTimeout(() => {
     void (Object.keys(ARENAS) as ArenaId[]).filter(k => k !== current).reduce((p, k) => p.then(() => ensure(k)).then(() => { ARENAS[k].root.visible = current === k; }), Promise.resolve());
   }, 1500);
+}
+
+/** Back to the player's own choice after a mode that uses a fixed arena (training). */
+export function restoreArena() {
+  const saved = localStorage.getItem(KEY) as ArenaId | null;
+  const id: ArenaId = saved === 'court' || saved === 'palace' ? saved : 'terrace';
+  if (id !== current) void setArena(id);
 }
 
 export function updateAmbience(rdt: number) { ARENAS[current].ambience(rdt); }

@@ -30,7 +30,7 @@ function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
   const s = tipPos(c);
   let t = chest(opp(c));
   // In the balance simulator both sides are the computer, so both are fooled the same way.
-  if (S.mode === 'ai' && (c.idx === 1 || S.sim)) {
+  if (S.mode !== 'online' && (c.idx === 1 || S.sim)) {
     const cs = clones.filter(k => k.owner !== c.idx);
     const decoy = cs.find(k => k.decoy);
     // The computer cannot see a veiled Ehab: it attacks his illusion (or guesses).
