@@ -2,7 +2,7 @@ import { describe, it, expect, vi, afterEach } from 'vitest';
 import { gzipSync } from 'fflate';
 import { fetchBytes } from '../src/assets/net';
 
-const res = (status: number, body?: Uint8Array) => new Response(body ?? null, { status });
+const res = (status: number, body?: Uint8Array) => new Response((body ?? null) as BodyInit | null, { status });
 
 describe('fetchBytes', () => {
   afterEach(() => vi.unstubAllGlobals());
