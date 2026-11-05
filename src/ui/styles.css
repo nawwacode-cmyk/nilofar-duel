@@ -9,8 +9,8 @@
   --night:#05070d; --ink:#f3e8d0; --muted:#b2aac2;
   --gold:#e0b45a; --gold-hi:#fbe3a2; --gold-lo:#8d6428;
   --p0:#ffb347; --p1:#a9e4ff;
-  --display:"Aref Ruqaa","IBM Plex Sans Arabic",serif;
-  --body:"IBM Plex Sans Arabic",system-ui,sans-serif;
+  --display:"Alexandria",system-ui,sans-serif;
+  --body:"Alexandria",system-ui,sans-serif;
   --gold-text:linear-gradient(180deg,#fff4cf 0%,#f3cd77 45%,#b9822f 100%);
   --frame:0 0 0 1px #00000099,0 0 0 2px var(--gold-lo),inset 0 0 0 1px #fbe3a240,0 10px 40px #000a;
   /* type scale (landscape: height is the tight axis) */
