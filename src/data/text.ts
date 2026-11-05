@@ -9,9 +9,13 @@ export const TXT = {
   round: (n: number) => `الجولة ${n}`,
   versus: (a: string, b: string) => `${a} ضد ${b}`,
   fight: 'ابدأ!',
-  roundWon: (w: WizardDef) => `${w.name} ${v(w, 'حسم', 'حسمت')} الجولة`,
-  matchWon: (w: WizardDef) => `${w.name} ${v(w, 'فاز', 'فازت')} بالمبارزة!`,
-  endTitle: (w: WizardDef) => `${w.name} ${v(w, 'فاز', 'فازت')}!`,
+  // `name` may carry a "(أنت)"-style tag in mirror matches.
+  roundWon: (w: WizardDef, name = w.name) => `${name} ${v(w, 'حسم', 'حسمت')} الجولة`,
+  matchWon: (w: WizardDef, name = w.name) => `${name} ${v(w, 'فاز', 'فازت')} بالمبارزة!`,
+  endTitle: (w: WizardDef, name = w.name) => `${name} ${v(w, 'فاز', 'فازت')}!`,
+  /** Tags that tell the two fighters apart when both picked the same wizard. */
+  youTag: '(أنت)',
+  oppTag: (online: boolean) => (online ? '(صديقك)' : '(الحاسوب)'),
   endOnlineWin: 'أحسنت! لقد هزمت صديقك',
   endOnlineLose: 'تغلّب عليك صديقك هذه المرة',
   endAiWin: 'هزمت الحاسوب. جرّب مستوى أصعب إن كنت تجرؤ',

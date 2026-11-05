@@ -3,7 +3,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
 import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
-import { base, chest, clipFor } from '../fighters/fighter';
+import { base, chest, clipFor, tintModel } from '../fighters/fighter';
 import { play, pr } from '../audio/audio';
 import { portalRing } from '../fx/effects';
 import { applyDmg } from './damage';
@@ -41,13 +41,16 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
   veil(c, o) {
-    // Ehab fades out where he stands and leaves a perfect illusion of himself in his place.
+    // Ehab leaves a perfect illusion of himself where he stood and, unseen, steps out behind his opponent.
+    // Deliberately quiet: a faint shimmer and a soft sound, so the trick is not given away.
     c.veilT = G.veilT;
     spawnDecoy(c, o.x, o.z, o.y);
-    for (let i = 0; i < 40; i++) emit(o.x + rnd(0.5), 0.1 + Math.random() * 1.8, o.z + rnd(0.5), rnd(0.8), 0.6, rnd(0.8), pick(ARCH), 0.16, 0.8, { t: 'twirl' });
-    emit(o.x, 0.05, o.z, 0, 0, 0, ARCH[1], 0.6, 0.7, { t: 'rune', spin: 2, grow: 2.5 });
-    play('m_arcane', { vol: 0.7, x: o.x }); play('m_sparkle', { vol: 0.5, x: o.x, dur: 1.2 });
-    opp(c).turnLockT = Math.max(opp(c).turnLockT, 0.35);
+    for (let i = 0; i < 10; i++) emit(o.x + rnd(0.4), 0.2 + Math.random() * 1.6, o.z + rnd(0.4), rnd(0.2), 0.3, rnd(0.2), pick(ARCH), 0.08, 0.5, { t: 'twirl', a: 0.5 });
+    play('m_sparkle', { vol: 0.25, x: o.x, dur: 0.8 });
+    c.warpT = 0.75; c.invT = Math.max(c.invT, 0.45);
+    // The opponent loses track of him like after Reem's portal.
+    opp(c).turnLockT = Math.max(opp(c).turnLockT, 0.75 + G.portalBlind);
+    if (!o.remote && (o.dx || o.dz)) c.warpTo = [o.dx, o.dz];
   },
 };
 
@@ -59,14 +62,16 @@ export function unveilCast(c: Fighter) {
   if (c.veilT <= 0) return;
   c.veilT = 0;
   for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl);
-  for (let i = 0; i < 24; i++) emit(c.x + rnd(0.4), 0.1 + Math.random() * 1.8, c.z + rnd(0.4), rnd(0.6), 0.4, rnd(0.6), pick(ARCH), 0.14, 0.5, { t: 'spark' });
-  play('m_light', { vol: 0.5, x: c.x, dur: 1 });
+  for (let i = 0; i < 10; i++) emit(c.x + rnd(0.3), 0.2 + Math.random() * 1.6, c.z + rnd(0.3), rnd(0.3), 0.3, rnd(0.3), pick(ARCH), 0.08, 0.4, { t: 'spark', a: 0.6 });
+  play('m_light', { vol: 0.3, x: c.x, dur: 0.8 });
 }
 
 /* ---------- Ehab's decoy ---------- */
 function spawnDecoy(c: Fighter, x: number, z: number, ry: number) {
   for (const cl of clones.slice()) if (cl.owner === c.idx && cl.decoy) killClone(cl, false);
   const m = SkeletonUtils.clone(base[c.ri]);
+  // The illusion must look exactly like him, mirror-match costume included.
+  if (c.tint) { m.traverse(o => { const mesh = o as THREE.Mesh; if (mesh.isMesh) mesh.material = Array.isArray(mesh.material) ? mesh.material.map(x => x.clone()) : mesh.material.clone(); }); tintModel(m, c.tint); }
   const g = new THREE.Group(); g.add(m); g.position.set(x, 0, z); g.rotation.y = ry; scene.add(g);
   m.position.y = c.model.position.y;
   const mx = new THREE.AnimationMixer(m);

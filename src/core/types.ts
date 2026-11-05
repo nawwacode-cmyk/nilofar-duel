@@ -52,6 +52,8 @@ export interface Fighter {
   mixer: THREE.AnimationMixer; actions: Partial<Record<ClipName, THREE.AnimationAction>>;
   hand: THREE.Bone | null; chestB: THREE.Bone | null; headB: THREE.Bone | null;
   wand: THREE.Group; light: THREE.PointLight; blob: THREE.Mesh;
+  /** Mirror match: colour multiplier of the second fighter's "shadow" costume (also used for his illusions). */
+  tint?: THREE.Color;
   cur: THREE.AnimationAction | null; curName?: ClipName;
   x: number; z: number; vx: number; vz: number; ry: number;
   hp: number; mana: number;

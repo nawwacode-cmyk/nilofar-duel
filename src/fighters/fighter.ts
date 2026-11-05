@@ -130,6 +130,29 @@ export function makeFighter(ri: number, side: 0 | 1): Fighter {
   return c;
 }
 
+/** Multiplies every material colour of a (cloned) model, e.g. for the mirror-match costume. */
+export function tintModel(model: THREE.Object3D, tint: THREE.Color) {
+  model.traverse(o => {
+    const mesh = o as THREE.Mesh; if (!mesh.isMesh) return;
+    for (const m of Array.isArray(mesh.material) ? mesh.material : [mesh.material]) (m as THREE.MeshStandardMaterial).color?.multiply(tint);
+  });
+}
+
+/**
+ * Mirror match (both players picked the same wizard): like a fighting game's alternate costume, the second
+ * fighter is darker and cooler and casts in other colours (hue turned by a third), so everyone can tell them apart.
+ */
+export function altCostume(c: Fighter) {
+  const turn = (col: THREE.Color) => new THREE.Color(col.b, col.r, col.g);
+  c.tint = new THREE.Color(0.6, 0.62, 0.8);
+  tintModel(c.model, c.tint);
+  c.pal = c.pal.map(turn);
+  c.hex = '#' + turn(new THREE.Color(c.R.css)).getHexString();
+  c.light.color = turn(c.light.color);
+  const tip = c.wand.userData.tip as THREE.Mesh;
+  (tip.material as THREE.MeshBasicMaterial).color = turn((tip.material as THREE.MeshBasicMaterial).color);
+}
+
 /**
  * Puts the wand inside a closed fist instead of through the palm.
  * Mixamo fingers extend along local +Y and curl around local +X (towards +Z, the palm side),

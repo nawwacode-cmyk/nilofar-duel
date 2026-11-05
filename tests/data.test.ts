@@ -61,4 +61,9 @@ describe('text', () => {
     expect(TXT.endTitle(ROSTER[1])).toBe('سراج فاز!');
     expect(TXT.roundWon(ROSTER[2])).toBe('ليلى حسمت الجولة');
   });
+  it('tells the two fighters apart in a mirror match', () => {
+    expect(TXT.endTitle(ROSTER[0], `ريم ${TXT.youTag}`)).toBe('ريم (أنت) فازت!');
+    expect(TXT.matchWon(ROSTER[4], `إيهاب ${TXT.oppTag(true)}`)).toBe('إيهاب (صديقك) فاز بالمبارزة!');
+    expect(TXT.oppTag(false)).toBe('(الحاسوب)');
+  });
 });

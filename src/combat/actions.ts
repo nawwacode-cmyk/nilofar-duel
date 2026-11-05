@@ -29,7 +29,8 @@ export function fire(c: Fighter, o: CastOrder) {
 function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
   const s = tipPos(c);
   let t = chest(opp(c));
-  if (S.mode === 'ai' && c.idx === 1) {
+  // In the balance simulator both sides are the computer, so both are fooled the same way.
+  if (S.mode === 'ai' && (c.idx === 1 || S.sim)) {
     const cs = clones.filter(k => k.owner !== c.idx);
     const decoy = cs.find(k => k.decoy);
     // The computer cannot see a veiled Ehab: it attacks his illusion (or guesses).
@@ -120,13 +121,13 @@ export function castSkill(c: Fighter) {
   if (c.dead || c.stunT > 0 || c.cdK > 0 || c.mana < K.cost || c.castT > 0.1 || c.warpT > 0) return;
   c.mana -= K.cost; c.cdK = K.cd; setShield(c, false);
   const o = opp(c);
-  if (K.k === 'portal') {
-    // Exit beside and behind the opponent, on whichever side stays inside the arena.
+  // Exit beside and behind the opponent, on whichever side stays inside the arena (portal and veil).
+  const behind = () => {
     const d = V(o.x - c.x, 0, o.z - c.z).normalize();
     const side = o.z + -d.x * 1.4 < G.zMax && o.z + -d.x * 1.4 > G.zMin ? 1 : -1;
-    const ex = clamp(o.x + d.x * 1.9 + -d.z * 1.2 * side, -G.bx, G.bx), ez = clamp(o.z + d.z * 1.9 + d.x * 1.2 * side, G.zMin, G.zMax);
-    fire(c, { kind: 'portal', x: c.x, y: 0, z: c.z, dx: ex, dy: 0, dz: ez });
-  }
+    return [clamp(o.x + d.x * 1.9 + -d.z * 1.2 * side, -G.bx, G.bx), clamp(o.z + d.z * 1.9 + d.x * 1.2 * side, G.zMin, G.zMax)];
+  };
+  if (K.k === 'portal') { const [ex, ez] = behind(); fire(c, { kind: 'portal', x: c.x, y: 0, z: c.z, dx: ex, dy: 0, dz: ez }); }
   if (K.k === 'blink') {
     let dx = c.inX, dz = c.inZ;
     if (Math.hypot(dx, dz) < 0.2) { const ax = o.x - c.x, az = o.z - c.z, L = Math.hypot(ax, az) || 1; const s = c.z > 0 ? -1 : 1; dx = (-az / L) * s; dz = (ax / L) * s; }
@@ -135,5 +136,5 @@ export function castSkill(c: Fighter) {
   }
   if (K.k === 'wall') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'wall', x: c.x + d.x * 1.5, y: Math.atan2(d.x, d.z), z: c.z + d.z * 1.5, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'clones') fire(c, { kind: 'clones', x: c.x, y: (Math.random() * 1e5) | 0, z: c.z, dx: 0, dy: 0, dz: 0 });
-  if (K.k === 'veil') fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: 0, dy: 0, dz: 0 });
+  if (K.k === 'veil') { const [ex, ez] = behind(); fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: ex, dy: 0, dz: ez }); }
 }

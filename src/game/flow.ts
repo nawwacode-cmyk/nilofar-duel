@@ -1,5 +1,5 @@
 import { S, net, ch, me, opp, strikes, walls, clones } from './state';
-import { makeFighter, dropFighter, resetChar, anim, chest } from '../fighters/fighter';
+import { makeFighter, dropFighter, resetChar, anim, chest, altCostume } from '../fighters/fighter';
 import { play, musicOn, musicOff } from '../audio/audio';
 import { explosion } from '../render/particles';
 import { setShield } from '../combat/actions';
@@ -17,6 +17,13 @@ import type { Fighter } from '../core/types';
 export function setupFighters(a: number, b: number) {
   dropFighter(S.CH[0]); dropFighter(S.CH[1]);
   S.CH = [makeFighter(a, 0), makeFighter(b, 1)];
+  if (a === b) altCostume(S.CH[1] as Fighter);
+}
+
+/** Wizard name, tagged "(أنت)" / "(الحاسوب)" / "(صديقك)" when both fighters are the same wizard. */
+function label(c: Fighter) {
+  if (ch(0).ri !== ch(1).ri) return c.R.name;
+  return `${c.R.name} ${c === me() ? TXT.youTag : TXT.oppTag(S.mode === 'online')}`;
 }
 
 function clearArena() {
@@ -32,8 +39,8 @@ export function startMatch() {
   walls.slice().forEach(killWall); clones.slice().forEach(c => killClone(c, false));
   S.CH.forEach((c, i) => {
     if (!c) return;
-    $('n' + i).textContent = c.R.name; $('e' + i).textContent = c.R.elem;
-    document.documentElement.style.setProperty('--p' + i, c.R.css);
+    $('n' + i).textContent = label(c); $('e' + i).textContent = c.R.elem;
+    document.documentElement.style.setProperty('--p' + i, c.hex);
   });
   musicOn(); newRound();
 }
@@ -43,7 +50,7 @@ export function newRound() {
   clearArena();
   S.CH.forEach(c => c && resetChar(c));
   hud(); S.state = 'intro'; S.stateT = 0; S.slowmo = 1;
-  banner(TXT.round(S.round), TXT.versus(ch(0).R.name, ch(1).R.name));
+  banner(TXT.round(S.round), TXT.versus(label(ch(0)), label(ch(1))));
   play('m_drums', { vol: 0.9 }); play('c_chant', { vol: 0.35 });
 }
 
@@ -58,14 +65,14 @@ export function ko(c: Fighter) {
     return;
   }
   S.state = 'ko'; S.stateT = 0; S.slowmo = 0.35;
-  banner(w.wins >= 2 ? TXT.matchWon(w.R) : TXT.roundWon(w.R));
+  banner(w.wins >= 2 ? TXT.matchWon(w.R, label(w)) : TXT.roundWon(w.R, label(w)));
   explosion(chest(c), w.pal, 1.6); play('m_whoosh', { vol: 0.8 }); play('m_epic', { vol: 1 }); play('c_huge', { vol: 0.6 });
 }
 
 export function endMatch() {
   const w = S.CH.find(c => c && c.wins >= 2) as Fighter;
   S.state = 'end'; banner(''); musicOff(); play('c_loud', { vol: 0.6 });
-  $('endT').textContent = TXT.endTitle(w.R);
+  $('endT').textContent = TXT.endTitle(w.R, label(w));
   $('endP').textContent = S.mode === 'online'
     ? (w.idx === net.me ? TXT.endOnlineWin : TXT.endOnlineLose)
     : (w.idx === 0 ? TXT.endAiWin : TXT.endAiLose);
