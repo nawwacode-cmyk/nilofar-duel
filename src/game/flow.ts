@@ -40,6 +40,7 @@ export function startMatch() {
   S.CH.forEach((c, i) => {
     if (!c) return;
     $('n' + i).textContent = label(c); $('e' + i).textContent = c.R.elem;
+    const av = $<HTMLImageElement>('av' + i); av.src = `models/portraits/${c.R.id}_face.webp`; av.classList.toggle('alt', !!c.tint);
     document.documentElement.style.setProperty('--p' + i, c.hex);
   });
   musicOn(); newRound();

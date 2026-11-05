@@ -175,8 +175,17 @@ html.rot{--safe-l:max(var(--g3),env(safe-area-inset-top,0px));--safe-t:max(var(-
 /* ============ in-match HUD ============ */
 .wrap{position:fixed;left:0;right:0;padding-left:var(--safe-l);padding-right:var(--safe-r);pointer-events:none}
 #hud{top:0;padding-top:var(--safe-t);display:flex;justify-content:space-between;gap:var(--g4);direction:ltr;z-index:2}
-.side{width:min(300px,34vw);display:flex;flex-direction:column;gap:4px}
-.side.r{align-items:flex-end}
+.side{width:min(340px,38vw);display:flex;align-items:center;gap:10px}
+.side.r{flex-direction:row-reverse}
+.side .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.side.r .col{align-items:flex-end}
+/* Wizard portrait beside the health bar, framed like the character posters. */
+.av{width:48px;height:48px;flex:none;border-radius:6px;object-fit:cover;background:#0a0812;box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold),0 0 0 3px #000,0 4px 12px #000c}
+.side.l .av{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold),0 0 0 3px #000,0 0 14px color-mix(in srgb,var(--p0) 55%,transparent)}
+.side.r .av{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold),0 0 0 3px #000,0 0 14px color-mix(in srgb,var(--p1) 55%,transparent)}
+/* Mirror match: the second fighter's alternate costume (hue turned like its spells). */
+.av.alt{filter:hue-rotate(120deg) saturate(.85) brightness(.85)}
+html.compact .av{width:40px;height:40px}
 .nmrow{display:flex;gap:var(--g1);align-items:center;direction:rtl}
 .side.l .nmrow{flex-direction:row-reverse;justify-content:flex-end}
 .nm{font-family:var(--display);font-weight:700;font-size:var(--fs-xl);line-height:1;text-shadow:0 2px 8px #000}
