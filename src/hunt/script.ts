@@ -18,6 +18,37 @@ export const SCENES = {
     { key: 'forest_end1', en: 'The forest falls silent behind you.', ar: 'تصمتُ الغابةُ خلفَك.' },
     { key: 'forest_end2', en: 'Ahead, smoke rises from a village no one has left in years.', ar: 'وأمامَك دخانٌ يتصاعدُ من قريةٍ لم يغادرْها أحدٌ منذ سنين.' },
   ],
+  /** Arriving in the village. */
+  villageIntro: [
+    { key: 'v_intro1', en: 'The villagers never left. They only stopped being villagers.', ar: 'أهلُ القريةِ لم يرحلوا قطّ… لكنّهم لم يعودوا بشرًا.' },
+    { key: 'v_intro2', en: 'Cleanse the village. The road to the swamp begins at the mill.', ar: 'طهِّرِ القرية؛ فطريقُ المستنقعِ يبدأُ من الطاحونة.' },
+  ],
+  /** The mill's warden steps out (spoken during play, no bars). */
+  warden: [
+    { key: 'v_warden', en: "The mill's warden. He still guards his master's road.", ar: 'حارسُ الطاحونة… ما زالَ يحرسُ طريقَ سيّدِه.' },
+  ],
+  /** Stepping into the village's gate. */
+  villageEnd: [
+    { key: 'v_end1', en: 'The village is quiet now.', ar: 'هدأتِ القريةُ أخيرًا.' },
+    { key: 'v_end2', en: 'Beyond the mill, the swamp is waiting. And so is he.', ar: 'وخلفَ الطاحونةِ ينتظرُ المستنقع… وينتظرُ هو.' },
+  ],
+  /** Facing the boss. */
+  bossIntro: [
+    { key: 'b_intro1', en: 'So this is what remains of the greatest mage the Academy ever had.', ar: 'هذا كلُّ ما بقيَ من أعظمِ سحرةِ الأكاديمية.' },
+    { key: 'b_intro2', en: 'He will not die easily. Strike him from behind, where the swamp left him open.', ar: 'لن يموتَ بسهولة. اضربْه من الخلف؛ هناك تركَه المستنقعُ مكشوفًا.' },
+  ],
+  /** Boss phases (spoken during play). */
+  bossRage: [
+    { key: 'b_rage', en: 'He is angry now. Dodge his waves.', ar: 'لقد غضب. راوِغْ موجاتِه.' },
+  ],
+  bossSwamp: [
+    { key: 'b_swamp', en: 'The swamp itself rises to save him. Keep moving!', ar: 'المستنقعُ نفسُه ينهضُ لينقذَه. لا تتوقّف!' },
+  ],
+  /** The boss falls. */
+  victory: [
+    { key: 'end1', en: 'It is over. The swamp lets go of its master.', ar: 'انتهى الأمر. أطلقَ المستنقعُ سيّدَه.' },
+    { key: 'end2', en: 'And the forest, for the first time in years, sleeps.', ar: 'ونامتِ الغابة، لأوّلِ مرّةٍ منذ سنين.' },
+  ],
 } satisfies Record<string, Line[]>;
 
 export type SceneId = keyof typeof SCENES;

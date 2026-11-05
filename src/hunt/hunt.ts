@@ -15,7 +15,7 @@ import { V, rnd, pick, clamp, angleDelta, $ } from '../core/util';
 import { viewSize, toLocal } from '../core/view';
 import type { Fighter } from '../core/types';
 import { packGltf, packNav } from './assets';
-import { navHeight, navMove, navNearestFree, navCorridor, type Nav } from './nav';
+import { navHeight, navMove, navNearestFree, navCorridor, navWalkOn, type Nav } from './nav';
 import { monsters, targetable, tuning, DIFFS, spawnMonster, updateMonster, hurtMonster, clearMonsters, loadMonster, type Monster, type Prey } from './monsters';
 import { STAGES, type StageId, type StageDef } from './stages';
 import { drawMinimap, buildMinimap } from './minimap';
@@ -78,8 +78,18 @@ export async function loadHunt(ri: number, stage: StageId, onStep: (t: string) =
   const types = [...new Set(d.groups.flatMap(g => g.m))];
   const [g, nav] = await Promise.all([packGltf(d.map), packNav(d.map), ensureModel(ri), ...types.map(t => loadMonster(t))]);
   if (d.corridor) navCorridor(nav, d.paths, d.corridor);
-  H.stage = stage; H.def = d; H.nav = nav; H.ri = ri;
   const map = g.scene;
+  if (d.walkOn) {
+    const want = new Set(d.walkOn), meshes: { pos: ArrayLike<number>; idx: ArrayLike<number> | null }[] = [];
+    map.updateMatrixWorld(true);
+    map.traverse(o => {
+      const m = o as THREE.Mesh; if (!m.isMesh || !want.has((m.material as THREE.Material).name)) return;
+      const g2 = m.geometry.clone().applyMatrix4(m.matrixWorld);
+      meshes.push({ pos: g2.attributes.position.array, idx: g2.index ? g2.index.array : null });
+    });
+    navWalkOn(nav, meshes, d.walkPad ?? 1.5);
+  }
+  H.stage = stage; H.def = d; H.nav = nav; H.ri = ri;
   map.traverse(o => { const m = o as THREE.Mesh; if (m.isMesh) { m.receiveShadow = true; m.castShadow = false; } });
   H.map = map;
 }
@@ -419,7 +429,18 @@ export function huntCamera(dt: number) {
     const th = H.yaw + Math.PI + (1 - e) * 0.35, r = dist + (1 - e) * 3;
     tp.set(p.x + Math.sin(th) * r, fy + hgt + (1 - e) * 7, p.z + Math.cos(th) * r);
   }
-  // Never under the ground behind the wizard (hills).
+  // Hills: never under the ground, and if a slope hides the wizard, come in front of it.
+  // First rise over the hill (like a crane), and only if that is not enough, move in front of it.
+  const hy = fy + 1.5, nav = H.nav;
+  const blocked = (cx: number, cy: number, cz: number) => {
+    for (let k = 1; k <= 12; k++) { const u = k / 12; if (navHeight(nav, p.x + (cx - p.x) * u, p.z + (cz - p.z) * u) + 0.5 > hy + (cy - hy) * u) return u; }
+    return 0;
+  };
+  if (blocked(tp.x, tp.y, tp.z)) {
+    let up = 0; for (const extra of [1.5, 3, 4.5, 6]) if (!blocked(tp.x, tp.y + extra, tp.z)) { up = extra; break; }
+    if (up) tp.y += up;
+    else { const u = blocked(tp.x, tp.y + 6, tp.z), back = Math.max(0.3, u - 1 / 12); tp.set(p.x + (tp.x - p.x) * back, hy + (tp.y + 6 - hy) * back, p.z + (tp.z - p.z) * back); }
+  }
   tp.y = Math.max(tp.y, navHeight(H.nav, tp.x, tp.z) + 1.2);
   tl.set(p.x + fx * 2.5, fy + 1.4, p.z + fz * 2.5);
   if (H.cine) { const u = Math.min(1, (S.T - H.cineAt) / H.cineLen), ahead = 2.5 + (1 - u) * 14; tl.set(p.x + fx * ahead, fy + 1.3, p.z + fz * ahead); }
@@ -472,7 +493,7 @@ export async function playHunt(stage: StageId = 'forest') {
 }
 
 // ?debug: the hunt's internals for automated browser checks.
-if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __hunt: { H, monsters, spawnMonster, packGltf, huntTick, huntPress, updPlayer: (dt: number) => updPlayer(S.CH[0]!, dt) } });
+if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __hunt: { H, monsters, spawnMonster, packGltf, huntTick, huntPress, huntCamera, navHeight, updPlayer: (dt: number) => updPlayer(S.CH[0]!, dt) } });
 
 const DIFF_KEY = 'asrar.huntDiff';
 /** Chosen difficulty (0..2, default the middle one), kept on the device. */

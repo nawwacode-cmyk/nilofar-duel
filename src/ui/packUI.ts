@@ -1,4 +1,4 @@
-import { packState, packSize, downloadPack, cancelDownload, removePack, downloading, packsAvailable } from '../assets/packs';
+import { packState, packSize, packUpdateSize, downloadPack, cancelDownload, removePack, downloading, packsAvailable } from '../assets/packs';
 import { playHunt, huntDiff, setHuntDiff } from '../hunt/hunt';
 import { $ } from '../core/util';
 
@@ -8,20 +8,21 @@ import { $ } from '../core/util';
  */
 const PACK = 'hunters';
 const mb = (b: number) => (b / 1048576).toFixed(1);
-let size = 0, failed = false;
+let size = 0, failed = false, update = 0;
 
 async function refresh() {
   const st = await packState(PACK).catch(() => ({ installed: false, have: 0, total: 0 }));
   const busy = downloading();
   const msg = $('pkMsg');
   $('pkStop').hidden = !busy;
-  $('pkDl').hidden = busy || st.installed || !packsAvailable();
+  $('pkDl').hidden = busy || (st.installed && !update) || !packsAvailable();
   $('pkPlay').hidden = busy || !st.installed;
   $('pkDiffRow').hidden = $('pkPlay').hidden;
   $('pkDel').hidden = busy || (!st.installed && !st.have);
   $('pkBar').hidden = !busy && (st.installed || !st.have);
-  $('pkDlTxt').textContent = st.have && !st.installed ? 'متابعة التنزيل' : 'تنزيل الطور';
+  $('pkDlTxt').textContent = st.installed && update ? `تحديث (${mb(update)} MB)` : st.have && !st.installed ? 'متابعة التنزيل' : 'تنزيل الطور';
   if (!packsAvailable()) msg.textContent = 'هذا الطور متوفّر في تطبيق أندرويد فقط.';
+  else if (st.installed && update) msg.textContent = 'يتوفّر تحديث صغير للطور فيه إصلاحات. يمكنك اللعب الآن أو التحديث أولًا.';
   else if (st.installed) msg.textContent = 'الطور جاهز على جهازك. المرحلة الأولى: غابة الأرواح.';
   else if (busy) msg.textContent = 'جارٍ التنزيل… يمكنك الإيقاف والمتابعة لاحقًا من حيث توقّفت.';
   else if (failed) msg.textContent = 'انقطع التنزيل. تحقّق من اتصالك ثم اضغط «متابعة التنزيل».';
@@ -38,6 +39,7 @@ function progress(done: number, total: number) {
 export async function openPack() {
   $('pack').hidden = false; failed = false;
   await refresh();
+  if (packsAvailable()) { update = await packUpdateSize(PACK); if (update) await refresh(); }
   if (!size && packsAvailable()) { size = await packSize(PACK).catch(() => 0); await refresh(); }
 }
 
@@ -48,7 +50,7 @@ export function initPackUI() {
     failed = false;
     const run = downloadPack(PACK, progress);
     await refresh();
-    try { await run; } catch (e) { failed = !(e instanceof DOMException && e.name === 'AbortError'); }
+    try { await run; update = 0; } catch (e) { failed = !(e instanceof DOMException && e.name === 'AbortError'); }
     await refresh();
   };
   $('pkStop').onclick = () => cancelDownload();

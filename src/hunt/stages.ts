@@ -24,6 +24,8 @@ export interface StageDef {
   /** The route (polylines along the road): drawn on the corner map; with `corridor` set, the walkable area is
    *  limited to that many metres around it, so the stage is a journey rather than an open field. */
   paths: [number, number][][]; corridor?: number;
+  /** Walkable only within `walkPad` metres of these (detailed ground) materials; the rest is scenery. */
+  walkOn?: string[]; walkPad?: number;
   objective: string;
   groups: SpawnGroup[];
   /** Light and sky: sun direction/colour/intensity, ambient sky/ground, sky gradient top→horizon, fog near/far. */
@@ -41,6 +43,7 @@ export const STAGES: Record<StageId, StageDef> = {
       [[50, 38], [30, 44], [10, 56], [-8, 68], [-15, 77]],
     ],
     corridor: 8,
+    walkOn: ['Dirt_Road', 'Dirt_Road_Bare', 'Dirt_Road_Trails', 'Road_Edge_Gravel_Dusty', 'Puddle_Streaks', 'Mud_Pile', 'Cobblestone', 'Ground_Dirt', 'Fallen_Generic_Leaves', 'Fallen_Maple_Leaves', 'Rock_Decal'], walkPad: 1.5,
     objective: 'اعبُر الغابة إلى البوابة',
     groups: [
       { at: [-85, -70], m: ['wolf', 'wolf'] },

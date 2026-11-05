@@ -16,8 +16,10 @@ for (const name of readdirSync(src).sort()) {
   if (!statSync(join(src, name)).isFile()) continue;
   const buf = readFileSync(join(src, name)); const parts = []; hash.update(name).update(buf);
   for (let o = 0; o < buf.length || (o === 0 && buf.length === 0); o += PART) {
-    const p = `p${String(n++).padStart(4, '0')}.bin`;
-    writeFileSync(join(out, p), buf.subarray(o, o + PART)); parts.push(p);
+    // Parts are named by their content: an update only downloads the parts that actually changed.
+    const chunk = buf.subarray(o, o + PART); n++;
+    const p = createHash('sha1').update(chunk).digest('hex').slice(0, 16) + '.bin';
+    writeFileSync(join(out, p), chunk); parts.push(p);
     if (buf.length === 0) break;
   }
   files.push({ name, size: buf.length, parts });

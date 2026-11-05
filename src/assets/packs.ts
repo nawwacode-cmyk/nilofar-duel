@@ -59,7 +59,11 @@ export async function downloadPack(id: string, onProgress: (done: number, total:
     void navigator.storage?.persist?.(); // ask the system not to clear it under storage pressure
     const m = await manifest(id);
     const old = await tx<{ version: string } | undefined>('meta', 'readonly', s => s.get(id));
-    if (old && old.version !== m.version) await removePack(id); // new content: start clean
+    // New content: keep the parts the new version still uses (parts are named by their content), drop the rest.
+    if (old && old.version !== m.version) {
+      const keep = new Set(m.files.flatMap(f => f.parts.map(p => `${id}/${p}`)));
+      for (const k of await getKeys(id + '/')) if (!keep.has(String(k))) await tx('parts', 'readwrite', s => s.delete(k));
+    }
     await tx('meta', 'readwrite', s => s.put({ version: m.version, total: m.total, done: false }, id));
     const have = new Set((await getKeys(id + '/')).map(String));
     let done = 0;
@@ -117,3 +121,20 @@ export async function packFile(id: string, name: string): Promise<Uint8Array> {
 
 /** Download size of a pack, read from its manifest on the server (nothing is downloaded). */
 export async function packSize(id: string) { return (await manifest(id)).total; }
+
+/**
+ * Bytes still to download for an installed pack to match the server (0 when up to date or offline).
+ * Parts are named by content, so after an update only the changed parts count.
+ */
+export async function packUpdateSize(id: string) {
+  try {
+    const meta = await tx<{ version: string } | undefined>('meta', 'readonly', s => s.get(id));
+    if (!meta) return 0;
+    const m = await manifest(id);
+    if (m.version === meta.version) return 0;
+    const have = new Set((await getKeys(id + '/')).map(String));
+    let n = 0;
+    for (const f of m.files) for (const p of f.parts) if (!have.has(`${id}/${p}`)) n += partSize(m, f, p);
+    return n;
+  } catch { return 0; }
+}

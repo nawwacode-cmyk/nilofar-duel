@@ -87,14 +87,28 @@ for (let pass = 0; pass < 6; pass++) for (let k = 0; k < height.length; k++) if 
   if (n) height[k] = s / n;
 }
 for (let k = 0; k < height.length; k++) if (height[k] < -1e8) { height[k] = 0; block[k] = 1; }
+// Close narrow cracks between floor pieces (up to 3 cells wide) whose two sides are at the same level: from above
+// they are invisible seams, but as heights they read as deep trenches and would wall off the road.
+for (let pass = 0; pass < 2; pass++) for (const [di, dj] of [[1, 0], [0, 1], [1, 1], [1, -1]]) {
+  for (let j = 3; j < nz - 3; j++) for (let i = 3; i < nx - 3; i++) {
+    const k = j * nx + i;
+    for (let w = 1; w <= 3; w++) {
+      const a = height[(j - dj * w) * nx + (i - di * w)], b = height[(j + dj * w) * nx + (i + di * w)];
+      if (Math.abs(a - b) < 0.4 && height[k] < Math.min(a, b) - 0.6) { height[k] = (a + b) / 2; break; }
+    }
+  }
+}
 // Solids (trunks, rocks, fences) between knee and head height block a cell; so does a steep slope.
 const solidCell = (g) => { const P = g.pos; for (let v = 0; v < P.length; v += 3) {
   const i = Math.round((P[v] - N.x[0]) / N.step), j = Math.round((P[v + 2] - N.z[0]) / N.step); if (i < 0 || j < 0 || i >= nx || j >= nz) continue;
   const k = j * nx + i, dy = P[v + 1] - height[k]; if (dy > 0.35 && dy < 2.2) block[k] = 1; } };
 for (const [m, g] of byMat) if (solid.has(matName(m))) solidCell(g);
 for (let j = 1; j < nz - 1; j++) for (let i = 1; i < nx - 1; i++) {
+  // Steep only when both the terrain and the visible floor are: the terrain alone has seams under roads, and the
+  // floor alone has steps at the edges of road decals; either one by itself made false walls.
   const k = j * nx + i, gx = (terrain[k + 1] - terrain[k - 1]) / (2 * N.step), gz = (terrain[k + nx] - terrain[k - nx]) / (2 * N.step);
-  if (Math.hypot(gx, gz) > 0.9) block[k] = 1; // steeper than ~42°
+  const fx = (height[k + 1] - height[k - 1]) / (2 * N.step), fz = (height[k + nx] - height[k - nx]) / (2 * N.step);
+  if (Math.hypot(gx, gz) > 0.9 && Math.hypot(fx, fz) > 0.9) block[k] = 1; // steeper than ~42°
 }
 {
   const hdr = Buffer.from(JSON.stringify({ x0: N.x[0], z0: N.z[0], step: N.step, nx, nz }));
