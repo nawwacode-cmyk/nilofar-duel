@@ -27,6 +27,7 @@ async function attempt(url: string, job: { loaded: number; total: number }, expe
   const bump = () => { clearTimeout(timer); timer = setTimeout(() => ctl.abort(), STALL_MS); };
   try {
     const r = await fetch(url, { signal: ctl.signal });
+    if (r.status === 404 && url.endsWith('.gz')) throw new NoGz();
     if (!r.ok) throw new Error(`${url} ${r.status}`);
     const len = +(r.headers.get('content-length') || 0);
     // content-length is the compressed size when the server gzips on the fly; only trust it for our .gz files.
@@ -46,12 +47,18 @@ async function attempt(url: string, job: { loaded: number; total: number }, expe
  * Fetches a file as bytes with progress and retries; inflates *.gz.
  * `expect` is an approximate size used for the progress bar before the server answers.
  */
+class NoGz extends Error {}
+
 export async function fetchBytes(url: string, expect = 0): Promise<Uint8Array> {
   const job = { loaded: 0, total: expect }; jobs.set(url, job); report();
   let lastErr: unknown;
   for (let i = 0; i < RETRIES; i++) {
     try {
-      const b = await attempt(url, job, expect);
+      const b = await attempt(url, job, expect).catch(e => {
+        // Android's APK packaging stores *.gz assets inflated and without the extension: use that copy.
+        if (e instanceof NoGz) return attempt(url.slice(0, -3), job, expect);
+        throw e;
+      });
       job.loaded = job.total = b.length; report();
       // Some servers send .gz with Content-Encoding: gzip, so the browser has already inflated it:
       // only inflate when the gzip magic bytes are actually there.
