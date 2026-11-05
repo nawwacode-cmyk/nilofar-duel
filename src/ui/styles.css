@@ -293,3 +293,6 @@ html.lefty #bSh{right:auto;left:92px}html.lefty #bSk{right:auto;left:114px}html.
 html.lefty #stickZone{left:auto;right:0}
 html.lefty #stick{left:auto;right:calc(var(--safe-r) + 10px)}
 html.editing #mute,html.editing #pauseBtn{display:none}
+
+/* Alexandria reaches far below the baseline: gold (clipped-gradient) titles need room or their descenders are cut. */
+.gtext,.logo,.wcard .plate b,.dhead b,.codebig,#banner,#sTitle,.nm,.ov h2,.abl b,.abil h4,.ocol h3{line-height:1.5;padding-block:.04em .14em}
