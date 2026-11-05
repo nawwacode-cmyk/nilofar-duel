@@ -21,6 +21,7 @@ const TABS: Record<string, Row[]> = {
   ],
   graphics: [
     { k: 'quality', type: 'seg', label: 'جودة الرسوميات', hint: 'التلقائي يختار حسب جهازك ويخفّض عند البطء', options: [['auto', 'تلقائي'], [0, 'منخفضة'], [1, 'متوسطة'], [2, 'عالية']] },
+    { k: 'fps', type: 'toggle', label: 'عدّاد سرعة الإطارات', hint: 'يعرض عدد الإطارات في الثانية أثناء القتال (60 ممتاز، تحت 30 بطيء)' },
   ],
   motion: [
     { k: 'shake', type: 'range', label: 'اهتزاز الكاميرا', min: 0, max: 1, step: 0.1, fmt: pct },

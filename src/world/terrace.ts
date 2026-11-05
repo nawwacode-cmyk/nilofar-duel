@@ -12,6 +12,7 @@ export const TERRACE_ENV: ArenaEnv = {
   moon: [-9, 12, -12], moonColor: 0xb8c6ff, moonI: 1.35, rim: [4, 5, -9], rimI: 0.7, fog: 0x0d1630, fogD: 0.022, bg: 0x0a0f22,
   // Wider duel area; fighters walk around the two front braziers.
   bounds: { bx: 7.5, zMin: -4.4, zMax: 3.6 }, camLim: 8, shadow: 10, obstacles: [[-6.9, -3.4, 0.75], [6.9, -3.4, 0.75]],
+  grade: { lift: [0.005, 0.01, 0.035], gain: [1.03, 1.0, 1.02], sat: 1.1 },
 };
 
 /**

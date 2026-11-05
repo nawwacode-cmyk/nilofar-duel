@@ -32,13 +32,16 @@ composer.addPass(new OutputPass());
  * a red edge pulse when the local player is in danger, and a white flash for big impacts.
  */
 export const grade = new ShaderPass({
-  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.38 }, uDanger: { value: 0 }, uFlash: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, uVig: { value: 0.38 }, uDanger: { value: 0 }, uFlash: { value: 0 },
+    uLift: { value: new THREE.Vector3(0, 0, 0) }, uGain: { value: new THREE.Vector3(1, 1, 1) }, uSat: { value: 1 } },
   vertexShader: 'varying vec2 vUv;void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.);}',
-  fragmentShader: `uniform sampler2D tDiffuse;uniform float uVig,uDanger,uFlash;varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse;uniform float uVig,uDanger,uFlash,uSat;uniform vec3 uLift,uGain;varying vec2 vUv;
   void main(){vec4 c=texture2D(tDiffuse,vUv);vec3 col=c.rgb;
     float l=dot(col,vec3(.2126,.7152,.0722));
     col=mix(col,col*col*(3.-2.*col),.28);
     col+=mix(vec3(-.012,.0,.03),vec3(.035,.018,-.02),smoothstep(.15,.75,l));
+    col=col*uGain+uLift*(1.-col);
+    col=mix(vec3(dot(col,vec3(.2126,.7152,.0722))),col,uSat);
     vec2 q=vUv-.5;float r=dot(q,q);
     col*=1.-uVig*smoothstep(.12,.55,r);
     col=mix(col,vec3(.55,0.,0.),uDanger*smoothstep(.1,.5,r)*.55);

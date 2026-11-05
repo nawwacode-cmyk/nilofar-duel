@@ -51,9 +51,25 @@ export function initQuality() {
   onSettingChange(k => { if (k === 'quality') { if (settings.quality === 'auto') localStorage.removeItem(KEY); applyTier(initialTier()); } });
 }
 
+/** On-screen frame-rate counter (Settings → Graphics): average fps over the last second and the slowest frame. */
+let fAcc = 0, fN = 0, fWorst = 0;
+function showFps(rdt: number, fighting: boolean) {
+  const el = document.getElementById('fpsInd'); if (!el) return;
+  const on = settings.fps && fighting;
+  if (el.hidden === on) el.hidden = !on;
+  if (!on) return;
+  fAcc += rdt; fN++; fWorst = Math.max(fWorst, rdt);
+  if (fAcc < 1) return;
+  const fps = Math.round(fN / fAcc), worst = Math.round(1000 * fWorst);
+  el.textContent = fps + ' FPS · ' + ['منخفضة', 'متوسطة', 'عالية'][tier] + ' · أبطأ إطار ' + worst + 'ms';
+  el.className = fps >= 50 ? 'good' : fps >= 30 ? 'ok' : 'bad';
+  fAcc = 0; fN = 0; fWorst = 0;
+}
+
 /** Drops one tier when fights average under 30 fps for 4 s (never raises automatically). */
 let acc = 0, frames = 0, cooldown = 0;
 export function monitorFps(rdt: number, fighting: boolean) {
+  showFps(rdt, fighting);
   if (!fighting || settings.quality !== 'auto') { acc = 0; frames = 0; return; }
   cooldown = Math.max(0, cooldown - rdt);
   acc += rdt; frames++;

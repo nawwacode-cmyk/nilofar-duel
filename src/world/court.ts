@@ -14,6 +14,7 @@ export const courtRoot = new THREE.Group();
 export const COURT_ENV: ArenaEnv = {
   moon: [-4, 12, 3], moonColor: 0x9db4ff, moonI: 1.15, rim: [1.5, 4, -8], rimI: 0.9, fog: 0x0b1430, fogD: 0.028, bg: 0x070b18,
   bounds: { bx: 6.2, zMin: -6, zMax: 3.6 }, camLim: 6.8, shadow: 9, obstacles: [[0, -0.25, 1.55]],
+  grade: { lift: [0, 0.012, 0.03], gain: [1.06, 1.0, 0.94], sat: 1.08 },
 };
 
 /**

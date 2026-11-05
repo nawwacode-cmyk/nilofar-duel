@@ -18,6 +18,7 @@ export const PALACE_ENV: ArenaEnv = {
   fog: 0xc9dbee, fogD: 0.011, bg: 0xa9c8ea,
   hemi: [0xcfe2ff, 0x8a7560, 1.8], exposure: 1.6, sky: ['#5b8fd6', '#cfe1f5'],
   bounds: { bx: 6, zMin: -3.4, zMax: 3.4 }, camLim: 9, shadow: 10,
+  grade: { lift: [0.015, 0.008, 0], gain: [1.04, 1.0, 0.92], sat: 1.06 },
 };
 
 /** The episcopal palace courtyard of Girona (photogrammetry by Giravolt, CC BY 4.0): tools/decim-scan.mjs → girona.bin.gz. */

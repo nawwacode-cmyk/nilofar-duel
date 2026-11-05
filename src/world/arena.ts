@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { scene, moon, rim, hemi, renderer } from '../render/stage';
+import { scene, moon, rim, hemi, renderer, grade } from '../render/stage';
 import { G } from '../data/rules';
 import { loadCourt, courtRoot, COURT_ENV, updateCourtAmbience, courtFloorAt } from './court';
 import { loadTerrace, terraceRoot, TERRACE_ENV, updateTerraceAmbience } from './terrace';
@@ -18,6 +18,8 @@ export interface ArenaEnv {
   bounds?: { bx: number; zMin: number; zMax: number }; camLim?: number; shadow?: number;
   /** Round obstacles fighters cannot walk through: [x, z, radius]. */
   obstacles?: [number, number, number][];
+  /** Colour grade: shadow tint, highlight tint, saturation. */
+  grade?: { lift: [number, number, number]; gain: [number, number, number]; sat: number };
 }
 
 /** The night arenas' duel area (the original game's bounds). */
@@ -68,6 +70,8 @@ function applyEnv(e: ArenaEnv) {
   Object.assign(G as unknown as Record<string, number>, e.bounds ?? NIGHT.bounds);
   camLim = e.camLim ?? NIGHT.camLim;
   obst = e.obstacles ?? [];
+  const g = e.grade ?? { lift: [0, 0, 0], gain: [1, 1, 1], sat: 1 };
+  grade.uniforms.uLift.value.set(...g.lift); grade.uniforms.uGain.value.set(...g.gain); grade.uniforms.uSat.value = g.sat;
 }
 
 /** Shows one arena (loading it if needed) and hides the other. */
