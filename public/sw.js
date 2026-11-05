@@ -22,7 +22,7 @@ const networkFirst = req => fetch(req, { cache: 'no-cache' })
 self.addEventListener('fetch', e => {
   const req = e.request; if (req.method !== 'GET') return;
   const u = new URL(req.url);
-  if (u.hostname.endsWith('supabase.co')) return;
+  if (u.hostname.endsWith('supabase.co') || /\/packs\//.test(u.pathname)) return;
   if (/\/play\/build\//.test(u.pathname) || /\/(models|sfx|icons)\//.test(u.pathname)) { e.respondWith(cacheFirst(req)); return; }
   e.respondWith(networkFirst(req));
 });

@@ -16,6 +16,7 @@ import { initMenus, buildRoster } from './ui/menus';
 import { initSettingsUI } from './ui/settingsUI';
 import { checkForUpdate } from './ui/update';
 import { initTraining } from './game/training';
+import { initPackUI } from './ui/packUI';
 import { startLoop } from './game/loop';
 import { runBalance, trace } from './sim/sim';
 import { ROSTER } from './data/roster';
@@ -39,7 +40,7 @@ async function boot() {
   addEventListener('resize', resize);
   initInput();
   initMenus();
-  initSettingsUI(); initTraining();
+  initSettingsUI(); initTraining(); initPackUI();
   const bar = $('bar').firstElementChild as HTMLElement, pct = $('pct');
   onDownloadProgress((l, t) => {
     const p = Math.min(100, Math.round((l / Math.max(1, t)) * 100));

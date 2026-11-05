@@ -8,6 +8,7 @@ import { TXT } from '../data/text';
 import { $ } from '../core/util';
 import { getArena, setArena, type ArenaId } from '../world/arena';
 import { veil, versus } from './transitions';
+import { openPack } from './packUI';
 
 /** Portraits are pre-rendered images (public/play/models/portraits), so menus never wait for 3D models. */
 const portrait = (i: number) => `models/portraits/${ROSTER[i].id}.webp`;
@@ -133,6 +134,7 @@ export function initMenus() {
     await show;
     if (inMenus()) { setupFighters(S.sel, o); startMatch(); }
   };
+  $('mHunt').onclick = () => { unlock(); void openPack(); };
   // Training: always in the sunlit palace courtyard (the player's arena choice is kept for duels);
   // the dummy is the next wizard in the gallery.
   $('mTrain').onclick = async () => {

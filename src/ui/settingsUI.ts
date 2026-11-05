@@ -5,6 +5,7 @@ import { unlock } from '../audio/audio';
 import { $ } from '../core/util';
 import { toLocal } from '../core/view';
 import { trainSummary } from '../game/training';
+import { openPack } from './packUI';
 
 /* =================== settings screen =================== */
 type Row =
@@ -32,6 +33,9 @@ const TABS: Record<string, Row[]> = {
     { k: 'btnOpacity', type: 'range', label: 'وضوح الأزرار', min: 0.35, max: 1, step: 0.05, fmt: pct },
     { k: 'leftHanded', type: 'toggle', label: 'وضع اليد اليسرى', hint: 'عصا الحركة يمينًا والأزرار يسارًا' },
     { type: 'action', label: 'أماكن الأزرار', hint: 'اسحب كل زر إلى المكان الذي يريحك', btn: 'تخصيص', run: () => startControlEditor() },
+  ],
+  downloads: [
+    { type: 'action', label: 'رحلة الصيّادين', hint: 'حزمة طور اختيارية: تنزيل أو حذف من الجهاز', btn: 'إدارة', run: () => { void openPack(); } },
   ],
 };
 

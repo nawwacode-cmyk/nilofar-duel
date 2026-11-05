@@ -1,0 +1,53 @@
+import { packState, packSize, downloadPack, cancelDownload, removePack, downloading, packsAvailable } from '../assets/packs';
+import { $ } from '../core/util';
+
+/**
+ * The optional-pack window: what the mode is, its size, download (with progress, resumable), stop, delete.
+ * Opened from the select screen's "Hunters" button and from Settings → Downloads.
+ */
+const PACK = 'hunters';
+const mb = (b: number) => (b / 1048576).toFixed(1);
+let size = 0, failed = false;
+
+async function refresh() {
+  const st = await packState(PACK).catch(() => ({ installed: false, have: 0, total: 0 }));
+  const busy = downloading();
+  const msg = $('pkMsg');
+  $('pkStop').hidden = !busy;
+  $('pkDl').hidden = busy || st.installed || !packsAvailable();
+  $('pkDel').hidden = busy || (!st.installed && !st.have);
+  $('pkBar').hidden = !busy && (st.installed || !st.have);
+  $('pkDlTxt').textContent = st.have && !st.installed ? 'متابعة التنزيل' : 'تنزيل الطور';
+  if (!packsAvailable()) msg.textContent = 'هذا الطور متوفّر في تطبيق أندرويد فقط.';
+  else if (st.installed) msg.textContent = 'تم التنزيل. الطور قيد الإنشاء، وسيُفتح من هنا فور اكتماله.';
+  else if (busy) msg.textContent = 'جارٍ التنزيل… يمكنك الإيقاف والمتابعة لاحقًا من حيث توقّفت.';
+  else if (failed) msg.textContent = 'انقطع التنزيل. تحقّق من اتصالك ثم اضغط «متابعة التنزيل».';
+  else if (st.have) msg.textContent = 'التنزيل متوقّف. اضغط «متابعة التنزيل» لإكماله.';
+  else msg.textContent = size ? `حجم الحزمة ${mb(size)} ميغابايت، تُحفظ على جهازك ولا تُنزَّل مرة أخرى.` : '';
+}
+
+function progress(done: number, total: number) {
+  size = total;
+  $('pkFill').style.width = (100 * done / Math.max(1, total)).toFixed(1) + '%';
+  $('pkPct').textContent = `${mb(done)} / ${mb(total)} MB`;
+}
+
+export async function openPack() {
+  $('pack').hidden = false; failed = false;
+  await refresh();
+  if (!size && packsAvailable()) { size = await packSize(PACK).catch(() => 0); await refresh(); }
+}
+
+export function initPackUI() {
+  $('pkClose').onclick = () => { $('pack').hidden = true; };
+  $('pack').onclick = e => { if (e.target === $('pack')) $('pack').hidden = true; };
+  $('pkDl').onclick = async () => {
+    failed = false;
+    const run = downloadPack(PACK, progress);
+    await refresh();
+    try { await run; } catch (e) { failed = !(e instanceof DOMException && e.name === 'AbortError'); }
+    await refresh();
+  };
+  $('pkStop').onclick = () => cancelDownload();
+  $('pkDel').onclick = async () => { await removePack(PACK); progress(0, size); await refresh(); };
+}
