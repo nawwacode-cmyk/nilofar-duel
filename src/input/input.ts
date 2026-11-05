@@ -14,16 +14,36 @@ type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'fb';
 const input = { x: 0, z: 0, keys: {} as Record<string, boolean> };
 export let atkHeld = false;
 
+/**
+ * Input buffer: a press that comes a moment too early (cooldown not over, still casting, a little mana short)
+ * is kept for BUFFER_S and fires on the first frame it can, so no press feels swallowed.
+ */
+const BUFFER_S = 0.2;
+let buffered: { a: Action; until: number } | null = null;
+const CASTS: Partial<Record<Action, typeof castBolt>> = { atk: castBolt, dg: dodge, sp: castSpecial, sk: castSkill };
+
+/** Every successful cast or dodge costs mana, so a drop means it went off. */
+function tryCast(a: Action) {
+  const c = me(), m = c.mana;
+  CASTS[a]?.(c);
+  return c.mana < m;
+}
+
 export function press(a: Action, on: boolean) {
   if (!S.CH[0] || S.paused || isEditingControls()) return;
   const c = me();
   if (S.state === 'struggle') { if (on) mash(); return; }
   if (a === 'fb') { if (on) useFinisher(c); return; }
-  if (a === 'atk') { atkHeld = on; if (on && S.state === 'fight') castBolt(c); }
+  if (a === 'atk') atkHeld = on;
   if (a === 'sh') c.wantShield = on;
-  if (a === 'dg' && on && S.state === 'fight') dodge(c);
-  if (a === 'sp' && on && S.state === 'fight') castSpecial(c);
-  if (a === 'sk' && on && S.state === 'fight') castSkill(c);
+  if (on && CASTS[a] && S.state === 'fight') buffered = tryCast(a) ? null : { a, until: performance.now() / 1000 + BUFFER_S };
+}
+
+/** Called every frame: retries a buffered press until it fires or expires. */
+export function pumpInput() {
+  if (!buffered) return;
+  if (S.state !== 'fight' || S.paused || performance.now() / 1000 > buffered.until) { buffered = null; return; }
+  if (tryCast(buffered.a)) buffered = null;
 }
 
 const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk', KeyO: 'fb', KeyF: 'fb' };

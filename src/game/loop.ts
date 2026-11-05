@@ -10,7 +10,7 @@ import { updProjs } from '../combat/projectiles';
 import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
 import { netSend, expirePredictions } from '../net/online';
-import { atkHeld, readMove } from '../input/input';
+import { atkHeld, readMove, pumpInput } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/arena';
 import { updateFx } from '../fx/effects';
@@ -45,7 +45,7 @@ export function tick(rdt: number) {
     }
     if (S.state === 'fight' || S.state === 'intro') {
       if (S.sim) { if (S.state === 'fight') aiThink(ch(0), dt); }
-      else { const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz; if (atkHeld && S.state === 'fight') castBolt(m); }
+      else { const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz; pumpInput(); if (atkHeld && S.state === 'fight') castBolt(m); }
       if (S.mode === 'ai' && S.state === 'fight') aiThink(ch(1), dt);
     }
     if (S.state === 'struggle') updStruggle(rdt);
