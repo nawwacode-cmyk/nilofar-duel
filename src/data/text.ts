@@ -27,7 +27,6 @@ export const TXT = {
   loadingFighters: (p: number) => `جارٍ تحميل الساحرَين… ${p}%`,
   muteOn: 'صامت',
   muteOff: 'صوت',
-  stats: { hp: 'الصحة', speed: 'السرعة', power: 'القوة' },
   abilitiesOf: (w: WizardDef) => (w.female ? 'قدراتها' : 'قدراته'),
   abilityKeys: ['J', 'I', 'U', 'Y'] as const,
   online: {

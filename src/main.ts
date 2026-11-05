@@ -47,6 +47,9 @@ async function boot() {
     S.state = 'title'; buildRoster();
     // ?debug exposes internals for manual inspection and automated browser checks.
     if (new URLSearchParams(location.search).has('debug')) Object.assign(window, { __dbg: { S, net, scene, camera, renderer, THREE, camAt: setDebugCamera, makeFighter, dropFighter, ensureModels, anim, applyGroundContact, floorAt, balance: runBalance, simTrace: trace } });
+    // Let the opening splash (CSS, ~2.4 s from page start) finish before the title replaces the loading screen.
+    const splashLeft = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2400 - performance.now();
+    if (splashLeft > 0) await new Promise(r => setTimeout(r, splashLeft));
     $('load').hidden = true; $('title').hidden = false;
     startLoop();
     void preload();

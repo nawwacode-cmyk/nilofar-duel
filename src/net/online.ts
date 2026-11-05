@@ -269,9 +269,9 @@ export function checkConnection() {
   if (now - indAt < 400) return;
   indAt = now; ind.hidden = false;
   const down = net.selfDown || quiet > FREEZE_MS, ms = Math.round(net.rtt);
-  const [cls, word] = down ? ['down', TXT.online.net.down] : quiet > 1500 || ms > 600 ? ['bad', TXT.online.net.bad]
-    : ms > 300 ? ['weak', TXT.online.net.weak] : ms > 150 ? ['ok', TXT.online.net.ok] : ['good', TXT.online.net.good];
-  ind.className = cls;
+  const [cls, word, icon] = down ? ['down', TXT.online.net.down, 'wifi_off'] : quiet > 1500 || ms > 600 ? ['bad', TXT.online.net.bad, 'network_wifi_1_bar']
+    : ms > 300 ? ['weak', TXT.online.net.weak, 'network_wifi_2_bar'] : ms > 150 ? ['ok', TXT.online.net.ok, 'network_wifi_3_bar'] : ['good', TXT.online.net.good, 'signal_wifi_4_bar'];
+  ind.className = cls; ind.firstElementChild!.textContent = icon;
   // The latency is wrapped in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
   // The latency sits in an LTR isolate so "82 ms" is not reversed inside the Arabic label.
   ind.lastElementChild!.textContent = down || !ms ? word : `${word} · ⁦${ms} ms⁩`;

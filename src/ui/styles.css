@@ -87,9 +87,7 @@ a.gbtn{text-decoration:none}
 #loadTxt{font-size:var(--fs-sm)!important}
 
 /* title */
-#title{gap:var(--g2)}
 .tag{font-size:var(--fs-md)!important;color:var(--ink)!important;max-width:38em;text-shadow:0 2px 10px #000;text-wrap:balance}
-#title .btns{margin-top:var(--g2)}
 .credit{position:absolute!important;bottom:var(--safe-b);left:0;right:0;margin:0 auto!important;font-size:var(--fs-xs)!important;opacity:.55;max-width:70em!important;padding:0 var(--g3);line-height:1.4!important}
 
 /* ---------- character select: header / body / footer ---------- */
@@ -124,11 +122,6 @@ html.tall .mbody{grid-template-columns:1fr;grid-template-rows:minmax(0,1.35fr) m
 .dhead b{font-family:var(--display);font-weight:700;font-size:var(--fs-2xl);line-height:1;background:var(--gold-text);-webkit-background-clip:text;background-clip:text;color:transparent}
 .dhead span{color:var(--c);font-size:var(--fs-sm);font-weight:600}
 #dStory{font-size:var(--fs-sm);line-height:1.7;color:var(--ink);opacity:.9;margin:0;max-width:none}
-.dstats{display:grid;grid-template-columns:auto auto 1fr 2.2em;gap:var(--g1) var(--g2);align-items:center;font-size:var(--fs-sm);color:var(--muted)}
-.dstats .ic{color:var(--gold);font-size:14px}
-.dstats i{height:5px;border-radius:3px;background:#ffffff14;position:relative;overflow:hidden;font-style:normal}
-.dstats i::after{content:"";position:absolute;inset:0;right:auto;width:calc(var(--v) * 20%);background:linear-gradient(90deg,var(--gold-lo),var(--c));border-radius:3px}
-.dstats em{font-style:normal;font-variant-numeric:tabular-nums;color:var(--ink);font-size:var(--fs-xs)}
 .abil h4{font-family:var(--display);font-weight:700;color:var(--gold);margin:0 0 2px;font-size:var(--fs-lg)}
 .abl{display:grid;grid-template-columns:28px minmax(0,1fr);gap:2px var(--g2);align-items:center;padding:var(--g1) 0;border-top:1px solid #e0b45a26}
 .abl .ic{grid-row:span 2;width:28px;height:28px;display:grid;place-items:center;border-radius:6px;color:var(--c);background:#ffffff08;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--c) 40%,transparent);font-size:16px}
@@ -212,7 +205,7 @@ body:has(#title:not([hidden])) #mute,body:has(#menu:not([hidden])) #mute,body:ha
    skill (48px) sits on an outer ring. Minimum edge gap between any two buttons is 10px. */
 #ctl{position:fixed;inset:0;z-index:2;pointer-events:none}
 #stickZone{position:absolute;left:0;bottom:0;width:42%;height:62%;pointer-events:auto;touch-action:none}
-#stick{position:absolute;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:50%;box-shadow:inset 0 0 0 2px #e0b45a50;background:#ffffff06;left:calc(var(--safe-l) + 62px);top:calc(100% - var(--safe-b) - 62px)}
+#stick{position:absolute;width:104px;height:104px;margin:-52px 0 0 -52px;border-radius:50%;box-shadow:inset 0 0 0 2px #e0b45a50;background:#ffffff06;left:calc(var(--safe-l) + 62px);top:calc(100% - var(--safe-b) - 82px)}
 #knob{position:absolute;left:50%;top:50%;width:44px;height:44px;margin:-22px 0 0 -22px;border-radius:50%;background:radial-gradient(circle at 40% 35%,#fbe3a270,#8d642840);box-shadow:inset 0 0 0 1px #fbe3a280}
 @media (hover:hover) and (pointer:fine){#stick{opacity:.35}}
 #btns{position:absolute;right:var(--safe-r);bottom:var(--safe-b);width:232px;height:170px;pointer-events:none}
@@ -297,11 +290,79 @@ html.editing #mute,html.editing #pauseBtn{display:none}
 /* Alexandria reaches far below the baseline: gold (clipped-gradient) titles need room or their descenders are cut. */
 .gtext,.logo,.wcard .plate b,.dhead b,.codebig,#banner,#sTitle,.nm,.ov h2,.abl b,.abil h4,.ocol h3{line-height:1.5;padding-block:.04em .14em}
 
-/* Online connection indicator: bottom left, beside the joystick (which spans 10–114px; 10px gap), dot colour = quality. */
-#netInd{position:fixed;left:calc(var(--safe-l) + 124px);bottom:10px;z-index:4;display:flex;align-items:center;gap:6px;height:20px;padding:0 9px;border-radius:999px;background:#0a0812cc;box-shadow:inset 0 0 0 1px var(--gold-lo);font-size:var(--fs-xs);color:var(--ink);direction:rtl;pointer-events:none}
-#netInd i{width:8px;height:8px;border-radius:50%;background:#7c7c7c;flex:none}
-#netInd.good i{background:#3ddc6f;box-shadow:0 0 6px #3ddc6f}#netInd.ok i{background:#b6e04a}#netInd.weak i{background:#f2c230}#netInd.bad i{background:#ff8a3c}
-#netInd.down i{background:#ff3b3b;box-shadow:0 0 6px #ff3b3b;animation:netBlink 1s steps(2) infinite}
+/* Online connection indicator: bottom-left corner under the joystick, white text and a Wi-Fi glyph whose bars and
+   colour follow the connection quality. */
+#netInd{position:fixed;left:calc(var(--safe-l) + 10px);bottom:4px;z-index:4;display:flex;align-items:center;gap:4px;height:16px;font-size:var(--fs-xs);font-weight:600;color:#fff;text-shadow:0 1px 3px #000,0 0 6px #000;direction:rtl;pointer-events:none}
+#netInd .ic{font-size:16px;filter:drop-shadow(0 1px 2px #000)}
+#netInd.good .ic{color:#3ddc6f}#netInd.ok .ic{color:#b6e04a}#netInd.weak .ic{color:#f2c230}#netInd.bad .ic{color:#ff8a3c}
+#netInd.down .ic{color:#ff3b3b;animation:netBlink 1s steps(2) infinite}
 @keyframes netBlink{50%{opacity:.3}}
-@media (prefers-reduced-motion:reduce){#netInd.down i{animation:none}}
-html.lefty #netInd{left:auto;right:calc(var(--safe-r) + 124px)}
+@media (prefers-reduced-motion:reduce){#netInd.down .ic{animation:none}}
+html.lefty #netInd{left:auto;right:calc(var(--safe-r) + 10px)}
+
+/* ================= title screen: logo and menu on the right, the five wizards fanned out on the left ================= */
+#title{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);align-items:center;gap:var(--g4);text-align:center}
+.tmain{display:flex;flex-direction:column;align-items:center;gap:var(--g2);z-index:2}
+.tmain .rule{width:min(360px,80%)}
+.tmenu{display:flex;flex-direction:column;align-items:center;gap:var(--g3);margin-top:var(--g2)}
+.tmenu .gbtn{min-width:220px}
+.tline{position:relative;height:min(62vh,420px);display:flex;align-items:center;justify-content:center;direction:ltr;z-index:1}
+.tcard{--h:min(40vh,266px);position:relative;height:var(--h);aspect-ratio:5/8;margin:0 calc(var(--h) * -.14);border:none;padding:0;border-radius:8px;cursor:pointer;background:#0a0812;
+  box-shadow:0 0 0 1px #000,0 0 0 2px color-mix(in srgb,var(--c) 40%,var(--gold-lo)),0 14px 30px #000c;transform:rotate(var(--r)) translateY(var(--y));transition:transform .25s ease,box-shadow .25s,filter .25s;filter:brightness(.82) saturate(.9)}
+.tcard img{width:100%;height:100%;object-fit:cover;border-radius:8px;display:block}
+.tcard b{position:absolute;left:0;right:0;bottom:8px;font-family:var(--display);font-weight:700;font-size:var(--fs-md);color:var(--ink);text-shadow:0 2px 6px #000,0 0 12px #000;line-height:1.5}
+.tcard.mid{--h:min(56vh,380px);z-index:3;filter:none;box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold),0 0 30px color-mix(in srgb,var(--c) 45%,transparent),0 16px 34px #000d}
+.tcard:hover,.tcard:focus-visible{z-index:4;filter:none;transform:rotate(0) translateY(calc(var(--y) - 12px)) scale(1.04);box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 34px color-mix(in srgb,var(--c) 60%,transparent),0 18px 36px #000d}
+
+/* embers rising through the scene */
+.embers{position:absolute!important;inset:0;pointer-events:none;overflow:hidden;z-index:0}
+.embers i{position:absolute;bottom:-10px;left:var(--x);width:var(--s);height:var(--s);border-radius:50%;background:radial-gradient(circle,#ffe2a0,#e0a43a 55%,transparent 70%);opacity:0;animation:ember var(--d) linear var(--w) infinite}
+@keyframes ember{0%{transform:translate(0,0);opacity:0}12%{opacity:.9}100%{transform:translate(var(--dx),-85vh);opacity:0}}
+
+/* gold light sweeping across the logo now and then */
+.logo.shine{background:linear-gradient(100deg,transparent 40%,#fffbe8 50%,transparent 60%) -150% 0/250% 100% no-repeat text,var(--gold-text) text;-webkit-background-clip:text;background-clip:text;animation:shine 6s ease-in-out 1.2s infinite}
+@keyframes shine{0%,70%{background-position:-150% 0,0 0}100%{background-position:250% 0,0 0}}
+
+/* entrance: logo rises, menu follows, wizards come in one after another */
+#title:not([hidden]) .tmain>*{animation:rise .6s cubic-bezier(.2,.7,.2,1) both}
+#title:not([hidden]) .tmain>:nth-child(2){animation-delay:.08s}#title:not([hidden]) .tmain>:nth-child(3){animation-delay:.14s}#title:not([hidden]) .tmain>:nth-child(4){animation-delay:.22s}
+#title:not([hidden]) .tcard{animation:cardIn .7s cubic-bezier(.2,.7,.2,1) both,float 6s ease-in-out infinite alternate;animation-delay:calc(.15s + var(--i) * .08s),calc(.9s + var(--i) * .7s)}
+@keyframes rise{from{opacity:0;transform:translateY(16px)}}
+@keyframes cardIn{from{opacity:0;transform:rotate(var(--r)) translateY(calc(var(--y) + 40px))}}
+@keyframes float{to{translate:0 -5px}}
+
+/* screens fade in quickly instead of popping */
+.ov.scene:not([hidden]){animation:ovIn .22s ease-out}
+@keyframes ovIn{from{opacity:0}}
+
+/* ================= splash (inside the loading screen) ================= */
+#splash{position:absolute;inset:0;z-index:3;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--g3);background:#05070d;animation:splashOut .5s ease-in 2.3s forwards;pointer-events:none}
+.sigil{width:min(34vh,200px);height:auto;fill:none;stroke:var(--gold);stroke-width:1.6;filter:drop-shadow(0 0 6px #e0b45a)}
+.sigil *{stroke-dasharray:560;stroke-dashoffset:560;animation:draw 1.2s ease-out forwards}
+.sigil :nth-child(2){animation-delay:.15s}.sigil :nth-child(3){animation-delay:.3s}.sigil :nth-child(4){animation-delay:.45s}.sigil :nth-child(5){animation-delay:.7s}
+.slogo{font-family:var(--display);font-weight:800;font-size:clamp(28px,8vh,56px);line-height:1.5;padding-bottom:.1em;background:var(--gold-text);-webkit-background-clip:text;background-clip:text;color:transparent;opacity:0;filter:blur(8px);animation:mistIn .9s ease-out 1s forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+@keyframes mistIn{to{opacity:1;filter:blur(0) drop-shadow(0 4px 16px #000)}}
+@keyframes splashOut{to{opacity:0;visibility:hidden}}
+
+/* ================= buttons with a bit of life ================= */
+.gbtn{overflow:hidden}
+.gbtn::after{content:"";position:absolute;top:0;bottom:0;left:-60%;width:40%;background:linear-gradient(100deg,transparent,#ffffff8c,transparent);transform:skewX(-20deg);pointer-events:none;opacity:0}
+.gbtn:hover::after{animation:sweep .7s ease-out}
+.gbtn.pulse::after{animation:sweep 1s ease-out 1.6s,sweep 1s ease-out 6s infinite}
+@keyframes sweep{0%{left:-60%;opacity:1}100%{left:130%;opacity:1}}
+.gbtn:active{transform:scale(.95);filter:brightness(1.12) drop-shadow(0 0 14px #f0c46aaa)}
+.seg button{transition:background .2s,color .2s}
+.back{transition:box-shadow .2s,transform .1s}.back:hover{box-shadow:inset 0 0 0 1px var(--gold)}.back:active{transform:scale(.95)}
+.wcard:active{transform:translateY(-1px) scale(.97)}
+#ctl .b{transition:transform .08s,box-shadow .15s}
+#ctl .b.on{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 16px #f0c46a99}
+
+@media (prefers-reduced-motion:reduce){
+  #splash{display:none}
+  .embers,.logo.shine,.gbtn::after{animation:none!important;display:none}
+  #title:not([hidden]) .tmain>*,#title:not([hidden]) .tcard,.ov.scene:not([hidden]){animation:none}
+}
+html.compact .tmenu .gbtn{min-width:180px}
+html.compact .tcard b{font-size:var(--fs-sm)}
+.tcard:not(.mid) b{opacity:0;transition:opacity .2s}.tcard:hover b,.tcard:focus-visible b{opacity:1}

@@ -5,7 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36';
 const SHEETS = [
   'https://fonts.googleapis.com/css2?family=Alexandria:wght@400;600;700;800&display=swap',
-  'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=ac_unit,arrow_back,auto_awesome,bolt,dark_mode,favorite,local_fire_department,logout,open_with,pause,play_arrow,replay,settings,shield,speed,swords,volume_off,volume_up&display=block',
+  'https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,500,1,0&icon_names=ac_unit,arrow_back,auto_awesome,bolt,dark_mode,favorite,local_fire_department,logout,network_wifi_1_bar,network_wifi_2_bar,network_wifi_3_bar,open_with,pause,play_arrow,replay,settings,shield,signal_wifi_4_bar,speed,swords,volume_off,volume_up,wifi_off&display=block',
 ];
 const KEEP = /^(arabic|latin)$/; // skip cyrillic / latin-ext subsets
 const out = 'src/ui/fonts';

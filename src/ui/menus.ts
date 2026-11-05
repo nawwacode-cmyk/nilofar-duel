@@ -28,11 +28,6 @@ export function buildRoster() {
   $('detail').style.setProperty('--c', R.css);
   $('dIcon').textContent = R.icon;
   $('dName').textContent = R.name; $('dElem').textContent = R.elem; $('dStory').textContent = R.story;
-  const stats = [['favorite', TXT.stats.hp, R.stat[0], String(R.hp)], ['speed', TXT.stats.speed, R.stat[1], R.speed.toFixed(1)], ['bolt', TXT.stats.power, R.stat[2], '']] as const;
-  $('dStats').replaceChildren(...stats.flatMap(([ic, n, v, t]) => {
-    const bar = el('i'); bar.style.setProperty('--v', String(v));
-    return [el('span', 'ic', ic), el('span', '', n), bar, el('em', '', t)];
-  }));
   $('dAbT').textContent = TXT.abilitiesOf(R);
   const abIcons = ['swords', 'auto_awesome', R.icon, 'auto_awesome'];
   $('dAb').replaceChildren(...[...R.ab, ...(R.ab2 ? [R.ab2] : [])].map(([k, n, d], i) => {
@@ -48,7 +43,35 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: stri
   const e = document.createElement(tag); if (cls) e.className = cls; if (text !== undefined) e.textContent = text; return e;
 }
 
+/** Wizards fanned out on the title screen (the archmage in the middle); tapping one opens the select screen on it. */
+const LINEUP = ['siraj', 'reem', 'ehab', 'layla', 'qasem'];
+function buildTitle() {
+  const n = LINEUP.length, mid = (n - 1) / 2;
+  $('tLine').replaceChildren(...LINEUP.map((id, k) => {
+    const i = ROSTER.findIndex(r => r.id === id); const r = ROSTER[i];
+    const b = el('button', 'tcard' + (k === mid ? ' mid' : '')); b.setAttribute('aria-label', r.name);
+    const off = k - mid;
+    b.style.setProperty('--c', r.css); b.style.setProperty('--r', off * 5 + 'deg'); b.style.setProperty('--y', Math.abs(off) * 14 + 'px'); b.style.setProperty('--i', String(k));
+    b.style.zIndex = String(3 - Math.abs(off));
+    const img = document.createElement('img'); img.alt = ''; img.src = portrait(i); img.decoding = 'async';
+    b.append(img, el('b', '', r.name));
+    b.onclick = () => { S.sel = i; buildRoster(); void ensureModel(i); $('enter').click(); };
+    return b;
+  }));
+  // Embers: a few dozen sparks with random lanes, sizes and timings (pure CSS animation).
+  $('embers').replaceChildren(...Array.from({ length: 26 }, () => {
+    const e = el('i');
+    e.style.setProperty('--x', (Math.random() * 100).toFixed(1) + '%');
+    e.style.setProperty('--s', (2 + Math.random() * 3).toFixed(1) + 'px');
+    e.style.setProperty('--d', (7 + Math.random() * 7).toFixed(1) + 's');
+    e.style.setProperty('--w', (-Math.random() * 14).toFixed(1) + 's');
+    e.style.setProperty('--dx', (Math.random() * 120 - 60).toFixed(0) + 'px');
+    return e;
+  }));
+}
+
 export function initMenus() {
+  buildTitle();
   $('mute').onclick = () => {
     unlock(); setMuted(!isMuted());
     $('mute').firstElementChild!.textContent = isMuted() ? 'volume_off' : 'volume_up';
