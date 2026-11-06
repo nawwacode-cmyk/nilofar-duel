@@ -5,16 +5,21 @@ import { unlock } from '../audio/audio';
 import { $ } from '../core/util';
 import { toLocal } from '../core/view';
 import { trainSummary } from '../game/training';
+import { inputMode, onPadPause } from '../input/input';
 
 /* =================== settings screen =================== */
 type Row =
   | { k: keyof Settings; type: 'range'; label: string; hint?: string; min: number; max: number; step: number; fmt: (v: number) => string }
   | { k: keyof Settings; type: 'toggle'; label: string; hint?: string }
   | { k: keyof Settings; type: 'seg'; label: string; hint?: string; options: [string | number, string][] }
-  | { type: 'action'; label: string; hint?: string; btn: string; run: () => void };
+  | { type: 'action'; label: string; hint?: string; btn: string; run: () => void }
+  | { type: 'info'; label: string; hint: string };
+/** Rows can depend on the current control method. */
+type ShownRow = Row & { when?: () => boolean };
 
 const pct = (v: number) => Math.round(v * 100) + '%';
-const TABS: Record<string, Row[]> = {
+const touch = () => inputMode() === 'touch', keys = () => inputMode() === 'keyboard', padOn = () => inputMode() === 'gamepad';
+const TABS: Record<string, ShownRow[]> = {
   sound: [
     { k: 'music', type: 'range', label: 'الموسيقى', min: 0, max: 1, step: 0.05, fmt: pct },
     { k: 'sfx', type: 'range', label: 'المؤثرات الصوتية', hint: 'التعاويذ والضربات والخطوات', min: 0, max: 1, step: 0.05, fmt: pct },
@@ -29,10 +34,15 @@ const TABS: Record<string, Row[]> = {
     { k: 'dmgNumbers', type: 'toggle', label: 'أرقام الضرر' },
   ],
   controls: [
-    { k: 'btnScale', type: 'range', label: 'حجم الأزرار', min: 0.8, max: 1.3, step: 0.05, fmt: pct },
-    { k: 'btnOpacity', type: 'range', label: 'وضوح الأزرار', min: 0.35, max: 1, step: 0.05, fmt: pct },
-    { k: 'leftHanded', type: 'toggle', label: 'وضع اليد اليسرى', hint: 'عصا الحركة يمينًا والأزرار يسارًا' },
-    { type: 'action', label: 'أماكن الأزرار', hint: 'اسحب كل زر إلى المكان الذي يريحك', btn: 'تخصيص', run: () => startControlEditor() },
+    { k: 'inputMode', type: 'seg', label: 'طريقة اللعب', hint: 'التلقائي: لمس على الهاتف، كيبورد على الحاسوب، ويد التحكم فور استعمالها', options: [['auto', 'تلقائي'], ['touch', 'لمس'], ['keyboard', 'كيبورد'], ['gamepad', 'يد تحكم']] },
+    { k: 'btnScale', type: 'range', label: 'حجم الأزرار', min: 0.8, max: 1.3, step: 0.05, fmt: pct, when: touch },
+    { k: 'btnOpacity', type: 'range', label: 'وضوح الأزرار', min: 0.35, max: 1, step: 0.05, fmt: pct, when: touch },
+    { k: 'leftHanded', type: 'toggle', label: 'وضع اليد اليسرى', hint: 'عصا الحركة يمينًا والأزرار يسارًا', when: touch },
+    { type: 'action', label: 'أماكن الأزرار', hint: 'اسحب كل زر إلى المكان الذي يريحك', btn: 'تخصيص', run: () => startControlEditor(), when: touch },
+    { type: 'info', label: 'مفاتيح الكيبورد', hint: 'الحركة W A S D أو الأسهم · هجوم J أو المسافة · درع K · مراوغة L أو Shift · خاصة I · مهارة U · القدرة الرابعة Y · إيقاف Esc', when: keys },
+    { k: 'padSens', type: 'range', label: 'حساسية العصا', hint: 'أعلى = سرعة كاملة بدفعة أقل', min: 0.8, max: 2.5, step: 0.1, fmt: v => '×' + v.toFixed(1), when: padOn },
+    { k: 'padDead', type: 'range', label: 'المنطقة الميتة', hint: 'أقل = استجابة أسرع لأخف حركة (ارفعها إن تحرّك الساحر وحده)', min: 0.03, max: 0.3, step: 0.01, fmt: pct, when: padOn },
+    { type: 'info', label: 'أزرار يد التحكم', hint: 'العصا اليسرى أو الأسهم للحركة · ✕ أو R2 هجوم · ○ مراوغة · □ خاصة · △ مهارة · R1 القدرة الرابعة · L1 أو L2 درع · OPTIONS إيقاف', when: padOn },
   ],
 };
 
@@ -44,7 +54,7 @@ function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', text?: stri
 
 function renderPanel() {
   const panel = $('setPanel');
-  panel.replaceChildren(...TABS[tab].map(r => {
+  panel.replaceChildren(...TABS[tab].filter(r => !r.when || r.when()).map(r => {
     const row = el('div', 'srow');
     const lab = el('div'); lab.append(el('b', '', r.label)); if (r.hint) lab.append(el('small', '', r.hint));
     const ctl = el('div', 'ctl');
@@ -67,7 +77,7 @@ function renderPanel() {
         seg.append(b);
       }
       ctl.append(seg);
-    } else {
+    } else if (r.type === 'action') {
       const b = el('button', 'gbtn dark', r.btn); b.style.height = '32px'; b.onclick = r.run; ctl.append(b);
     }
     row.append(lab, ctl);
@@ -183,6 +193,8 @@ export function initSettingsUI() {
   $('mSettings').onclick = openSettings;
   $('pSettings').onclick = openSettings;
   $('pauseBtn').onclick = () => { unlock(); showPause(); };
+  // OPTIONS on a controller opens and closes the pause menu.
+  onPadPause(() => { if (!$('pause').hidden) hidePause(); else showPause(); });
   $('pResume').onclick = hidePause;
   $('pQuit').onclick = () => { hidePause(); toMenu(); };
   $('editDone').onclick = () => { if (layoutValid()) endControlEditor(true); };

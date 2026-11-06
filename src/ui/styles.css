@@ -454,3 +454,10 @@ html.compact .mbfoot{padding-top:4px}
 html.compact .mbfoot .round{width:30px;height:30px}
 
 #mOn.invited{background:linear-gradient(180deg,#f0c46a,#b7802f);color:#241503;box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 18px #f0c46a88}
+/* Keyboard / controller play: no touch stick; the buttons become small, untouchable cooldown indicators with their key. */
+html.kb #stickZone,html.gp #stickZone{display:none}
+html.kb #btns,html.gp #btns{--btn-scale:.62!important;opacity:.85}
+html.kb #ctl .b,html.gp #ctl .b{pointer-events:none}
+html.kb #ctl .b::after,html.gp #ctl .b::after{margin-top:2px;color:var(--gold-hi);font:700 12px/1 var(--body);direction:ltr}
+html.kb #ctl .b::after{content:attr(data-key)}
+html.gp #ctl .b::after{content:attr(data-pad)}

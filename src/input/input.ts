@@ -6,6 +6,8 @@ import { mash } from '../game/struggle';
 import { isEditingControls } from '../ui/settingsUI';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
+import { settings, onSettingChange } from '../settings/settings';
+import { pollPad, pad } from './gamepad';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
 type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'sk2';
@@ -46,8 +48,9 @@ export function pumpInput() {
 
 const KM: Record<string, Action> = { KeyJ: 'atk', Space: 'atk', KeyK: 'sh', KeyL: 'dg', ShiftLeft: 'dg', KeyI: 'sp', KeyE: 'sp', KeyU: 'sk', KeyQ: 'sk', KeyY: 'sk2' };
 
-/** Normalised movement vector from stick + WASD/arrows. */
+/** Normalised movement vector: a controller in use has priority, otherwise touch stick + WASD/arrows. */
 export function readMove(): [number, number] {
+  if (pad.x || pad.z) return [pad.x, pad.z];
   let x = input.x, z = input.z; const k = input.keys;
   if (k.KeyA || k.ArrowLeft) x -= 1;
   if (k.KeyD || k.ArrowRight) x += 1;
@@ -57,7 +60,33 @@ export function readMove(): [number, number] {
   return [x, z];
 }
 
+/** How the game is being played right now (the setting, or the device and last used controller when auto). */
+const coarse = typeof matchMedia !== 'undefined' && matchMedia('(pointer: coarse)').matches;
+export function inputMode(): 'touch' | 'keyboard' | 'gamepad' {
+  if (settings.inputMode !== 'auto') return settings.inputMode;
+  if (pad.connected) return 'gamepad';
+  return coarse ? 'touch' : 'keyboard';
+}
+/** Touch controls only when playing by touch; otherwise the buttons shrink into cooldown indicators with key labels. */
+let shownMode = '';
+export function applyInputMode() {
+  const m = inputMode(); if (m === shownMode) return;
+  shownMode = m;
+  const r = document.documentElement;
+  r.classList.toggle('kb', m === 'keyboard'); r.classList.toggle('gp', m === 'gamepad'); r.classList.toggle('touchui', m === 'touch');
+}
+
+let pauseToggle: () => void = () => {};
+export function onPadPause(fn: () => void) { pauseToggle = fn; }
+/** Every frame: controller buttons and stick (also outside fights, for the pause button). */
+export function pollInput() {
+  pollPad((a, on) => { if (a === 'pause') { if (on) pauseToggle(); } else press(a, on); });
+  applyInputMode();
+}
+
 export function initInput() {
+  applyInputMode();
+  onSettingChange(k => { if (k === 'inputMode') applyInputMode(); });
   const stickZone = $('stickZone'), stick = $('stick'), knob = $('knob');
   let stickId: number | null = null, stickC = { x: 0, y: 0 };
   const moveStick = (e: PointerEvent) => {

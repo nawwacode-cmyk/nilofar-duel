@@ -11,7 +11,7 @@ import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
 import { netSend, expirePredictions, checkConnection } from '../net/online';
 import { trainTick } from './training';
-import { atkHeld, readMove, pumpInput } from '../input/input';
+import { atkHeld, readMove, pumpInput, pollInput } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/arena';
 import { updateFx } from '../fx/effects';
@@ -70,6 +70,7 @@ export function tick(rdt: number) {
 function frame() {
   const rdt = Math.min(0.05, clock.getDelta());
   if (S.sim) { requestAnimationFrame(frame); return; } // the simulator drives tick() itself
+  pollInput();
   const dt = S.paused ? 0 : tick(rdt);
   updateAmbience(rdt);
   updateFx(dt);
