@@ -13,6 +13,9 @@ export const TXT = {
   roundWon: (w: WizardDef, name = w.name) => `${name} ${v(w, 'حسم', 'حسمت')} الجولة`,
   matchWon: (w: WizardDef, name = w.name) => `${name} ${v(w, 'فاز', 'فازت')} بالمبارزة!`,
   endTitle: (w: WizardDef, name = w.name) => `${name} ${v(w, 'فاز', 'فازت')}!`,
+  teamWon: (a: string, b: string) => `فاز ${a} و${b}!`,
+  endTeamWin: 'فاز فريقكما. جرّبا مستوى أصعب',
+  endTeamLose: 'غلبكما الحاسوب هذه المرة. أعيدا المحاولة',
   /** Tags that tell the two fighters apart when both picked the same wizard. */
   youTag: '(أنت)',
   oppTag: (online: boolean) => (online ? '(صديقك)' : '(الحاسوب)'),

@@ -23,8 +23,8 @@
 
 <!-- in-match HUD -->
 <div class="wrap" id="hud" hidden>
-  <div class="side l"><img class="av" id="av0" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n0"></span><span class="el" id="e0"></span><span class="pips" id="pw0"><i></i><i></i></span></div><div class="bar hp"><i id="hp0"></i><span class="num" id="hn0"></span></div><div class="bar mp"><i id="mp0"></i></div></div></div>
-  <div class="side r"><img class="av" id="av1" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n1"></span><span class="el" id="e1"></span><span class="pips" id="pw1"><i></i><i></i></span></div><div class="bar hp"><i id="hp1"></i><span class="num" id="hn1"></span></div><div class="bar mp"><i id="mp1"></i></div></div></div>
+  <div class="tcol l"><div class="side l"><img class="av" id="av0" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n0"></span><span class="el" id="e0"></span><span class="pips" id="pw0"><i></i><i></i></span></div><div class="bar hp"><i id="hp0"></i><span class="num" id="hn0"></span></div><div class="bar mp"><i id="mp0"></i></div></div></div><div class="side l mate"><img class="av" id="av2" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n2"></span><span class="el" id="e2"></span><span class="pips" id="pw2"><i></i><i></i></span></div><div class="bar hp"><i id="hp2"></i><span class="num" id="hn2"></span></div><div class="bar mp"><i id="mp2"></i></div></div></div></div>
+  <div class="tcol r"><div class="side r"><img class="av" id="av1" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n1"></span><span class="el" id="e1"></span><span class="pips" id="pw1"><i></i><i></i></span></div><div class="bar hp"><i id="hp1"></i><span class="num" id="hn1"></span></div><div class="bar mp"><i id="mp1"></i></div></div></div><div class="side r mate"><img class="av" id="av3" alt=""><div class="col"><div class="nmrow"><span class="nm" id="n3"></span><span class="el" id="e3"></span><span class="pips" id="pw3"><i></i><i></i></span></div><div class="bar hp"><i id="hp3"></i><span class="num" id="hn3"></span></div><div class="bar mp"><i id="mp3"></i></div></div></div></div>
 </div>
 <div id="banner"></div>
 <div id="subs" hidden></div>
@@ -79,7 +79,7 @@
     <div class="logo">أسرار الظلام</div>
     <button class="gbtn" id="mAI"><span class="ic">swords</span><span class="col">ضد الحاسوب</span></button>
     <button class="gbtn ice" id="mOn"><span class="col">تحدَّ صديقًا</span></button>
-    <div class="duo"><button class="gbtn dark" id="mTrain"><span class="ic">shield</span><span class="col">تدريب</span></button></div>
+    <div class="duo"><button class="gbtn dark" id="mTeam"><span class="ic">groups</span><span class="col">٢ ضد ٢</span></button><button class="gbtn dark" id="mTrain"><span class="ic">shield</span><span class="col">تدريب</span></button></div>
     <h4>الساحة</h4>
     <div class="alist" id="arena">
       <button data-arena="terrace"><img src="models/arenas/terrace.webp" alt=""><span>شرفة القلعة</span></button>
@@ -100,6 +100,24 @@
     <button class="round arr pv" id="rPrev" aria-label="السابق"><span class="ic">arrow_back</span></button>
     <div class="minfo" id="detail"><b id="dName"></b><span id="dElem"></span><button class="gbtn dark" id="dLore"><span class="ic">auto_awesome</span> القصة والقدرات</button></div>
   </main>
+</div>
+
+<!-- 2 vs 2: you and a friend against two computer wizards, on this device or online -->
+<div class="ov clear" id="teamPick" hidden>
+  <div class="frame lorebox teambox">
+    <h3>٢ ضد ٢</h3>
+    <p class="tsub">أنت وصديقك في فريق واحد ضد ساحرين من الحاسوب.</p>
+    <div class="seg" id="tWhere"><button data-w="local" class="on">على هذا الجهاز</button><button data-w="online">أونلاين</button></div>
+    <div id="tLocal">
+      <h4>ساحر صديقك</h4>
+      <div class="tgrid" id="tGrid"></div>
+      <p class="tsub">اللاعب الأول: الكيبورد (أو يد التحكم الأولى) · صديقك: يد التحكم (الثانية إن وُجدت يدان).</p>
+    </div>
+    <div id="tOnline" hidden>
+      <p class="tsub">أرسل لصديقك رابطًا: يفتحه على جهازه ويختار ساحره، فتبدآن معًا.</p>
+    </div>
+    <div class="lfoot"><button class="back" id="tBack"><span class="ic">arrow_back</span> عودة</button><button class="gbtn" id="tGo">ابدأ</button></div>
+  </div>
 </div>
 
 <!-- story & abilities of the selected wizard (opened from the select screen) -->

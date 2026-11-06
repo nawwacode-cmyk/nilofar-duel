@@ -5,7 +5,7 @@ import { bloomScale } from '../render/quality';
 import { resizePost } from '../render/post';
 import { fovPunch } from '../fx/impact';
 import { settings } from '../settings/settings';
-import { S, ch, inMenus } from '../game/state';
+import { S, ch, fighters, inMenus } from '../game/state';
 import { V, clamp, rnd, reduceMotion } from '../core/util';
 import { viewSize, updateRotation } from '../core/view';
 import { cameraLimit } from '../world/arena';
@@ -31,9 +31,13 @@ export function updCamera(dt: number) {
     else if (vw < vh) { tp.set(c.x + Math.sin(a) * 0.3, 1.15, c.z + 3.4); tl.set(c.x, 0.55, c.z); }
     else { tp.set(c.x + 0.95 + Math.sin(a) * 0.3, 1.35, c.z + 2.9); tl.set(c.x + 0.95, 1.15, c.z); }
   } else {
-    const a = ch(0), b = ch(1);
-    const mx = (a.x + b.x) / 2, mz = (a.z + b.z) / 2;
-    const spanX = Math.abs(a.x - b.x), spanZ = Math.abs(a.z - b.z);
+    const a = ch(0);
+    // Frame everyone standing (in a duel, the two of them).
+    const fs = fighters().filter(f => !f.dead || !S.team);
+    let x0 = Infinity, x1 = -Infinity, z0 = Infinity, z1 = -Infinity;
+    for (const f of fs.length ? fs : fighters()) { x0 = Math.min(x0, f.x); x1 = Math.max(x1, f.x); z0 = Math.min(z0, f.z); z1 = Math.max(z1, f.z); }
+    const mx = (x0 + x1) / 2, mz = (z0 + z1) / 2;
+    const spanX = x1 - x0, spanZ = z1 - z0;
     const dist = clamp(spanX * 0.8 + spanZ * 0.4 + 3.4, 4.8, 9);
     if (portrait) { camera.fov = 64; tp.set(mx * 0.85, 2.8 + dist * 0.35, Math.min(LIM, mz + dist * 0.85)); tl.set(mx, 0.8, mz - 0.4); }
     else {

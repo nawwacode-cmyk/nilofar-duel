@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { composer } from '../render/stage';
 import { updateParticles } from '../render/particles';
-import { S, net, ch, me, inMenus } from './state';
+import { S, net, ch, me, p2, fighters, isLocal, inMenus } from './state';
 import { endMatch, newRound } from './flow';
 import { updStruggle } from './struggle';
 import { updChar } from '../fighters/update';
@@ -11,7 +11,7 @@ import { updStrikes, updWalls, updClones } from '../combat/skills';
 import { aiThink } from '../ai/ai';
 import { netSend, expirePredictions, checkConnection } from '../net/online';
 import { trainTick } from './training';
-import { atkHeld, readMove, pumpInput, pollInput } from '../input/input';
+import { atkHeld, readMove, pumpInput, pollInput, padMove, padAtkHeld } from '../input/input';
 import { updCamera, applyDebugCamera } from '../camera/camera';
 import { updateAmbience } from '../world/arena';
 import { updateFx } from '../fx/effects';
@@ -51,18 +51,23 @@ export function tick(rdt: number) {
     }
     if (S.state === 'fight' || S.state === 'intro') {
       if (S.sim) { if (S.state === 'fight') aiThink(ch(0), dt); }
-      else { const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz; pumpInput(); if (atkHeld && S.state === 'fight') castBolt(m); }
-      if (S.mode === 'ai' && S.state === 'fight') aiThink(ch(1), dt);
+      else {
+        const m = me(); const [ix, iz] = readMove(); m.inX = ix; m.inZ = iz; pumpInput(); if (atkHeld && S.state === 'fight') castBolt(m);
+        // Second player on this device: the second controller.
+        const q = p2(); if (q && !q.dead) { const [qx, qz] = padMove(1); q.inX = qx; q.inZ = qz; if (padAtkHeld(1) && S.state === 'fight') castBolt(q); }
+      }
+      // The computer's wizards (online, on the host only).
+      if (S.state === 'fight' && S.mode !== 'train') for (const c of fighters()) if (S.ai[c.idx] && !c.dead && isLocal(c) && !(S.sim && c.idx === 0)) aiThink(c, dt);
       if (S.mode === 'train') trainTick(dt);
     }
     if (S.state === 'struggle') updStruggle(rdt);
-    S.CH.forEach(c => c && updChar(c, dt, S.mode !== 'online' || c.idx === net.me || S.state === 'menu'));
+    S.CH.forEach(c => c && updChar(c, dt, isLocal(c) || S.state === 'menu'));
     updProjs(dt); updStrikes(dt); updWalls(dt); updClones(dt);
     if (!inMenus()) { hud(); updateButtons(); }
     netAcc += rdt;
     // 20 Hz state, plus an immediate send (capped at 40 Hz) for casts and HP changes.
     if (S.mode === 'online' && (netAcc > 0.05 || (net.urgent && netAcc > 0.025))) { netAcc = 0; netSend(); }
-    if (S.mode === 'online') expirePredictions(ch(1 - net.me));
+    if (S.mode === 'online') for (const c of fighters()) if (!isLocal(c)) expirePredictions(c);
   }
   return dt;
 }

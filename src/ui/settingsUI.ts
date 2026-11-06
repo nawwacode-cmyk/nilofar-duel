@@ -6,6 +6,7 @@ import { $ } from '../core/util';
 import { toLocal } from '../core/view';
 import { trainSummary } from '../game/training';
 import { inputMode, onPadPause } from '../input/input';
+import { PAD_ACTIONS, padName, captureButton, type PadAction } from '../input/gamepad';
 
 /* =================== settings screen =================== */
 type Row =
@@ -13,11 +14,16 @@ type Row =
   | { k: keyof Settings; type: 'toggle'; label: string; hint?: string }
   | { k: keyof Settings; type: 'seg'; label: string; hint?: string; options: [string | number, string][] }
   | { type: 'action'; label: string; hint?: string; btn: string; run: () => void }
-  | { type: 'info'; label: string; hint: string };
+  | { type: 'info'; label: string; hint: string }
+  | { type: 'pad'; label: string; hint?: string; a: PadAction };
 /** Rows can depend on the current control method. */
 type ShownRow = Row & { when?: () => boolean };
 
 const pct = (v: number) => Math.round(v * 100) + '%';
+const PAD_LABEL: Record<PadAction, string> = { atk: 'هجوم', sh: 'درع', dg: 'مراوغة', sp: 'خاصة', sk: 'مهارة', sk2: 'القدرة الرابعة', pause: 'إيقاف' };
+const DEFAULT_PAD = { atk: [0, 7], dg: [1], sp: [2], sk: [3], sk2: [5], sh: [4, 6], pause: [9] };
+/** Which action is waiting for a button press. */
+let waiting: PadAction | null = null;
 const touch = () => inputMode() === 'touch', keys = () => inputMode() === 'keyboard', padOn = () => inputMode() === 'gamepad';
 const TABS: Record<string, ShownRow[]> = {
   sound: [
@@ -43,7 +49,8 @@ const TABS: Record<string, ShownRow[]> = {
     { type: 'info', label: 'مفاتيح الكيبورد', hint: 'الحركة W A S D أو الأسهم · هجوم J أو المسافة · درع K · مراوغة L أو Shift · خاصة I · مهارة U · القدرة الرابعة Y · إيقاف Esc', when: keys },
     { k: 'padSens', type: 'range', label: 'حساسية العصا', hint: 'أعلى = سرعة كاملة بدفعة أقل', min: 0.8, max: 2.5, step: 0.1, fmt: v => '×' + v.toFixed(1), when: padOn },
     { k: 'padDead', type: 'range', label: 'المنطقة الميتة', hint: 'أقل = استجابة أسرع لأخف حركة (ارفعها إن تحرّك الساحر وحده)', min: 0.03, max: 0.3, step: 0.01, fmt: pct, when: padOn },
-    { type: 'info', label: 'أزرار يد التحكم', hint: 'العصا اليسرى أو الأسهم للحركة · ✕ أو R2 هجوم · ○ مراوغة · □ خاصة · △ مهارة · R1 القدرة الرابعة · L1 أو L2 درع · OPTIONS إيقاف', when: padOn },
+    ...PAD_ACTIONS.map((a): ShownRow => ({ type: 'pad', a, label: PAD_LABEL[a], hint: a === 'atk' ? 'اضغط الزر هنا ثم الزر الذي تريده على يد التحكم' : undefined, when: padOn })),
+    { type: 'action', label: 'أزرار يد التحكم الأصلية', btn: 'استعادة', run: () => { setSetting('padMap', JSON.parse(JSON.stringify(DEFAULT_PAD))); renderPanel(); }, when: padOn },
   ],
 };
 
@@ -78,6 +85,22 @@ function renderPanel() {
         seg.append(b);
       }
       ctl.append(seg);
+    } else if (r.type === 'pad') {
+      const cur = (settings.padMap[r.a] ?? []).map(padName).join(' أو ') || '—';
+      const b = el('button', 'gbtn dark padkey' + (waiting === r.a ? ' wait' : ''), waiting === r.a ? 'اضغط زرًا…' : cur);
+      b.style.height = '32px';
+      b.onclick = () => {
+        if (waiting === r.a) { waiting = null; captureButton(null); renderPanel(); return; }
+        waiting = r.a; renderPanel();
+        captureButton(btn => {
+          // The button now belongs to this action only; another action that used it loses it.
+          const map: Record<string, number[]> = JSON.parse(JSON.stringify(settings.padMap));
+          for (const k of Object.keys(map)) map[k] = map[k].filter(x => x !== btn);
+          map[r.a] = [btn];
+          setSetting('padMap', map); waiting = null; renderPanel();
+        });
+      };
+      ctl.append(b);
     } else if (r.type === 'action') {
       const b = el('button', 'gbtn dark', r.btn); b.style.height = '32px'; b.onclick = r.run; ctl.append(b);
     }
@@ -88,7 +111,7 @@ function renderPanel() {
 }
 
 export function openSettings() { unlock(); renderPanel(); $('settings').hidden = false; }
-function closeSettings() { $('settings').hidden = true; }
+function closeSettings() { $('settings').hidden = true; waiting = null; captureButton(null); }
 
 /* =================== applying settings =================== */
 export function applyControlSettings() {

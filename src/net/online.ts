@@ -1,5 +1,5 @@
 import type { SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
-import { S, net, ch, isLocal } from '../game/state';
+import { S, net, ch, isLocal, peerIdx } from '../game/state';
 import { anim, ensureModels } from '../fighters/fighter';
 import { play } from '../audio/audio';
 import { dmgText, flash, shieldMesh } from '../fx/effects';
@@ -16,6 +16,7 @@ import { G } from '../data/rules';
 import { ROSTER } from '../data/roster';
 import { getArena, setArena, type ArenaId } from '../world/arena';
 import { versus } from '../ui/transitions';
+import { computerPair } from '../ui/menus';
 
 /**
  * Online duels over Supabase Realtime (broadcast + presence, no tables).
@@ -53,28 +54,32 @@ export function code4() {
 
 const showError = (msg: string) => { $('oErr').hidden = false; $('oErr').textContent = msg; };
 
-export async function onlineStart(host: boolean, code: string) {
+/** Duel by default; `team` (host only): 2 vs 2, the two players together against two computer wizards. */
+export async function onlineStart(host: boolean, code: string, team = false) {
   const client = await getClient();
   if (!client) { showError(TXT.online.disabled); return; }
   leaveNet();
-  net.code = code; net.me = host ? 0 : 1; net.seen.clear(); net.casts = []; net.peer = null;
+  net.team = host && team; net.code = code; net.me = host ? 0 : 1;
+  if (net.team) net.ais = computerPair([S.sel]); net.seen.clear(); net.casts = []; net.peer = null;
   // A new session starts with a clean connection record: the last packet of a previous duel must not count,
   // or the next duel would think the friend went silent minutes ago and end at once.
   net.lastRecv = 0; net.rtt = 0; net.peerTs = 0; net.peerTsAt = 0; net.waiting = false; net.selfDown = false;
   const chn = client.channel('duel-' + code.toLowerCase(), { config: { presence: { key: net.myId }, broadcast: { self: false, ack: false } } });
   chn.on('presence', { event: 'sync' }, () => {
-    const st = chn.presenceState<{ role?: string; ch?: number; ar?: ArenaId }>();
+    const st = chn.presenceState<{ role?: string; ch?: number; ar?: ArenaId; tm?: number; ai?: [number, number] }>();
     const others = Object.entries(st).filter(([k]) => k !== net.myId).map(([k, v]) => ({ key: k, ...(v[0] || {}) }));
     const peer = others.find(p => p.role === (host ? 'g' : 'h'));
     if (peer && !net.peer && (S.state === 'menu' || S.state === 'online')) {
       net.peer = peer.key; net.oppRi = +(peer.ch ?? 0) || 0; $('online').hidden = true; S.mode = 'online';
       net.lastRecv = performance.now(); // grace while both load their wizards
-      const a = net.me === 0 ? S.sel : net.oppRi, b = net.me === 0 ? net.oppRi : S.sel;
+      // The guest learns from the host whether this is 2 vs 2 (then it plays slot 2, the host's partner).
+      if (!host) { net.team = !!peer.tm; if (net.team) { net.me = 2; net.ais = peer.ai ?? [0, 1]; } }
+      S.ai = net.team ? [false, true, false, true] : [false, false, false, false];
+      const hostRi = host ? S.sel : net.oppRi, guestRi = host ? net.oppRi : S.sel;
       $('onTxt').textContent = TXT.loadingFighters(0);
       // Both play in the host's arena (arenas differ in size, so positions only agree in the same one).
       const arena = host ? getArena() : peer.ar ?? getArena();
-      const mine = net.me === 0 ? a : b, theirs = net.me === 0 ? b : a;
-      void versus(mine, theirs, Promise.all([ensureModels([a, b]), setArena(arena)])).then(() => { if (net.peer) { setupFighters(a, b); startMatch(); } });
+      startOnline(hostRi, guestRi, arena);
     }
     // A peer missing from presence is handled by checkConnection (it may only be a short network drop).
   });
@@ -87,7 +92,7 @@ export async function onlineStart(host: boolean, code: string) {
   chn.on('broadcast', { event: 'rm' }, ({ payload }) => { if (net.peer && payload && payload.from === net.peer) onRematch(payload as RmMsg); });
   chn.subscribe(async status => {
     // The client rejoins by itself after a drop; we only track the state for the connection indicator.
-    if (status === 'SUBSCRIBED') { net.selfDown = false; await chn.track({ role: host ? 'h' : 'g', ch: S.sel, ar: getArena() }); }
+    if (status === 'SUBSCRIBED') { net.selfDown = false; await chn.track({ role: host ? 'h' : 'g', ch: S.sel, ar: getArena(), ...(net.team ? { tm: 1, ai: net.ais } : {}) }); }
     if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') {
       if (net.peer) net.selfDown = true; else if (status !== 'CLOSED') showError(TXT.online.connectFail);
     }
@@ -95,8 +100,23 @@ export async function onlineStart(host: boolean, code: string) {
   channel = chn;
 }
 
-/** st = [x, z, ry, clipIndex, shield, hp, mana, dodging]; cs = recent casts. */
-interface Packet { from: string; ts?: number; e?: [number, number]; st: number[]; cs?: (string | number)[][]; fb?: number; sg?: number; ss?: number; sr?: [number, number] | null; mc?: number; mcid?: number }
+/** Versus screen, then the match: a duel (host vs guest) or 2 vs 2 (host + guest vs the computer's pair). */
+function startOnline(hostRi: number, guestRi: number, arena?: ArenaId) {
+  const [b, d] = net.ais;
+  const all = net.team ? [hostRi, b, guestRi, d] : [hostRi, guestRi];
+  const mine = net.me === 0 ? hostRi : guestRi, theirs = net.team ? b : net.me === 0 ? guestRi : hostRi;
+  const names: [string, string] | undefined = net.team ? [ROSTER[hostRi].name + ' و' + ROSTER[guestRi].name, ROSTER[b].name + ' و' + ROSTER[d].name] : undefined;
+  void versus(mine, theirs, Promise.all([ensureModels(all), arena ? setArena(arena) : null]), 1800, names).then(() => {
+    if (!net.peer) return;
+    if (net.team) setupFighters(hostRi, b, guestRi, d); else setupFighters(hostRi, guestRi);
+    startMatch();
+  });
+}
+
+const stOf = (c: Fighter) => [+c.x.toFixed(2), +c.z.toFixed(2), +c.ry.toFixed(2), c.curName ? CLIP_NAMES.indexOf(c.curName) : -1, c.shieldOn ? 1 : 0, Math.round(c.hp), Math.round(c.mana), c.dodgeT > 0 ? 1 : 0];
+
+/** st = [x, z, ry, clipIndex, shield, hp, mana, dodging]; ai = the host's computer wizards (2 vs 2); cs = recent casts. */
+interface Packet { ai?: number[][]; from: string; ts?: number; e?: [number, number]; st: number[]; cs?: (string | number)[][]; fb?: number; sg?: number; ss?: number; sr?: [number, number] | null; mc?: number; mcid?: number }
 
 export function netSend() {
   if (S.mode !== 'online' || !channel || !net.peer) return;
@@ -106,7 +126,8 @@ export function netSend() {
     from: net.myId, ts: Math.round(now),
     // Echo of the peer's last timestamp and how long we held it: the peer computes its round trip from it.
     e: net.peerTs ? [net.peerTs, Math.round(now - net.peerTsAt)] : undefined,
-    st: [+c.x.toFixed(2), +c.z.toFixed(2), +c.ry.toFixed(2), c.curName ? CLIP_NAMES.indexOf(c.curName) : -1, c.shieldOn ? 1 : 0, Math.round(c.hp), Math.round(c.mana), c.dodgeT > 0 ? 1 : 0],
+    st: stOf(c),
+    ai: net.team && net.me === 0 && S.CH[3] ? [stOf(ch(1)), stOf(ch(3))] : undefined,
     cs: net.casts, sg: net.sg || 0, ss: strug ? +strug.s.toFixed(3) : 0, sr: net.sr || null, mc: strug ? strug.my : 0, mcid: strug ? strug.id : 0,
   };
   net.urgent = false;
@@ -119,7 +140,7 @@ export function netSend() {
  * then the host announces the final pair and both start together. Nobody leaves the room.
  */
 const REMATCH_S = 10;
-type RmMsg = { from: string; t: 'start' | 'pick' | 'go'; ri?: number; a?: number; b?: number };
+type RmMsg = { from: string; t: 'start' | 'pick' | 'go'; ri?: number; a?: number; b?: number; ai?: [number, number] };
 const rm = { active: false, mine: 0, theirs: 0, timer: 0 };
 
 function sendRm(m: Omit<RmMsg, 'from'>) { void channel?.send({ type: 'broadcast', event: 'rm', payload: { from: net.myId, ...m } }); }
@@ -128,7 +149,7 @@ export function requestRematch() { if (!rm.active) { sendRm({ t: 'start' }); beg
 
 function beginRematch() {
   rm.active = true;
-  rm.mine = ch(net.me).ri; rm.theirs = ch(1 - net.me).ri;
+  rm.mine = ch(net.me).ri; rm.theirs = ch(peerIdx()).ri;
   $('end').hidden = true; $('rematch').hidden = false;
   renderRematch();
   let left = REMATCH_S; $('rCount').textContent = String(left);
@@ -137,7 +158,11 @@ function beginRematch() {
     left--; $('rCount').textContent = String(Math.max(0, left));
     if (left > 0) return;
     clearInterval(rm.timer);
-    if (net.me === 0) { const a = rm.mine, b = rm.theirs; sendRm({ t: 'go', a, b }); goRematch(a, b); }
+    if (net.me === 0) {
+      const a = rm.mine, b = rm.theirs;
+      if (net.team) net.ais = computerPair([a, b]);
+      sendRm({ t: 'go', a, b, ai: net.ais }); goRematch(a, b);
+    }
   }, 1000);
 }
 
@@ -158,18 +183,14 @@ function renderRematch() {
 
 function goRematch(hostRi: number, guestRi: number) {
   rm.active = false; clearInterval(rm.timer);
-  const a = hostRi, b = guestRi;
   $('rematch').hidden = true;
-  void versus(net.me === 0 ? a : b, net.me === 0 ? b : a, ensureModels([a, b])).then(() => {
-    if (!net.peer) return;
-    setupFighters(a, b); startMatch();
-  });
+  startOnline(hostRi, guestRi);
 }
 
 function onRematch(m: RmMsg) {
   if (m.t === 'start') { if (!rm.active) beginRematch(); }
   else if (m.t === 'pick' && m.ri !== undefined) { rm.theirs = m.ri; if (rm.active) renderRematch(); }
-  else if (m.t === 'go' && m.a !== undefined && m.b !== undefined && net.me === 1) goRematch(m.a, m.b);
+  else if (m.t === 'go' && m.a !== undefined && m.b !== undefined && net.me !== 0) { if (m.ai) net.ais = m.ai; goRematch(m.a, m.b); }
 }
 
 /* ---------- hit prediction on the attacker's side ---------- */
@@ -219,13 +240,8 @@ export function expirePredictions(o: Fighter) {
 
 const ONE_SHOT = ['bolt', 'special', 'hit', 'death', 'evade'];
 
-function netRecv(pp: Packet) {
-  const now = performance.now();
-  net.lastRecv = now;
-  if (pp.ts) { net.peerTs = pp.ts; net.peerTsAt = now; }
-  if (pp.e) { const r = now - pp.e[0] - pp.e[1]; if (r >= 0 && r < 10000) net.rtt = net.rtt ? net.rtt * 0.8 + r * 0.2 : r; }
-  const o = S.CH[1 - net.me]; const st = pp.st;
-  if (!st || !o || isLocal(o)) return;
+/** A remote wizard's state from its owner: position target, animation, shield, authoritative HP, mana, dodge. */
+function applyState(o: Fighter, st: number[]) {
   o.nx = st[0]; o.nz = st[1]; o.nry = st[2];
   const an = CLIP_NAMES[st[3]];
   if (an && an !== o.curName && !o.dead) anim(o, an, { once: ONE_SHOT.includes(an), force: true, speed: an === 'bolt' ? 1.7 : an === 'evade' ? 1.9 : 1 });
@@ -233,8 +249,20 @@ function netRecv(pp: Packet) {
   else if (!st[4] && o.shieldOn) { o.shieldOn = false; o.shield?.off(); o.shield = null; }
   reconcileHp(o, st[5]);
   o.mana = st[6]; o.dodgeT = st[7] ? 0.3 : 0;
+}
 
-  if (net.me === 1) {
+function netRecv(pp: Packet) {
+  const now = performance.now();
+  net.lastRecv = now;
+  if (pp.ts) { net.peerTs = pp.ts; net.peerTsAt = now; }
+  if (pp.e) { const r = now - pp.e[0] - pp.e[1]; if (r >= 0 && r < 10000) net.rtt = net.rtt ? net.rtt * 0.8 + r * 0.2 : r; }
+  const o = S.CH[peerIdx()]; const st = pp.st;
+  if (!st || !o || isLocal(o)) return;
+  applyState(o, st);
+  // 2 vs 2, from the host: its computer wizards.
+  if (pp.ai && S.CH[3]) { const a1 = S.CH[1], a3 = S.CH[3]; if (a1 && !isLocal(a1)) applyState(a1, pp.ai[0]); if (a3 && !isLocal(a3)) applyState(a3, pp.ai[1]); }
+
+  if (net.me !== 0) {
     if (pp.sg && pp.sg !== net.lastSg) { net.lastSg = pp.sg; if (S.state === 'fight') startStruggle(null, null, pp.sg); }
     net.hostS = pp.ss || 0;
     const strug = getStruggle();
@@ -242,9 +270,11 @@ function netRecv(pp: Packet) {
   } else { net.oppMc = pp.mc || 0; net.oppMcId = pp.mcid || 0; }
 
   for (const k of pp.cs || []) {
-    const [id, kind, x, y, z, dx, dy, dz] = k as [number, CastKind, number, number, number, number, number, number];
+    const [id, kind, x, y, z, dx, dy, dz, who] = k as [number, CastKind, number, number, number, number, number, number, number | undefined];
     if (net.seen.has(id)) continue;
     net.seen.add(id);
+    // The caster: the other player, or (from the host in 2 vs 2) one of its computer wizards.
+    const o = (who !== undefined && S.CH[who] && !isLocal(S.CH[who]!) ? S.CH[who] : S.CH[peerIdx()]) as Fighter;
     if (kind === 'thunder') { unveilCast(o); spawnStrike(o.idx, x, z, true); }
     else if (kind in SKFX) { if (kind !== 'veil') unveilCast(o); SKFX[kind as keyof typeof SKFX](o, { kind, x, y, z, dx, dy, dz, remote: true }); }
     else { unveilCast(o); spawnProj({ owner: o.idx, kind: kind as ProjKind, x, y, z, dx, dy, dz, remote: true, id: 'r' + id }); }

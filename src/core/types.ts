@@ -49,7 +49,11 @@ export interface WizardDef {
 export interface ShieldFx { hit(): void; off(): void }
 
 export interface Fighter {
-  R: WizardDef; ri: number; idx: 0 | 1;
+  R: WizardDef; ri: number;
+  /** Slot: 0 and 2 are one team (left), 1 and 3 the other (right). A duel uses 0 and 1 only. */
+  idx: number;
+  /** 2 vs 2: the enemy this wizard is facing and casting at (index), chosen by `opp`. */
+  tgt?: number;
   root: THREE.Group; model: THREE.Object3D; pal: Palette; hex: string;
   mixer: THREE.AnimationMixer; actions: Partial<Record<ClipName, THREE.AnimationAction>>;
   hand: THREE.Bone | null; chestB: THREE.Bone | null; headB: THREE.Bone | null;
@@ -90,17 +94,19 @@ export interface CastOrder {
 export interface ProjSpec { r: number; dmg: number; sp: number; pw: number; trail: string; slow?: number; aoe?: number; home?: number; life?: number; /** Throws the victim back (m/s). */ push?: number }
 
 export interface Projectile extends ProjSpec {
-  id: number | string; owner: 0 | 1; kind: ProjKind;
+  id: number | string; owner: number; kind: ProjKind;
+  /** Who it was cast at (homing follows them); any enemy it touches is hit. */
+  tgt?: number;
   pos: THREE.Vector3; vel: THREE.Vector3; core: THREE.Mesh; pal: Palette;
   life: number; remote: boolean; age: number; dead?: boolean; seenByAi?: boolean;
   /** Light trail following it (fx/vfx.ts). */
   ribbon?: { push(p: THREE.Vector3): void; end(): void };
 }
 
-export interface Strike { owner: 0 | 1; x: number; z: number; t: number; remote?: boolean; done?: boolean }
-export interface Wall { owner: 0 | 1; x: number; z: number; ry: number; g: THREE.Group; t: number }
+export interface Strike { owner: number; x: number; z: number; t: number; remote?: boolean; done?: boolean }
+export interface Wall { owner: number; x: number; z: number; ry: number; g: THREE.Group; t: number }
 export interface Clone {
-  owner: 0 | 1; g: THREE.Group; mx: THREE.AnimationMixer; act: Record<'idle' | 'walkL' | 'walkR' | 'bolt', THREE.AnimationAction>;
+  owner: number; g: THREE.Group; mx: THREE.AnimationMixer; act: Record<'idle' | 'walkL' | 'walkR' | 'bolt', THREE.AnimationAction>;
   x: number; z: number; ox: number; oz: number; sgn: number; t: number; fireT: number; owned: boolean; ph: number;
   /** A still illusion of its owner (Ehab's veil) instead of a moving, firing shadow clone. */
   decoy?: boolean;

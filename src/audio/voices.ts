@@ -87,6 +87,6 @@ export function announceFight() { if (S.mode !== 'train') announce('v_a_fight');
 export function announceMatch(w: Fighter) {
   if (S.mode === 'train') return;
   if (w.hp >= w.R.hp) { announce('v_a_flawless_victory'); return; }
-  const mine = S.mode === 'online' ? w.idx === net.me : w.idx === 0;
+  const mine = ((S.mode === 'online' ? net.me : 0) & 1) === (w.idx & 1);
   announce(mine ? 'v_a_you_win' : 'v_a_you_lose');
 }

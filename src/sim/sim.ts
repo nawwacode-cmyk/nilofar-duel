@@ -29,7 +29,7 @@ export const trace = { last: '' };
 /** `only`: a wizard id to play just their pairings (both sides), much faster than the whole table. */
 export async function runBalance(gamesPerPairing = 20, diff = 2, onProgress?: (done: number, total: number) => void, only?: string): Promise<BalanceReport> {
   const wasMuted = isMuted();
-  setMuted(true); S.sim = true; S.mode = 'ai'; S.diff = diff;
+  setMuted(true); S.sim = true; S.mode = 'ai'; S.diff = diff; S.ai = [false, true, false, false];
   await ensureModels(ROSTER.map((_, i) => i));
   const n = ROSTER.length;
   const wins = ROSTER.map(() => ROSTER.map(() => 0));

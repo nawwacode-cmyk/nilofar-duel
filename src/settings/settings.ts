@@ -20,12 +20,14 @@ export interface Settings {
   inputMode: InputMode; // how the game is played; auto = touch on phones, keyboard on computers, controller when one is used
   padSens: number;      // 0.8..2.5 controller stick gain (higher = full speed with less push)
   padDead: number;      // 0.03..0.3 controller stick dead zone
+  /** Controller buttons per action (standard-layout button indices), set by the player. */
+  padMap: Record<string, number[]>;
   /** Per-button drag offsets in px (from the default layout), set in the button editor. */
   btnPos: Record<string, [number, number]>;
 }
 
 const KEY = 'asrar.settings';
-const DEFAULTS: Settings = { music: 0.8, sfx: 1, voices: true, quality: 'auto', shake: 1, flashes: true, dmgNumbers: true, fps: false, btnScale: 1, btnOpacity: 1, leftHanded: false, inputMode: 'auto', padSens: 1.7, padDead: 0.1, btnPos: {} };
+const DEFAULTS: Settings = { music: 0.8, sfx: 1, voices: true, quality: 'auto', shake: 1, flashes: true, dmgNumbers: true, fps: false, btnScale: 1, btnOpacity: 1, leftHanded: false, inputMode: 'auto', padSens: 1.7, padDead: 0.1, padMap: { atk: [0, 7], dg: [1], sp: [2], sk: [3], sk2: [5], sh: [4, 6], pause: [9] }, btnPos: {} };
 
 function load(): Settings {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEFAULTS }; }

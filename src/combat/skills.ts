@@ -3,7 +3,7 @@ import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
 import { fx } from '../game/state';
-import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
+import { S, ch, opp, foe, fighters, clones, walls, strikes, isLocal } from '../game/state';
 import { base, chest, clipFor, tintModel, anim, airborne } from '../fighters/fighter';
 import { clips } from '../assets/loader';
 import { play, pr } from '../audio/audio';
@@ -182,7 +182,7 @@ function spawnDecoy(c: Fighter, x: number, z: number, ry: number) {
 }
 
 /* ---------- ice wall ---------- */
-function spawnWall(owner: 0 | 1, x: number, z: number, ry: number) {
+function spawnWall(owner: number, x: number, z: number, ry: number) {
   const g = new THREE.Group(); g.position.set(x, 0, z); g.rotation.y = ry;
   const mat = new THREE.MeshStandardMaterial({ color: 0xcfefff, emissive: 0x2a7ad0, emissiveIntensity: 0.55, transparent: true, opacity: 0.62, roughness: 0.08, metalness: 0.1, flatShading: true, depthWrite: false });
   for (let i = 0; i < 9; i++) {
@@ -216,7 +216,7 @@ export function updWalls(dt: number) {
 /** Enemy wall in the projectile's path, if any (wall-local box test). */
 export function wallHit(p: Projectile) {
   for (const w of walls) {
-    if (w.owner === p.owner) continue;
+    if (!foe(w.owner, p.owner)) continue;
     const dx = p.pos.x - w.x, dz = p.pos.z - w.z; const c = Math.cos(w.ry), s = Math.sin(w.ry);
     const lx = dx * c - dz * s, lz = dx * s + dz * c;
     if (Math.abs(lx) < 1.35 && Math.abs(lz) < 0.35 && p.pos.y < 2.4) return w;
@@ -292,7 +292,7 @@ export function updClones(dt: number) {
 }
 
 /* ---------- thunder strike ---------- */
-export function spawnStrike(owner: 0 | 1, x: number, z: number, remote?: boolean) {
+export function spawnStrike(owner: number, x: number, z: number, remote?: boolean) {
   strikes.push({ owner, x, z, t: 0.75, remote });
   play('bolt1', { vol: 0.3, rate: 1.6, x });
 }
@@ -304,13 +304,14 @@ export function updStrikes(dt: number) {
       if (Math.random() < 0.6) emit(s.x + rnd(1), 0.05, s.z + rnd(1), 0, 0.1, 0, LIGHT[0], 0.25, 0.3, { t: 'spark' });
       emit(s.x, 0.05, s.z, 0, 0, 0, LIGHT[1], 2.2, 0.06, { t: 'rune', spin: 4 });
     } else if (!s.done) {
-      s.done = true; const o = ch(1 - s.owner);
+      s.done = true;
       for (let y = 0; y < 9; y += 0.25) emit(s.x + rnd(0.15), y, s.z + rnd(0.15), 0, 0, 0, pick(LIGHT), 0.5, 0.25, { t: 'spark' });
       explosion(V(s.x, 0.3, s.z), LIGHT, 1.2);
       lightning(s.x, s.z, LIGHT); impactFx('spark', V(s.x, 0.3, s.z), LIGHT, 0.9);
       play('m_thunder', { vol: 1, x: s.x }); play(pr('bolt'), { vol: 0.6, x: s.x });
       S.shake = Math.max(S.shake, 0.2); ch(s.owner).light.intensity = 40;
-      if (isLocal(o) && !o.dead && S.state === 'fight' && Math.hypot(o.x - s.x, o.z - s.z) < DMG.thunderRadius) {
+      for (const o of fighters()) {
+        if (!foe(o.idx, s.owner) || !isLocal(o) || o.dead || S.state !== 'fight' || Math.hypot(o.x - s.x, o.z - s.z) >= DMG.thunderRadius) continue;
         if (o.dodgeT > 0.08 || o.invT > 0) { /* dodged */ }
         else if (o.shieldOn) { o.shield?.hit(); applyDmg(o, DMG.thunderShielded, ch(s.owner)); }
         else applyDmg(o, DMG.thunder, ch(s.owner));
@@ -378,7 +379,7 @@ function gust(c: Fighter, x: number, z: number, dx: number, dz: number) {
       if (Math.random() < 0.25) emit(px, 0.1, pz, dx * 4, 0.6, dz * 4, C(0.5, 0.55, 0.62), 0.45, 0.6, { t: 'smoke', smoke: 1, grow: 0.8, a: 0.35 });
     }
     const inBand = (px: number, pz: number) => { const ex = px - x, ez = pz - z, along = ex * dx + ez * dz; return along > 0 && along < front && Math.abs(ex * rx + ez * rz) < HALF; };
-    for (const p of projs) if (!p.dead && p.owner !== c.idx && inBand(p.pos.x, p.pos.z)) killProj(p);
+    for (const p of projs) if (!p.dead && foe(p.owner, c.idx) && inBand(p.pos.x, p.pos.z)) killProj(p);
     if (!hitDone && !airborne(v) && inBand(v.x, v.z)) {
       hitDone = true;
       if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0) {

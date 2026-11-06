@@ -1,4 +1,5 @@
 import { S, inMenus } from '../game/state';
+import { inviteTeam } from './invite';
 import { ensureModel, ensureModels } from '../fighters/fighter';
 import { play, unlock, isMuted, setMuted, musicOn } from '../audio/audio';
 import { setupFighters, startMatch, toMenu } from '../game/flow';
@@ -54,6 +55,49 @@ function initGallery() {
     if (Math.abs(dx) > 40) select((S.sel + (dx > 0 ? 1 : n - 1)) % n); // swipe right → next (RTL)
   });
   $('mMute').onclick = () => $('mute').click();
+}
+
+/**
+ * 2 vs 2 against the computer. On this device: pick the friend's wizard, the computer gets two others.
+ * Online: an invitation link; the friend picks on their own device (see invite.ts).
+ */
+let mate = -1, where: 'local' | 'online' = 'local';
+function initTeamPick() {
+  const n = ROSTER.length;
+  $('tGrid').replaceChildren(...ROSTER.map((r, i) => {
+    const b = el('button'); b.style.setProperty('--c', r.css); b.setAttribute('aria-label', r.name); b.title = r.name;
+    const img = document.createElement('img'); img.src = `models/portraits/${r.id}_face.webp`; img.alt = ''; b.append(img);
+    b.onclick = () => { mate = i; mark(); play(r.ss, { vol: 0.4 }); };
+    return b;
+  }));
+  const mark = () => $('tGrid').querySelectorAll('button').forEach((b, i) => b.classList.toggle('on', i === mate));
+  const show = () => {
+    $('tWhere').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.classList.toggle('on', b.dataset.w === where));
+    $('tLocal').hidden = where !== 'local'; $('tOnline').hidden = where !== 'online';
+    $('tGo').textContent = where === 'local' ? 'ابدأ' : 'إرسال دعوة';
+  };
+  $('tWhere').querySelectorAll<HTMLButtonElement>('button').forEach(b => b.onclick = () => { where = b.dataset.w as 'local' | 'online'; show(); });
+  $('mTeam').onclick = () => { unlock(); if (mate < 0) mate = (S.sel + 1) % n; mark(); show(); $('teamPick').hidden = false; };
+  $('tBack').onclick = () => { $('teamPick').hidden = true; };
+  $('teamPick').onclick = e => { if (e.target === $('teamPick')) $('teamPick').hidden = true; };
+  $('tGo').onclick = async () => {
+    unlock(); $('teamPick').hidden = true;
+    if (where === 'online') { inviteTeam(); return; }
+    S.mode = 'ai'; S.ai = [false, true, false, true];
+    const [b, d] = computerPair([S.sel, mate]);
+    const show2 = versus(S.sel, b, ensureModels([S.sel, b, mate, d]), 1800, [ROSTER[S.sel].name + ' و' + ROSTER[mate].name, ROSTER[b].name + ' و' + ROSTER[d].name]);
+    $('menu').hidden = true;
+    await show2;
+    if (inMenus()) { setupFighters(S.sel, b, mate, d); startMatch(); }
+  };
+}
+/** Two different computer wizards, preferring ones the players did not pick. */
+export function computerPair(taken: number[]): [number, number] {
+  const free = ROSTER.map((_, i) => i).filter(i => !taken.includes(i));
+  const pool = free.length >= 2 ? free : ROSTER.map((_, i) => i);
+  const a = pool.splice((Math.random() * pool.length) | 0, 1)[0];
+  const b = pool[(Math.random() * pool.length) | 0];
+  return [a, b];
 }
 
 /** Story and abilities of the selected wizard. */
@@ -125,7 +169,7 @@ export function initMenus() {
   arenaBtns.forEach(b => b.onclick = () => { void setArena(b.dataset.arena as ArenaId); markArena(); });
   markArena();
   $('mAI').onclick = async () => {
-    unlock(); S.mode = 'ai';
+    unlock(); S.mode = 'ai'; S.ai = [false, true, false, false];
     let o = (Math.random() * (ROSTER.length - 1)) | 0; if (o >= S.sel) o++;
     // Versus screen while both wizards load, then the duel.
     const show = versus(S.sel, o, ensureModels([S.sel, o]));
@@ -136,7 +180,7 @@ export function initMenus() {
   // Training: always in the sunlit palace courtyard (the player's arena choice is kept for duels);
   // the dummy is the next wizard in the gallery.
   $('mTrain').onclick = async () => {
-    unlock(); S.mode = 'train';
+    unlock(); S.mode = 'train'; S.ai = [false, false, false, false];
     const o = (S.sel + 1) % ROSTER.length;
     const show = versus(S.sel, o, Promise.all([ensureModels([S.sel, o]), setArena('palace', false)]), 1000);
     $('menu').hidden = true;
@@ -150,6 +194,7 @@ export function initMenus() {
     if (c.length !== 4) { $('oErr').hidden = false; $('oErr').textContent = TXT.online.badCode; return; }
     $('oErr').hidden = true; $('onTxt').textContent = TXT.online.searching; await onlineStart(false, c);
   };
+  initTeamPick();
   // Online: both players get 10 s to change wizard in the same room; offline: straight into a new duel.
   $('again').onclick = () => { unlock(); if (S.mode === 'online') { requestRematch(); return; } $('end').hidden = true; startMatch(); };
   $('toMenu').onclick = () => void veil(toMenu);

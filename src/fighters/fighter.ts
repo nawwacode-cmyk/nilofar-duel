@@ -101,7 +101,7 @@ function rimColor(pal: readonly THREE.Color[]) {
   return c.multiplyScalar(0.55 / m);
 }
 
-export function makeFighter(ri: number, side: 0 | 1): Fighter {
+export function makeFighter(ri: number, side: number): Fighter {
   const R = ROSTER[ri];
   const m = SkeletonUtils.clone(base[ri]);
   const g = new THREE.Group(); g.add(m); scene.add(g);
@@ -274,11 +274,11 @@ export function dropFighter(c: Fighter | null) {
   c.shield?.off();
 }
 
-/** Resets a fighter for a new round (side 0 starts left, side 1 right). */
-export function resetChar(c: Fighter) {
-  const i = c.idx;
+/** Resets a fighter for a new round (team 0+2 starts left, 1+3 right; in 2 vs 2 partners side by side). */
+export function resetChar(c: Fighter, team = false) {
+  const i = c.idx, left = (i & 1) === 0;
   Object.assign(c, {
-    x: i === 0 ? -3 : 3, z: -0.6, vx: 0, vz: 0, ry: i === 0 ? Math.PI / 2 : -Math.PI / 2, hp: c.R.hp, mana: 60,
+    x: left ? -3 : 3, z: team ? (i < 2 ? -1.7 : 0.6) : -0.6, vx: 0, vz: 0, ry: left ? Math.PI / 2 : -Math.PI / 2, tgt: undefined, hp: c.R.hp, mana: 60,
     cdA: 0, cdD: 0, shieldT: -1, shieldOn: false, dodgeT: 0, dodgeDir: V(), castT: 0, hitT: 0, slowT: 0, stunT: 0, cdS: 0, shHP: 0,
     cdK: 0, cdK2: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, flyT: 0, authHp: c.R.hp, pend: [],
   });

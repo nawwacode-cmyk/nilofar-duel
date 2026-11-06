@@ -159,6 +159,17 @@ html.rot{--safe-l:max(var(--g3),env(safe-area-inset-top,0px));--safe-t:max(var(-
 #hud{top:0;padding-top:var(--safe-t);display:flex;justify-content:space-between;gap:var(--g4);direction:ltr;z-index:2}
 .side{width:min(340px,38vw);display:flex;align-items:center;gap:10px}
 .side.r{flex-direction:row-reverse}
+/* 2 vs 2: each partner gets a smaller bar under their teammate's */
+.tcol{display:flex;flex-direction:column;gap:10px}
+.side.mate{display:none;width:min(260px,30vw)}
+.tcol.r .side.mate{align-self:flex-end}
+html.team .side.mate{display:flex}
+.side.mate .av{width:32px;height:32px}
+.side.mate .pips,.side.mate .el{display:none}
+.side.mate .bar.hp{height:9px}.side.mate .num{font-size:9px}
+.side.mate.l .nm{color:var(--p2)}.side.mate.r .nm{color:var(--p3)}
+.side.mate.l .hp i{background:linear-gradient(90deg,#7a1414,var(--p2))}
+.side.mate.r .hp i{background:linear-gradient(270deg,#173a80,var(--p3))}
 .side .col{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .side.r .col{align-items:flex-end}
 /* Wizard portrait beside the health bar, framed like the character posters. */
@@ -375,6 +386,17 @@ html.compact .tcard b{font-size:var(--fs-sm)}
 #lStory{font-size:var(--fs-sm);line-height:1.8;color:var(--ink);opacity:.92;margin:0;max-width:none}
 .lorebox .abil{overflow-y:auto;min-height:0;scrollbar-width:thin;scrollbar-color:#ffffff30 transparent}
 .lfoot{display:flex;justify-content:flex-start;padding-top:var(--g1)}
+#teamPick{z-index:9;background:#03050bcc}
+.teambox{width:min(560px,88vw)}
+.teambox h3{margin:0;font-family:var(--display);color:var(--gold-hi);font-size:var(--fs-lg)}
+.teambox .tsub{margin:0;color:var(--ink);font-size:var(--fs-sm);opacity:.85}
+.teambox h4{margin:0 0 var(--g1);font-size:var(--fs-sm);color:var(--gold)}
+.teambox .seg{align-self:flex-start}
+.teambox .lfoot{justify-content:space-between}
+.tgrid{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:var(--g1)}
+.tgrid button{width:54px;height:54px;padding:0;border:0;border-radius:6px;overflow:hidden;background:#0a0812;box-shadow:0 0 0 1px #000,0 0 0 2px #ffffff30;cursor:pointer}
+.tgrid button img{width:100%;height:100%;object-fit:cover;display:block}
+.tgrid button.on{box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 12px var(--c)}
 @keyframes pop{from{opacity:0;transform:scale(.96)}}
 /* loading veil */
 #veil{z-index:30;background:#05070d;animation:ovIn .18s ease-out}
@@ -458,8 +480,6 @@ html.compact .mbfoot .round{width:30px;height:30px}
 #mOn.invited{background:linear-gradient(180deg,#f0c46a,#b7802f);color:#241503;box-shadow:0 0 0 1px #000,0 0 0 2px var(--gold-hi),0 0 18px #f0c46a88}
 /* Keyboard / controller play: no touch stick; the buttons become small, untouchable cooldown indicators with their key. */
 html.kb #stickZone,html.gp #stickZone{display:none}
-html.kb #btns,html.gp #btns{--btn-scale:.62!important;opacity:.85}
-html.kb #ctl .b,html.gp #ctl .b{pointer-events:none}
-html.kb #ctl .b::after,html.gp #ctl .b::after{margin-top:2px;color:var(--gold-hi);font:700 12px/1 var(--body);direction:ltr}
-html.kb #ctl .b::after{content:attr(data-key)}
-html.gp #ctl .b::after{content:attr(data-pad)}
+html.kb #btns,html.gp #btns{display:none}
+.padkey{min-width:96px;direction:rtl;unicode-bidi:plaintext}
+.padkey.wait{box-shadow:inset 0 0 0 1px var(--gold-hi);color:var(--gold-hi)}

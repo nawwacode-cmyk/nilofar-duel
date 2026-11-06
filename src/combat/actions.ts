@@ -1,4 +1,4 @@
-import { S, net, opp, clones } from '../game/state';
+import { S, net, opp, foe, isAi, isLocal, clones } from '../game/state';
 import { anim, tipPos, chest } from '../fighters/fighter';
 import { play } from '../audio/audio';
 import { voiceCast, voiceEffort } from '../audio/voices';
@@ -20,9 +20,10 @@ export function fire(c: Fighter, o: CastOrder) {
   if (o.kind === 'thunder') { unveilCast(c); spawnStrike(c.idx, o.x, o.z); }
   else if (o.kind in SKFX) { if (o.kind !== 'veil') unveilCast(c); SKFX[o.kind as keyof typeof SKFX](c, o); }
   else { const p = spawnProj({ ...o, kind: o.kind as ProjKind, owner: c.idx }); o.id = p.id; unveilCast(c); }
-  if (S.mode === 'online' && c.idx === net.me) {
-    net.casts.push([o.id ?? ++S.projId, o.kind, +o.x.toFixed(3), +o.y.toFixed(3), +o.z.toFixed(3), +o.dx.toFixed(3), +o.dy.toFixed(3), +o.dz.toFixed(3)]);
-    if (net.casts.length > 8) net.casts.shift();
+  // Online: our own casts, and on the host the computer's (tagged with the caster's slot).
+  if (S.mode === 'online' && isLocal(c)) {
+    net.casts.push([o.id ?? ++S.projId, o.kind, +o.x.toFixed(3), +o.y.toFixed(3), +o.z.toFixed(3), +o.dx.toFixed(3), +o.dy.toFixed(3), +o.dz.toFixed(3), c.idx]);
+    if (net.casts.length > 12) net.casts.shift();
     net.urgent = true;
   }
 }
@@ -32,8 +33,8 @@ function aimAt(c: Fighter): [ReturnType<typeof V>, ReturnType<typeof V>] {
   const s = tipPos(c);
   let t = chest(opp(c));
   // In the balance simulator both sides are the computer, so both are fooled the same way.
-  if (S.mode !== 'online' && (c.idx === 1 || S.sim)) {
-    const cs = clones.filter(k => k.owner !== c.idx);
+  if (isAi(c) || S.sim) {
+    const cs = clones.filter(k => foe(k.owner, c.idx));
     const decoy = cs.find(k => k.decoy);
     // The computer cannot see a veiled Ehab: it attacks his illusion (or guesses).
     if (decoy) t = V(decoy.x, 1.3, decoy.z);

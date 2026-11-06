@@ -1,4 +1,4 @@
-import { S, opp, projs, strikes } from '../game/state';
+import { S, opp, foe, projs, strikes } from '../game/state';
 import { castBolt, castSpecial, castSkill, castSkill2, dodge } from '../combat/actions';
 import { G, AI_LEVELS } from '../data/rules';
 import { V } from '../core/util';
@@ -7,14 +7,14 @@ import { after } from '../game/schedule';
 
 /** Computer opponent: keeps a preferred range, strafes, reacts to incoming spells, uses skills. */
 type AiState = { t: number; strafe: number; nextAtk: number; shieldUntil: number; skT: number };
-/** One brain per side, so the balance simulator can let the computer play both fighters. */
-const brains: [AiState, AiState] = [0, 1].map(() => ({ t: 0, strafe: 1, nextAtk: 1, shieldUntil: 0, skT: 0 })) as [AiState, AiState];
+/** One brain per slot, so the computer can play any of the four wizards (and both sides in the simulator). */
+const brains: AiState[] = [0, 1, 2, 3].map(() => ({ t: 0, strafe: 1, nextAtk: 1, shieldUntil: 0, skT: 0 }));
 
 /** Most imminent enemy projectile that will pass within reach in the next 0.7 s. */
 function findThreat(c: Fighter): { p: Projectile | null; t: number } {
   let threat: Projectile | null = null, tmin = 9;
   for (const p of projs) {
-    if (p.dead || p.owner === c.idx) continue;
+    if (p.dead || !foe(p.owner, c.idx)) continue;
     const rel = V(c.x - p.pos.x, 0, c.z - p.pos.z); const v2 = V(p.vel.x, 0, p.vel.z); const sp = v2.length();
     if (sp < 0.1) continue;
     const t = rel.dot(v2) / (sp * sp);
@@ -34,7 +34,7 @@ export function aiThink(c: Fighter, dt: number) {
   let mx = (ax / dist) * (dist - want) * 0.6 + (-az / dist) * ai.strafe * 0.7;
   let mz = (az / dist) * (dist - want) * 0.6 + (ax / dist) * ai.strafe * 0.7;
   // Run from thunder marks.
-  for (const s of strikes) if (s.owner !== c.idx && !s.done && Math.hypot(c.x - s.x, c.z - s.z) < 1.6 && Math.random() < D.dodge * dt * 8) { mx = c.x - s.x; mz = c.z - s.z; }
+  for (const s of strikes) if (foe(s.owner, c.idx) && !s.done && Math.hypot(c.x - s.x, c.z - s.z) < 1.6 && Math.random() < D.dodge * dt * 8) { mx = c.x - s.x; mz = c.z - s.z; }
   if (c.z > G.zMax - 0.7) mz = Math.min(mz, -0.7);
   if (c.z < G.zMin + 0.7) mz = Math.max(mz, 0.7);
   const L = Math.hypot(mx, mz); if (L > 1) { mx /= L; mz /= L; }

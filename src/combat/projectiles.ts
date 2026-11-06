@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
-import { S, net, ch, projs, clones, isLocal } from '../game/state';
+import { S, ch, opp, foe, fighters, projs, clones, isLocal, net } from '../game/state';
 import { chest } from '../fighters/fighter';
 import { play, pr } from '../audio/audio';
 import { takeHit, applyDmg } from './damage';
@@ -14,7 +14,7 @@ import { V, C, rnd, pick } from '../core/util';
 import type { Clone, ProjKind, Projectile } from '../core/types';
 import { takeRibbon, impactFx, elementOf } from '../fx/vfx';
 
-interface SpawnOrder { kind: ProjKind; owner: 0 | 1; x: number; y: number; z: number; dx: number; dy: number; dz: number; id?: number | string; remote?: boolean }
+interface SpawnOrder { kind: ProjKind; owner: number; x: number; y: number; z: number; dx: number; dy: number; dz: number; id?: number | string; remote?: boolean }
 
 export function spawnProj(o: SpawnOrder): Projectile {
   const sp = PSPEC[o.kind]; const pal = ch(o.owner).pal;
@@ -23,7 +23,7 @@ export function spawnProj(o: SpawnOrder): Projectile {
   if (o.kind === 'gale') core.scale.set(3.2, 0.35, 0.8);
   scene.add(core);
   const d = V(o.dx, o.dy, o.dz).normalize();
-  const p: Projectile = { ...sp, id: o.id ?? ++S.projId, owner: o.owner, kind: o.kind, pos: V(o.x, o.y, o.z), vel: d.multiplyScalar(sp.sp), core, pal, life: sp.life || 2.2, remote: !!o.remote, age: 0 };
+  const p: Projectile = { ...sp, id: o.id ?? ++S.projId, owner: o.owner, kind: o.kind, pos: V(o.x, o.y, o.z), vel: d.multiplyScalar(sp.sp), core, pal, life: sp.life || 2.2, remote: !!o.remote, age: 0, tgt: opp(ch(o.owner)).idx };
   p.ribbon = takeRibbon(pal, sp.r);
   projs.push(p);
   return p;
@@ -45,12 +45,13 @@ export function killProj(p: Projectile, boom = true) {
   }
 }
 
-/** Area damage when an AoE projectile ends (victim's device only). */
+/** Area damage when an AoE projectile ends (victim's device only), to every enemy in reach. */
 function aoeCheck(p: Projectile) {
   if (!p.aoe || S.state !== 'fight') return;
-  const t = ch(1 - p.owner);
-  if (isLocal(t) && !t.dead && t.flyT <= 0 && Math.hypot(t.x - p.pos.x, t.z - p.pos.z) < p.aoe && t.dodgeT <= 0.08)
-    applyDmg(t, t.shieldOn ? DMG.aoeShielded : DMG.aoe, ch(p.owner));
+  for (const t of fighters()) {
+    if (foe(t.idx, p.owner) && isLocal(t) && !t.dead && t.flyT <= 0 && Math.hypot(t.x - p.pos.x, t.z - p.pos.z) < p.aoe && t.dodgeT <= 0.08)
+      applyDmg(t, t.shieldOn ? DMG.aoeShielded : DMG.aoe, ch(p.owner));
+  }
 }
 
 export function updProjs(dt: number) {
@@ -58,7 +59,7 @@ export function updProjs(dt: number) {
     if (p.dead) continue;
     p.life -= dt; p.age += dt;
     if (p.home) {
-      const want = chest(ch(1 - p.owner)).sub(p.pos).normalize();
+      const want = chest(ch(p.tgt ?? 1 - p.owner)).sub(p.pos).normalize();
       const v = p.vel.clone().normalize(); v.lerp(want, Math.min(1, p.home * dt)).normalize();
       p.vel.copy(v.multiplyScalar(Math.min(10, p.vel.length() + dt * 2.5)));
     }
@@ -73,7 +74,7 @@ export function updProjs(dt: number) {
     if (wallHit(p)) { burst(p.pos, ICE, 30, 3, 0.4, 0.1, 'star'); play('m_ice_thin', { vol: 0.35, x: p.pos.x, dur: 0.8 }); killProj(p, false); continue; }
 
     let hitC: Clone | null = null;
-    for (const cl of clones) if (cl.owner !== p.owner && Math.hypot(p.pos.x - cl.x, p.pos.z - cl.z) < p.r + 0.4 && p.pos.y < 2) { hitC = cl; break; }
+    for (const cl of clones) if (foe(cl.owner, p.owner) && Math.hypot(p.pos.x - cl.x, p.pos.z - cl.z) < p.r + 0.4 && p.pos.y < 2) { hitC = cl; break; }
     if (hitC) {
       killClone(hitC); killProj(p, !p.aoe);
       // Preserved from the original: an AoE hitting a clone also explodes in place.
@@ -81,20 +82,23 @@ export function updProjs(dt: number) {
       continue;
     }
 
-    const tgt = ch(1 - p.owner);
-    // A veiled Ehab is hard to hit: only spells that come straight at him connect.
-    const body = tgt.shieldOn ? 0.8 : tgt.veilT > 0 ? 0.14 : 0.38;
-    if (!tgt.dead && S.state === 'fight' && Math.hypot(p.pos.x - tgt.x, p.pos.z - tgt.z) < p.r + body && p.pos.y - tgt.root.position.y < 2.1 && p.pos.y > tgt.root.position.y - 0.3) {
-      if (isLocal(tgt)) { const r = takeHit(tgt, p); if (r === 'miss') continue; killProj(p, r !== 'parry'); }
-      else { if (tgt.dodgeT > 0) continue; predictHit(tgt, p); killProj(p); }
+    // Any enemy in its path (in a duel, the opponent). A veiled Ehab is hard to hit: only spells that come
+    // straight at him connect.
+    for (const tgt of fighters()) {
+      if (!foe(tgt.idx, p.owner) || p.dead) continue;
+      const body = tgt.shieldOn ? 0.8 : tgt.veilT > 0 ? 0.14 : 0.38;
+      if (!tgt.dead && S.state === 'fight' && Math.hypot(p.pos.x - tgt.x, p.pos.z - tgt.z) < p.r + body && p.pos.y - tgt.root.position.y < 2.1 && p.pos.y > tgt.root.position.y - 0.3) {
+        if (isLocal(tgt)) { const r = takeHit(tgt, p); if (r === 'miss') continue; killProj(p, r !== 'parry'); }
+        else { if (tgt.dodgeT > 0) continue; predictHit(tgt, p); killProj(p); }
+      }
     }
   }
   // Two enemy projectiles meeting mid-air: start a beam struggle (host decides online) or cancel by power.
   for (let i = 0; i < projs.length; i++) for (let j = i + 1; j < projs.length; j++) {
     const a = projs[i], b = projs[j];
-    if (a.dead || b.dead || a.owner === b.owner) continue;
+    if (a.dead || b.dead || !foe(a.owner, b.owner)) continue;
     if (a.pos.distanceTo(b.pos) < a.r + b.r + 0.05) {
-      if (S.state === 'fight' && S.T > S.strugReady && (S.mode !== 'online' || net.me === 0)) { startStruggle(a, b); break; }
+      if (!S.team && S.state === 'fight' && S.T > S.strugReady && (S.mode !== 'online' || net.me === 0)) { startStruggle(a, b); break; }
       burst(a.pos.clone().lerp(b.pos, 0.5), WHITE, 30, 3, 0.4, 0.12, 'star'); play('m_blast', { vol: 0.5 });
       if (a.pw <= b.pw) killProj(a);
       if (b.pw <= a.pw) killProj(b);

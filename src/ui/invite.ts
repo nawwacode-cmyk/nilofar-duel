@@ -17,8 +17,12 @@ const valid = (c: string | null) => !!c && /^[A-Z0-9]{4}$/.test(c);
 let pending = '';
 
 function inviteText(code: string) {
-  return `${ROSTER[S.sel].name} يتحدّاك في مبارزة سحرة في «أسرار الظلام»! افتح الرابط واختر ساحرك:\n${inviteUrl(code)}`;
+  return team
+    ? `${ROSTER[S.sel].name} يدعوك إلى فريقه في «أسرار الظلام»: أنتما معًا ضد ساحرين من الحاسوب! افتح الرابط واختر ساحرك:\n${inviteUrl(code)}`
+    : `${ROSTER[S.sel].name} يتحدّاك في مبارزة سحرة في «أسرار الظلام»! افتح الرابط واختر ساحرك:\n${inviteUrl(code)}`;
 }
+/** The current invitation is for 2 vs 2. */
+let team = false;
 
 async function share(code: string) {
   const text = inviteText(code);
@@ -38,13 +42,18 @@ async function copy(code: string) {
 }
 
 /** Host: make a room, share the link, wait in the online screen. */
-async function invite() {
-  unlock();
+async function invite(asTeam = false) {
+  unlock(); team = asTeam;
   const c = code4();
   $('oCode').textContent = c; $('oCreate').hidden = true; $('oWait').hidden = false; $('oErr').hidden = true;
-  $('onTxt').textContent = 'أُرسلت الدعوة. ستبدأ المبارزة فور دخول صديقك.';
-  void onlineStart(true, c);
+  $('onTxt').textContent = team ? 'أُرسلت الدعوة. ستبدآن معًا ضد الحاسوب فور دخول صديقك.' : 'أُرسلت الدعوة. ستبدأ المبارزة فور دخول صديقك.';
+  void onlineStart(true, c, team);
   await share(c);
+}
+
+/** 2 vs 2 online: straight to the waiting screen with the invitation sent. */
+export function inviteTeam() {
+  void veil(() => { $('menu').hidden = true; $('online').hidden = false; $('oErr').hidden = true; S.state = 'online'; }).then(() => invite(true));
 }
 
 /** The game was opened from an invitation: remember the code and clean the address bar. */
@@ -65,7 +74,7 @@ export function showInvite() {
 }
 
 export function initInvite() {
-  $('oCreate').onclick = () => void invite();
+  $('oCreate').onclick = () => void invite(false);
   $('oShare').onclick = () => { const c = $('oCode').textContent || ''; if (valid(c)) void share(c); };
   $('oCopy').onclick = async () => {
     const c = $('oCode').textContent || ''; if (!valid(c)) return;

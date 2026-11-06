@@ -1,5 +1,5 @@
 import type * as THREE from 'three';
-import { S, opp, me } from '../game/state';
+import { S, opp, me, fighters } from '../game/state';
 import { anim, tipPos, headPos, applyGrip, applyGroundContact, flyLift } from './fighter';
 import { floorAt, obstacles } from '../world/arena';
 import { setShield } from '../combat/actions';
@@ -62,9 +62,12 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
         if (Math.random() < 0.5) dust(c, 1, 0.5);
       } else { c.vx += (c.inX * sp - c.vx) * Math.min(1, dt * 12); c.vz += (c.inZ * sp - c.vz) * Math.min(1, dt * 12); }
       c.x = clamp(c.x + c.vx * dt, -G.bx, G.bx); c.z = clamp(c.z + c.vz * dt, G.zMin, G.zMax);
-      // Soft body separation so wizards never overlap.
-      const dx = c.x - o.x, dz = c.z - o.z, dd = Math.hypot(dx, dz);
-      if (dd < 1.1 && dd > 0) { c.x += (dx / dd) * (1.1 - dd) * 0.5; c.z += (dz / dd) * (1.1 - dd) * 0.5; }
+      // Soft body separation so wizards never overlap (the fallen are stepped over).
+      for (const k of fighters()) {
+        if (k === c || k.dead) continue;
+        const dx = c.x - k.x, dz = c.z - k.z, dd = Math.hypot(dx, dz);
+        if (dd < 1.1 && dd > 0) { c.x += (dx / dd) * (1.1 - dd) * 0.5; c.z += (dz / dd) * (1.1 - dd) * 0.5; }
+      }
       // Arena obstacles (a well, braziers): slide around them instead of walking through.
       for (const [ox, oz, r] of obstacles()) {
         const ex = c.x - ox, ez = c.z - oz, d = Math.hypot(ex, ez);

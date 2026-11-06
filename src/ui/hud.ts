@@ -2,7 +2,7 @@ import { S, me } from '../game/state';
 import { G } from '../data/rules';
 import { $ } from '../core/util';
 
-/** Health/mana bars and round pips for both sides. */
+/** Health/mana bars and round pips for both sides (partners in 2 vs 2 get a small bar under them). */
 export function hud() {
   S.CH.forEach((c, i) => {
     if (!c) return;

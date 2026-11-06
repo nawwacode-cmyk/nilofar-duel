@@ -1,5 +1,5 @@
 import { S, net } from '../game/state';
-import { me } from '../game/state';
+import { me, p2 } from '../game/state';
 import { unlock } from '../audio/audio';
 import { castBolt, castSpecial, castSkill, castSkill2, dodge } from '../combat/actions';
 import { mash } from '../game/struggle';
@@ -7,7 +7,7 @@ import { isEditingControls } from '../ui/settingsUI';
 import { $ } from '../core/util';
 import { toLocal, localRect } from '../core/view';
 import { settings, onSettingChange } from '../settings/settings';
-import { pollPad, pad } from './gamepad';
+import { pollPad, pad, pads } from './gamepad';
 
 /** Touch joystick + on-screen buttons + keyboard, merged into one intent per frame. */
 type Action = 'atk' | 'sh' | 'dg' | 'sp' | 'sk' | 'sk2';
@@ -38,6 +38,16 @@ export function press(a: Action, on: boolean) {
   if (a === 'sh') c.wantShield = on;
   if (on && CASTS[a] && S.state === 'fight') buffered = tryCast(a) ? null : { a, until: performance.now() / 1000 + BUFFER_S };
 }
+
+/** Player 2 on the same device (2 vs 2): their own controller, no input buffer. */
+function press2(a: Action, on: boolean) {
+  const c = p2();
+  if (!c || S.paused || isEditingControls()) return;
+  if (a === 'sh') c.wantShield = on;
+  if (on && CASTS[a] && a !== 'atk' && S.state === 'fight') CASTS[a]!(c);
+}
+export const padMove = (p: number): [number, number] => [pads[p].x, pads[p].z];
+export const padAtkHeld = (p: number) => !!pads[p].held.get('atk');
 
 /** Called every frame: retries a buffered press until it fires or expires. */
 export function pumpInput() {
@@ -80,7 +90,11 @@ let pauseToggle: () => void = () => {};
 export function onPadPause(fn: () => void) { pauseToggle = fn; }
 /** Every frame: controller buttons and stick (also outside fights, for the pause button). */
 export function pollInput() {
-  pollPad((a, on) => { if (a === 'pause') { if (on) pauseToggle(); } else press(a, on); });
+  pollPad((p, a, on) => {
+    if (a === 'pause') { if (on) pauseToggle(); }
+    else if (p === 0) press(a, on);
+    else press2(a, on);
+  }, !!(S.CH[0] && p2()));
   applyInputMode();
 }
 
