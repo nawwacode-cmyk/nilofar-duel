@@ -49,7 +49,7 @@ export function killProj(p: Projectile, boom = true) {
 function aoeCheck(p: Projectile) {
   if (!p.aoe || S.state !== 'fight') return;
   const t = ch(1 - p.owner);
-  if (isLocal(t) && !t.dead && Math.hypot(t.x - p.pos.x, t.z - p.pos.z) < p.aoe && t.dodgeT <= 0.08)
+  if (isLocal(t) && !t.dead && t.flyT <= 0 && Math.hypot(t.x - p.pos.x, t.z - p.pos.z) < p.aoe && t.dodgeT <= 0.08)
     applyDmg(t, t.shieldOn ? DMG.aoeShielded : DMG.aoe, ch(p.owner));
 }
 
@@ -84,7 +84,7 @@ export function updProjs(dt: number) {
     const tgt = ch(1 - p.owner);
     // A veiled Ehab is hard to hit: only spells that come straight at him connect.
     const body = tgt.shieldOn ? 0.8 : tgt.veilT > 0 ? 0.14 : 0.38;
-    if (!tgt.dead && S.state === 'fight' && Math.hypot(p.pos.x - tgt.x, p.pos.z - tgt.z) < p.r + body && p.pos.y < 2.1) {
+    if (!tgt.dead && S.state === 'fight' && Math.hypot(p.pos.x - tgt.x, p.pos.z - tgt.z) < p.r + body && p.pos.y - tgt.root.position.y < 2.1 && p.pos.y > tgt.root.position.y - 0.3) {
       if (isLocal(tgt)) { const r = takeHit(tgt, p); if (r === 'miss') continue; killProj(p, r !== 'parry'); }
       else { if (tgt.dodgeT > 0) continue; predictHit(tgt, p); killProj(p); }
     }

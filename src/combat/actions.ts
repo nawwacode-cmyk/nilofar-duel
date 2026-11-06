@@ -1,6 +1,7 @@
 import { S, net, opp, clones } from '../game/state';
 import { anim, tipPos, chest } from '../fighters/fighter';
 import { play } from '../audio/audio';
+import { voiceCast, voiceEffort } from '../audio/voices';
 import { emit } from '../render/particles';
 import { flash, shieldMesh } from '../fx/effects';
 import { spawnProj } from './projectiles';
@@ -64,7 +65,7 @@ export function castBolt(c: Fighter) {
 
 export function castSpecial(c: Fighter) {
   if (c.dead || c.stunT > 0 || c.shieldOn || c.mana < G.spCost || c.dodgeT > 0 || c.castT > 0.1) return;
-  c.mana -= G.spCost; c.castT = 0.9; focusOn(c.idx, 1.1);
+  c.mana -= G.spCost; c.castT = 0.9; focusOn(c.idx, 1.1); voiceCast(c, 'sp');
   anim(c, 'special', { once: true, speed: 1.25, force: true }); play(c.R.ss, { vol: 0.8, x: c.x });
   const p = chest(c);
   for (let i = 0; i < 30; i++) emit(p.x + rnd(0.5), 0.1 + Math.random() * 1.8, p.z + rnd(0.5), rnd(0.3), 1.2, rnd(0.3), pick(c.pal), 0.25, 0.7, { t: 'magic' });
@@ -129,6 +130,7 @@ function melee(c: Fighter) {
   const v = (Math.random() * MELEE.length) | 0, m = MELEE[v];
   c.cdA = c.R.bolt.cd; c.castT = m.hit + 0.15;
   anim(c, m.clip, { once: true, speed: m.speed, force: true });
+  voiceEffort(c);
   fire(c, { kind: 'melee', x: c.x, y: v, z: c.z, dx: dx / (d || 1), dy: 0, dz: dz / (d || 1) });
   return true;
 }
@@ -137,7 +139,7 @@ function melee(c: Fighter) {
 export function castSkill(c: Fighter) {
   const K = c.R.skill;
   if (c.dead || c.stunT > 0 || c.cdK > 0 || c.mana < K.cost || c.castT > 0.1 || c.warpT > 0) return;
-  c.mana -= K.cost; c.cdK = K.cd; setShield(c, false);
+  c.mana -= K.cost; c.cdK = K.cd; setShield(c, false); voiceCast(c, 'sk');
   const o = opp(c);
   // Exit beside and behind the opponent, on whichever side stays inside the arena (portal and veil).
   const behind = () => {
@@ -155,7 +157,7 @@ export function castSkill(c: Fighter) {
   if (K.k === 'wall') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); fire(c, { kind: 'wall', x: c.x + d.x * 1.5, y: Math.atan2(d.x, d.z), z: c.z + d.z * 1.5, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'clones') fire(c, { kind: 'clones', x: c.x, y: (Math.random() * 1e5) | 0, z: c.z, dx: 0, dy: 0, dz: 0 });
   if (K.k === 'veil') { const [ex, ez] = behind(); fire(c, { kind: 'veil', x: c.x, y: c.ry, z: c.z, dx: ex, dy: 0, dz: ez }); }
-  if (K.k === 'bloom') { c.castT = 0.4; anim(c, 'special', { once: true, speed: 1.8, force: true }); fire(c, { kind: 'bloom', x: c.x, y: 0, z: c.z, dx: 0, dy: 0, dz: 0 }); }
+  if (K.k === 'fly') { c.castT = 0.2; fire(c, { kind: 'fly', x: c.x, y: 0, z: c.z, dx: 0, dy: 0, dz: 0 }); }
   if (K.k === 'gust') { const d = V(o.x - c.x, 0, o.z - c.z).normalize(); c.castT = 0.35; anim(c, 'bolt', { once: true, speed: 1.6, force: true }); fire(c, { kind: 'gust', x: c.x, y: 0, z: c.z, dx: d.x, dy: 0, dz: d.z }); }
 }
 
@@ -163,7 +165,7 @@ export function castSkill(c: Fighter) {
 export function castSkill2(c: Fighter) {
   const K = c.R.skill2;
   if (!K || c.dead || c.stunT > 0 || c.cdK2 > 0 || c.mana < K.cost || c.castT > 0.1 || c.warpT > 0) return;
-  c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5; focusOn(c.idx, 1);
+  c.mana -= K.cost; c.cdK2 = K.cd; setShield(c, false); c.castT = 0.5; focusOn(c.idx, 1); voiceCast(c, 'sk2');
   anim(c, 'special', { once: true, speed: 1.6, force: true });
   const o = opp(c);
   fire(c, { kind: K.k, x: o.x, y: (Math.random() * 1e5) | 0, z: o.z, dx: 0, dy: 0, dz: 0 });

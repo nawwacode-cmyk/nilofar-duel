@@ -9,6 +9,7 @@ import { onTierChange } from './render/quality';
 import { setupFighters, startMatch } from './game/flow';
 import { G } from './data/rules';
 import { loadSounds } from './audio/audio';
+import { loadVoices } from './audio/voices';
 import { resize, setDebugCamera } from './camera/camera';
 import { initLights } from './render/lights';
 import { initQuality } from './render/quality';
@@ -85,6 +86,7 @@ async function preload() {
   const order = [S.sel, ...ROSTER.map((_, i) => i).filter(i => i !== S.sel)];
   for (const i of order) await ensureModel(i).catch(e => console.warn('model', i, e));
   await loadSounds().catch(e => console.warn('sounds', e));
+  void loadVoices();
 }
 
 void boot();

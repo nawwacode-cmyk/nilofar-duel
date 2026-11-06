@@ -11,7 +11,7 @@ describe('roster', () => {
       ['layla', 'shadow', 'curse', 'clones'],
       ['qasem', 'spark', 'thunder', 'blink'],
       ['ehab', 'gold', 'orbs', 'veil'],
-      ['sara', 'gold', 'spears', 'bloom'],
+      ['sara', 'gold', 'spears', 'fly'],
       ['abed', 'spark', 'gale', 'gust'],
     ]);
   });
@@ -44,14 +44,14 @@ describe('roster', () => {
     for (const r of ROSTER) expect(PSPEC[r.bolt.kind]).toBeDefined();
   });
   it('skill button labels are single words', () => {
-    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة', 'حجاب', 'زهرة', 'عصف']);
+    expect(ROSTER.map(skillLabel)).toEqual(['بوابة', 'جدار', 'نُسخ', 'ومضة', 'حجاب', 'طيران', 'عصف']);
   });
 });
 
 describe('rules', () => {
   it('keeps the original combat constants', () => {
-    expect(G).toMatchObject({ boltCost: 6, spCost: 55, dodgeCd: 0.8, regen: 13, shieldDrain: 14, parryWin: 0.22, shMax: 1.5, shCd: 3, shHP: 40, strugCd: 7 });
-    expect(DMG).toMatchObject({ thunder: 30, struggleWin: 42, struggleDraw: 15, aoe: 15 });
+    expect(G).toMatchObject({ boltCost: 6, spCost: 55, dodgeCd: 0.8, regen: 13, shieldDrain: 14, parryWin: 0.22, shMax: 1.5, shCd: 3, shHP: 40, strugCd: 7, portalBlind: 0.3 });
+    expect(DMG).toMatchObject({ thunder: 30, struggleWin: 42, struggleDraw: 15, aoe: 10, meteorThroughShield: 0.2 }); // Reem balanced (Nov 2026): splash 15→10, through shield 35%→20%
   });
   it('AI difficulty increases monotonically', () => {
     for (let i = 1; i < AI_LEVELS.length; i++) {

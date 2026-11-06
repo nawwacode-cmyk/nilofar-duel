@@ -35,6 +35,15 @@ export async function loadSounds() {
   }));
 }
 
+/** More samples loaded in the background (combat voices): the game does not wait for them. */
+export async function loadExtra(names: string[]) {
+  for (const n of names) {
+    if (SND[n]) continue;
+    try { const r = await fetch('sfx/' + n + '.mp3'); SND[n] = await AC.decodeAudioData(await r.arrayBuffer()); }
+    catch { /* only that line stays silent */ }
+  }
+}
+
 /** Browsers start audio suspended until a user gesture. */
 export function unlock() { if (AC.state === 'suspended') void AC.resume(); }
 

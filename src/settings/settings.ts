@@ -8,6 +8,7 @@ export type InputMode = 'auto' | 'touch' | 'keyboard' | 'gamepad';
 export interface Settings {
   music: number;        // 0..1
   sfx: number;          // 0..1
+  voices: boolean;      // wizards' shouts and the announcer, with subtitles
   quality: QualityMode; // auto = pick from device and lower when slow
   shake: number;        // 0..1 camera shake strength
   flashes: boolean;     // screen flashes and hit white-outs
@@ -24,7 +25,7 @@ export interface Settings {
 }
 
 const KEY = 'asrar.settings';
-const DEFAULTS: Settings = { music: 0.8, sfx: 1, quality: 'auto', shake: 1, flashes: true, dmgNumbers: true, fps: false, btnScale: 1, btnOpacity: 1, leftHanded: false, inputMode: 'auto', padSens: 1.7, padDead: 0.1, btnPos: {} };
+const DEFAULTS: Settings = { music: 0.8, sfx: 1, voices: true, quality: 'auto', shake: 1, flashes: true, dmgNumbers: true, fps: false, btnScale: 1, btnOpacity: 1, leftHanded: false, inputMode: 'auto', padSens: 1.7, padDead: 0.1, btnPos: {} };
 
 function load(): Settings {
   try { return { ...DEFAULTS, ...JSON.parse(localStorage.getItem(KEY) || '{}') }; } catch { return { ...DEFAULTS }; }

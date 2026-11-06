@@ -7,7 +7,7 @@ export type Mode = 'ai' | 'online' | 'train';
 export type BoltKind = 'fire' | 'ice' | 'shadow' | 'spark' | 'gold';
 export type ProjKind = BoltKind | 'meteor' | 'spear' | 'curse' | 'shmini' | 'orb' | 'gale';
 export type SpecialKind = 'meteor' | 'spears' | 'curse' | 'thunder' | 'orbs' | 'gale';
-export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army' | 'bloom' | 'thorns' | 'gust' | 'tornado';
+export type SkillKind = 'portal' | 'wall' | 'clones' | 'blink' | 'veil' | 'army' | 'fly' | 'thorns' | 'gust' | 'tornado';
 /** Everything that can travel over the network as a "cast". */
 export type CastKind = ProjKind | SkillKind | 'thunder' | 'melee';
 
@@ -70,6 +70,8 @@ export interface Fighter {
   turnLockT: number;
   /** Ehab's veil: invisible to the opponent while > 0 (broken by casting). */
   veilT: number; alpha?: number;
+  /** Sara's flight, seconds left. */
+  flyT: number;
   /** Online, remote fighter only: last HP confirmed by its owner and our not-yet-confirmed predicted hits. */
   authHp: number; pend: { d: number; t: number }[];
   /** Element rim light on the body (uniforms shared by all of the fighter's materials). */

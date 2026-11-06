@@ -21,19 +21,24 @@ export interface BalanceReport {
 }
 
 const STEP = 1 / 30, MAX_SECONDS = 300;
+/** Yield to the page without setTimeout, which background tabs throttle to once a second or slower. */
+const yieldNow = () => new Promise<void>(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });
 /** Last simulated step, readable from the console if a run ever stalls. */
 export const trace = { last: '' };
 
-export async function runBalance(gamesPerPairing = 20, diff = 2, onProgress?: (done: number, total: number) => void): Promise<BalanceReport> {
+/** `only`: a wizard id to play just their pairings (both sides), much faster than the whole table. */
+export async function runBalance(gamesPerPairing = 20, diff = 2, onProgress?: (done: number, total: number) => void, only?: string): Promise<BalanceReport> {
   const wasMuted = isMuted();
   setMuted(true); S.sim = true; S.mode = 'ai'; S.diff = diff;
   await ensureModels(ROSTER.map((_, i) => i));
   const n = ROSTER.length;
   const wins = ROSTER.map(() => ROSTER.map(() => 0));
-  let done = 0, seconds = 0; const total = n * (n - 1) * gamesPerPairing;
+  const o = only ? ROSTER.findIndex(r => r.id === only) : -1;
+  const plays = (a: number, b: number) => a !== b && (o < 0 || a === o || b === o);
+  let done = 0, seconds = 0; const total = (o < 0 ? n * (n - 1) : 2 * (n - 1)) * gamesPerPairing;
   try {
     for (let a = 0; a < n; a++) for (let b = 0; b < n; b++) {
-      if (a === b) continue;
+      if (!plays(a, b)) continue;
       for (let g = 0; g < gamesPerPairing; g++) {
         setupFighters(a, b); startMatch();
         let steps = 0; const maxSteps = MAX_SECONDS / STEP;
@@ -43,7 +48,7 @@ export async function runBalance(gamesPerPairing = 20, diff = 2, onProgress?: (d
           const ms = performance.now() - t0;
           trace.last = `${ROSTER[a].id}-${ROSTER[b].id} g${g} step ${steps} state ${S.state} projs ${projs.length} ms ${ms.toFixed(1)}`;
           if (ms > 100) console.warn('slow sim step', trace.last);
-          if (steps % 300 === 0) await new Promise(r => setTimeout(r, 0)); // keep the page responsive
+          if (steps % 300 === 0) await yieldNow(); // keep the page responsive
         }
         const t = steps * STEP;
         const w = S.CH.find(c => c && c.wins >= 2);
@@ -57,7 +62,8 @@ export async function runBalance(gamesPerPairing = 20, diff = 2, onProgress?: (d
   const rate: Record<string, number> = {};
   ROSTER.forEach((r, i) => {
     const won = wins[i].reduce((x, y) => x + y, 0);
-    const played = 2 * (n - 1) * gamesPerPairing;
+    const played = ROSTER.reduce((s, _, j) => s + (plays(i, j) ? 2 * gamesPerPairing : 0), 0);
+    if (!played) return;
     rate[r.id] = Math.round((won / played) * 1000) / 10;
   });
   return { games: done, wins, rate, avgSeconds: Math.round(seconds / Math.max(1, done)) };

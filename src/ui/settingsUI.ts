@@ -23,6 +23,7 @@ const TABS: Record<string, ShownRow[]> = {
   sound: [
     { k: 'music', type: 'range', label: 'الموسيقى', min: 0, max: 1, step: 0.05, fmt: pct },
     { k: 'sfx', type: 'range', label: 'المؤثرات الصوتية', hint: 'التعاويذ والضربات والخطوات', min: 0, max: 1, step: 0.05, fmt: pct },
+    { k: 'voices', type: 'toggle', label: 'أصوات القتال', hint: 'صيحات السحرة والمعلّق، مع ترجمة عربية' },
   ],
   graphics: [
     { k: 'quality', type: 'seg', label: 'جودة الرسوميات', hint: 'التلقائي يختار حسب جهازك ويخفّض عند البطء', options: [['auto', 'تلقائي'], [0, 'منخفضة'], [1, 'متوسطة'], [2, 'عالية']] },

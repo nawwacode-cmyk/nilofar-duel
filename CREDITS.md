@@ -14,6 +14,8 @@
 - Particle sprites and impact sounds — **Kenney** (www.kenney.nl, CC0)
 - Fire, explosion and smoke footage — **Unity Labs** free VFX flipbooks (CC0)
 - Sound effects — **Mixkit**, **lentikula** (freesound.org), **Kenney**
+- Wizards' voices — **Cici Fyre** (RPG Voice Starter Pack) and **Brandon Song** (Male Adventurer), CC0
+- Announcer — **Kenney** (Voiceover Pack: Fighter, CC0)
 - Music: *Heavy Combat* — **Cosme Leites**
 
 **Fonts**

@@ -5,6 +5,7 @@ import { clips, findBone, loadFbx, loadGlb, retarget } from '../assets/loader';
 import { faceForward, renameTripoBones, retargetClips } from '../assets/retarget';
 import { ROSTER } from '../data/roster';
 import { V } from '../core/util';
+import { G } from '../data/rules';
 import { toPBR, addRim, releaseMaterial } from '../render/charLight';
 import { CLIP_NAMES, type ClipName, type Fighter } from '../core/types';
 
@@ -238,6 +239,15 @@ function measureFootCorrection(c: Fighter): Partial<Record<ClipName, number>> {
   return out;
 }
 
+/** In the air (Sara's flight): ground attacks — thorns, tornado, wind, close combat, blast splash — pass under. */
+export const airborne = (c: Fighter) => c.flyT > 0;
+/** Height above the floor: a quick rise, a gentle bob, and a soft landing. */
+export function flyLift(c: Fighter, t: number) {
+  if (c.flyT <= 0) return 0;
+  const k = Math.min(1, (G.flyT - c.flyT) / 0.35, c.flyT / 0.35), e = k * k * (3 - 2 * k);
+  return e * (G.flyLift + Math.sin(t * 3) * 0.08);
+}
+
 /** Weighted vertical shift of the currently playing clips (call after mixer.update). */
 export function applyGroundContact(c: Fighter) {
   const corr = footCorr[c.ri]; if (!corr) return;
@@ -270,7 +280,7 @@ export function resetChar(c: Fighter) {
   Object.assign(c, {
     x: i === 0 ? -3 : 3, z: -0.6, vx: 0, vz: 0, ry: i === 0 ? Math.PI / 2 : -Math.PI / 2, hp: c.R.hp, mana: 60,
     cdA: 0, cdD: 0, shieldT: -1, shieldOn: false, dodgeT: 0, dodgeDir: V(), castT: 0, hitT: 0, slowT: 0, stunT: 0, cdS: 0, shHP: 0,
-    cdK: 0, cdK2: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, authHp: c.R.hp, pend: [],
+    cdK: 0, cdK2: 0, invT: 0, warpT: 0, dead: false, inX: 0, inZ: 0, wantShield: false, stepAcc: 0, hitFlash: 0, knockT: 0, turnLockT: 0, veilT: 0, flyT: 0, authHp: c.R.hp, pend: [],
   });
   if (c.shield) { c.shield.off(); c.shield = null; }
   anim(c, 'idle', { force: true });

@@ -17,6 +17,7 @@ import { updateAmbience } from '../world/arena';
 import { updateFx } from '../fx/effects';
 import { banner, hud, updateButtons } from '../ui/hud';
 import { play } from '../audio/audio';
+import { announceFight } from '../audio/voices';
 import { TXT } from '../data/text';
 import { runScheduled } from './schedule';
 import { timeScale, updateImpactFx } from '../fx/impact';
@@ -41,7 +42,7 @@ export function tick(rdt: number) {
   runScheduled();
   if (S.CH[0]) {
     if (S.state === 'intro' && S.stateT > 1.8) {
-      S.state = 'fight'; banner(TXT.fight); play('m_epic', { vol: 0.6 });
+      S.state = 'fight'; banner(TXT.fight); play('m_epic', { vol: 0.6 }); announceFight();
       setTimeout(() => { if (S.state === 'fight') banner(''); }, 700);
     }
     if (S.state === 'ko' && S.stateT > 2.8) {

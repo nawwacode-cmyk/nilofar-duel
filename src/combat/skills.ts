@@ -4,7 +4,7 @@ import { scene } from '../render/stage';
 import { emit, burst, explosion } from '../render/particles';
 import { fx } from '../game/state';
 import { S, ch, opp, clones, walls, strikes, isLocal } from '../game/state';
-import { base, chest, clipFor, tintModel, anim } from '../fighters/fighter';
+import { base, chest, clipFor, tintModel, anim, airborne } from '../fighters/fighter';
 import { clips } from '../assets/loader';
 import { play, pr } from '../audio/audio';
 import { portalRing } from '../fx/effects';
@@ -14,7 +14,6 @@ import { G, DMG } from '../data/rules';
 import { ICE, SHADOW, LIGHT, ARCH, FLORA, WIND } from '../data/palettes';
 import { projs } from '../game/state';
 import { killProj } from './projectiles';
-import { dmgText } from '../fx/effects';
 import { makeTwister, makeVortex } from '../fx/tornado';
 import { lightning, impactFx, groundMark, shockRing } from '../fx/vfx';
 import { V, C, rnd, pick, clamp, angleDelta } from '../core/util';
@@ -48,7 +47,7 @@ export const SKFX: Record<string, (c: Fighter, o: CastOrder) => void> = {
   wall(c, o) { spawnWall(c.idx, o.x, o.z, o.y); },
   clones(c, o) { spawnClones(c, o.x, o.z, o.y, !o.remote); },
   army(c, o) { spawnArmy(c, o.x, o.z, o.y); },
-  bloom(c, o) { bloom(c, o.x, o.z); },
+  fly(c, o) { fly(c, o.x, o.z); },
   thorns(c, o) { thorns(c, o.x, o.z); },
   gust(c, o) { gust(c, o.x, o.z, o.dx, o.dz); },
   tornado(c, o) { tornado(c, o.x, o.z); },
@@ -100,7 +99,7 @@ function meleeHit(c: Fighter, dx: number, dz: number, m: (typeof MELEE)[number])
     const h = chest(o);
     for (let i = 0; i < 14; i++) emit(h.x + rnd(0.15), h.y + rnd(0.2), h.z + rnd(0.15), dx * 2 + rnd(1), rnd(1), dz * 2 + rnd(1), pick(c.pal), 0.1, 0.3, { t: 'spark' });
     play('k_punch' + ((Math.random() * 5) | 0), { vol: 1, x: o.x }); play('boom1', { vol: 0.2, x: o.x, rate: 1.6 });
-    if (!isLocal(o) || o.dodgeT > 0.05 || o.invT > 0) return;
+    if (!isLocal(o) || o.dodgeT > 0.05 || o.invT > 0 || airborne(o)) return;
     // A raised shield takes the blow but is still pushed back.
     if (!o.shieldOn) applyDmg(o, DMG.melee, c);
     o.vx = dx * G.meleePush; o.vz = dz * G.meleePush; o.knockT = 0.35;
@@ -321,17 +320,17 @@ export function updStrikes(dt: number) {
   for (let i = strikes.length - 1; i >= 0; i--) if (strikes[i].done) strikes.splice(i, 1);
 }
 
-/* ---------- Sara: bloom and thorns ---------- */
-/** Flowers open around her: health over a moment, and slow/stun fall away. Healing runs on her own device. */
-function bloom(c: Fighter, x: number, z: number) {
-  play('m_sparkle', { vol: 0.7, x }); play('m_light', { vol: 0.4, x, rate: 1.2 });
-  for (let i = 0; i < 40; i++) { const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 1.2; emit(x + Math.cos(a) * r, 0.05, z + Math.sin(a) * r, 0, 0.6 + Math.random(), 0, pick(FLORA), 0.16, 1.1, { t: 'star' }); }
-  emit(x, 0.04, z, 0, 0, 0, FLORA[1], 0.6, 1, { t: 'rune', spin: 0.8, grow: 3 });
-  if (!isLocal(c)) return;
-  c.slowT = 0; c.stunT = 0;
-  const step = DMG.bloom / 8;
-  for (let k = 1; k <= 8; k++) after(k * 0.25, () => { if (!c.dead) c.hp = Math.min(c.R.hp, c.hp + step); });
-  dmgText(c, '+' + DMG.bloom, '#c7f59a');
+/* ---------- Sara: flight and thorns ---------- */
+/**
+ * A whirl of petals lifts her off the ground for a few seconds: slow and stun fall away, she glides faster, and
+ * every ground attack passes under her. Spells in the air (bolts, lightning) still reach her.
+ * Runs on both devices (the timer drives the height everywhere).
+ */
+function fly(c: Fighter, x: number, z: number) {
+  play('m_whoosh', { vol: 0.8, x, rate: 1.3 }); play('m_sparkle', { vol: 0.5, x });
+  for (let i = 0; i < 36; i++) { const a = Math.random() * Math.PI * 2, r = 0.3 + Math.random() * 0.9; emit(x + Math.cos(a) * r, 0.1, z + Math.sin(a) * r, -Math.sin(a) * 2, 1.5 + Math.random() * 2, Math.cos(a) * 2, pick(FLORA), 0.14, 0.8, { t: 'star', drag: 1.5 }); }
+  shockRing(x, z, FLORA, 1.6, true);
+  c.flyT = G.flyT; c.slowT = 0; c.stunT = 0;
 }
 
 /** A marked circle under the opponent, then thorns burst out: held and cut unless they dodged in time. */
@@ -349,7 +348,7 @@ function thorns(c: Fighter, x: number, z: number) {
       for (let i = 0; i < 30; i++) { const a = Math.random() * Math.PI * 2, r = Math.random() * R; emit(x + Math.cos(a) * r, 0.1, z + Math.sin(a) * r, 0, 3 + Math.random() * 3, 0, pick(FLORA), 0.14, 0.6, { t: 'spark', drag: 3 }); }
       play('m_blast', { vol: 0.6, x, rate: 1.3 });
       groundMark('flora', x, z, R * 2.2); shockRing(x, z, FLORA, R * 1.6, true);
-      if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0 && Math.hypot(v.x - x, v.z - z) < R) {
+      if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0 && !airborne(v) && Math.hypot(v.x - x, v.z - z) < R) {
         if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.thornsShielded, c); }
         else { applyDmg(v, DMG.thorns, c); v.stunT = Math.max(v.stunT, DMG.thornsStun); v.vx = v.vz = 0; }
       }
@@ -380,7 +379,7 @@ function gust(c: Fighter, x: number, z: number, dx: number, dz: number) {
     }
     const inBand = (px: number, pz: number) => { const ex = px - x, ez = pz - z, along = ex * dx + ez * dz; return along > 0 && along < front && Math.abs(ex * rx + ez * rz) < HALF; };
     for (const p of projs) if (!p.dead && p.owner !== c.idx && inBand(p.pos.x, p.pos.z)) killProj(p);
-    if (!hitDone && inBand(v.x, v.z)) {
+    if (!hitDone && !airborne(v) && inBand(v.x, v.z)) {
       hitDone = true;
       if (isLocal(v) && !v.dead && S.state === 'fight' && v.dodgeT <= 0.05 && v.invT <= 0) {
         const push = v.shieldOn ? DMG.gustPush * 0.5 : DMG.gustPush;
@@ -426,7 +425,7 @@ function tornado(c: Fighter, x: number, z: number) {
     // Debris torn up around the base.
     if (Math.random() < 0.8) { const a = Math.random() * Math.PI * 2, r = 1 + Math.random() * 1.2; emit(x + Math.cos(a) * r, 0.05, z + Math.sin(a) * r, -Math.sin(a) * 4 - Math.cos(a) * 1.5, 1.5 + Math.random() * 2.5, Math.cos(a) * 4 - Math.sin(a) * 1.5, C(0.32, 0.28, 0.22), 0.07, 1, { t: 'spark', drag: 0.6 }); }
     // Caught: whoever stands in it when it rises (or walks in later). Both devices see it; damage on the victim's.
-    if (!caught && !v.dead && Math.hypot(v.x - x, v.z - z) < REACH && v.dodgeT <= 0.05 && v.invT <= 0) {
+    if (!caught && !v.dead && !airborne(v) && Math.hypot(v.x - x, v.z - z) < REACH && v.dodgeT <= 0.05 && v.invT <= 0) {
       caught = true; tickAt = u;
       if (isLocal(v) && S.state === 'fight') {
         if (v.shieldOn) { v.shield?.hit(); applyDmg(v, DMG.tornadoShielded, c); ticks = TICKS; }

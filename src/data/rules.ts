@@ -8,13 +8,15 @@ export const G = {
   /** Max turning speed in a fight (rad/s): a half turn takes ~0.55 s, so getting behind someone matters. */
   turnRate: 5.7,
   /** Seconds the opponent cannot turn after Reem steps out of her portal. */
-  portalBlind: 0.6,
+  portalBlind: 0.3,
   /** Spells only leave within this cone of the facing direction (cos of the half-angle, 75°). */
   castCone: 0.26,
   /** A hit from behind (projectile travelling along the victim's facing) ignores the shield and hurts more. */
   backDot: 0.35, backstabMult: 1.5,
   /** Ehab's veil: seconds unseen. No damage bonus: like every skill it only creates an opening. */
   veilT: 6,
+  /** Sara's flight: seconds aloft, how high she floats, and her speed up there. Ground attacks pass under her. */
+  flyT: 4, flyLift: 1.3, flySpeed: 1.3,
   /** Ehab's illusion army: how long the opponent is held, and how long it stays held when it had its shield up. */
   armyStun: 1.5, armyStunShielded: 0.5,
   /** Close combat: within this distance the attack button shoves/strikes instead of casting. */
@@ -42,11 +44,11 @@ export const PSPEC: Record<ProjKind, ProjSpec> = {
 /** Fixed damage numbers outside PSPEC. */
 export const DMG = {
   thunder: 30, thunderShielded: 10, thunderRadius: 1.15,
-  aoe: 15, aoeShielded: 6, meteorThroughShield: 0.35,
+  aoe: 10, aoeShielded: 4, meteorThroughShield: 0.2,
   struggleWin: 42, struggleDraw: 15,
   army: 30, armyShielded: 10, melee: 6,
-  /** Sara: the bloom heals this much over BLOOM_S; thorns hold for thornsStun. Abed: gust, tornado. */
-  bloom: 35, thorns: 18, thornsShielded: 6, thornsStun: 1.2,
+  /** Sara: thorns hold for thornsStun. Abed: gust, tornado. */
+  thorns: 18, thornsShielded: 6, thornsStun: 1.2,
   gust: 10, gustPush: 9, tornado: 30, tornadoShielded: 10, tornadoStun: 1.5,
 } as const;
 

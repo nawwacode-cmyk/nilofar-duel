@@ -1,6 +1,7 @@
 import { S, net, ch, me, opp, strikes, walls, clones } from './state';
 import { makeFighter, dropFighter, resetChar, anim, chest, altCostume } from '../fighters/fighter';
 import { play, musicOn, musicOff } from '../audio/audio';
+import { voiceDie, announceRound, announceMatch } from '../audio/voices';
 import { explosion } from '../render/particles';
 import { setShield } from '../combat/actions';
 import { clearProjectiles } from '../combat/projectiles';
@@ -56,7 +57,7 @@ export function newRound() {
   hud(); S.state = 'intro'; S.stateT = 0; S.slowmo = 1;
   if (S.mode === 'train') banner(TXT.training, TXT.versus(label(ch(0)), label(ch(1))));
   else banner(TXT.round(S.round), TXT.versus(label(ch(0)), label(ch(1))));
-  play('m_drums', { vol: 0.9 }); play('c_chant', { vol: 0.35 });
+  play('m_drums', { vol: 0.9 }); play('c_chant', { vol: 0.35 }); announceRound(S.round);
 }
 
 
@@ -67,6 +68,8 @@ export function ko(c: Fighter) {
   S.state = 'ko'; S.stateT = 0; S.slowmo = 0.35;
   banner(w.wins >= 2 ? TXT.matchWon(w.R, label(w)) : TXT.roundWon(w.R, label(w)));
   explosion(chest(c), w.pal, 1.6); play('m_whoosh', { vol: 0.8 }); play('m_epic', { vol: 1 }); play('c_huge', { vol: 0.6 });
+  voiceDie(c);
+  if (w.wins >= 2) setTimeout(() => announceMatch(w), 1100);
 }
 
 export function endMatch() {

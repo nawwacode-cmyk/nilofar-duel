@@ -1,6 +1,7 @@
 import { S, ch, net } from '../game/state';
 import { anim, chest } from '../fighters/fighter';
 import { play } from '../audio/audio';
+import { voiceHurt } from '../audio/voices';
 import { emit, burst } from '../render/particles';
 import { dmgText, flash } from '../fx/effects';
 import { setShield, fire } from './actions';
@@ -68,5 +69,5 @@ export function applyDmg(c: Fighter, d: number, att: Fighter) {
   if (c.castT <= 0 && !c.shieldOn && c.dodgeT <= 0) anim(c, 'hit', { once: true, speed: 1.4, force: true });
   impact(c, att, c.hp <= 0 ? 1 : clamp(d / 40, 0.15, 0.9));
   play('tap', { vol: 0.6, x: c.x, rate: 0.7 });
-  if (c.hp <= 0) ko(c);
+  if (c.hp <= 0) ko(c); else voiceHurt(c, d);
 }

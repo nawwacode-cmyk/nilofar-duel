@@ -1,6 +1,6 @@
 import type * as THREE from 'three';
 import { S, opp, me } from '../game/state';
-import { anim, tipPos, headPos, applyGrip, applyGroundContact } from './fighter';
+import { anim, tipPos, headPos, applyGrip, applyGroundContact, flyLift } from './fighter';
 import { floorAt, obstacles } from '../world/arena';
 import { setShield } from '../combat/actions';
 import { play } from '../audio/audio';
@@ -26,7 +26,7 @@ function dust(c: Fighter, n: number, sp: number) {
 }
 const DUST = C(0.32, 0.34, 0.42);
 
-const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'cdK2', 'invT', 'turnLockT', 'veilT'] as const;
+const TIMERS = ['cdA', 'cdD', 'castT', 'hitT', 'slowT', 'stunT', 'cdS', 'cdK', 'cdK2', 'invT', 'turnLockT', 'veilT', 'flyT'] as const;
 const fwd = V(), right = V();
 
 /**
@@ -52,7 +52,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
       }
       if (c.wantShield && !c.shieldOn) setShield(c, true);
       if (!c.wantShield && c.shieldOn) setShield(c, false);
-      const sp = c.stunT > 0 ? 0 : c.R.speed * (c.slowT > 0 ? 0.5 : 1) * (c.shieldOn ? 0.45 : 1) * (c.castT > 0 ? 0.35 : 1);
+      const sp = c.stunT > 0 ? 0 : c.R.speed * (c.slowT > 0 ? 0.5 : 1) * (c.shieldOn ? 0.45 : 1) * (c.castT > 0 ? 0.35 : 1) * (c.flyT > 0 ? G.flySpeed : 1);
       if (c.dodgeT > 0) {
         c.dodgeT -= dt; c.vx = c.dodgeDir.x * 7.5; c.vz = c.dodgeDir.z * 7.5;
         if (c.dodgeT <= 0) dust(c, 10, 1.2); // landing puff
@@ -79,6 +79,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
     }
     if (!c.dead && c.dodgeT <= 0 && c.castT <= 0 && c.hitT <= 0 && S.state !== 'struggle') {
       if (c.shieldOn) anim(c, 'block');
+      else if (c.flyT > 0) anim(c, 'idle'); // floating, no steps
       else {
         fwd.set(Math.sin(c.ry), 0, Math.cos(c.ry)); right.set(-Math.cos(c.ry), 0, Math.sin(c.ry));
         const vf = c.vx * fwd.x + c.vz * fwd.z, vr = c.vx * right.x + c.vz * right.z, spd = Math.hypot(c.vx, c.vz);
@@ -95,7 +96,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
     c.ry += angleDelta(c.ry, c.nry) * Math.min(1, dt * 14);
   }
   const fy = floorAt(c.x, c.z);
-  c.root.position.set(c.x, fy, c.z); c.root.rotation.y = c.ry; c.blob.position.set(c.x, fy + 0.012, c.z);
+  c.root.position.set(c.x, fy + flyLift(c, S.T), c.z); c.root.rotation.y = c.ry; c.blob.position.set(c.x, fy + 0.012, c.z);
   c.mixer.update(dt);
   applyGroundContact(c);
   applyGrip(c);
@@ -107,5 +108,7 @@ export function updChar(c: Fighter, dt: number, local: boolean) {
   if (alpha === 0) c.light.intensity = 0;
   else if (!c.dead && Math.random() < 0.5) { const p = c.light.position; emit(p.x, p.y, p.z, rnd(0.05), 0.15, rnd(0.05), pick(c.pal), 0.08, 0.4, { t: Math.random() < 0.5 ? 'magic' : 'spark' }); }
   if (c.stunT > 0 && Math.random() < 0.6) { const h = headPos(c); const a = S.T * 8; emit(h.x + Math.cos(a) * 0.25, h.y - 0.1, h.z + Math.sin(a) * 0.25, 0, 0, 0, GOLD[0], 0.1, 0.25, { t: 'star' }); }
+  // Aloft: petals drift down from under her.
+  if (c.flyT > 0 && Math.random() < 0.7) emit(c.x + rnd(0.35), c.root.position.y + 0.1, c.z + rnd(0.35), rnd(0.2), -0.6, rnd(0.2), pick(c.pal), 0.12, 0.9, { t: 'star' });
   if (c.slowT > 0 && Math.random() < 0.5) emit(c.x + rnd(0.3), 0.2 + Math.random() * 1.4, c.z + rnd(0.3), 0, -0.2, 0, pick(ICE), 0.15, 0.6, { t: 'star' });
 }
