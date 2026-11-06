@@ -2,7 +2,7 @@ import { S, inMenus } from '../game/state';
 import { ensureModel, ensureModels } from '../fighters/fighter';
 import { play, unlock, isMuted, setMuted, musicOn } from '../audio/audio';
 import { setupFighters, startMatch, toMenu } from '../game/flow';
-import { code4, leaveNet, onlineStart, requestRematch } from '../net/online';
+import { leaveNet, onlineStart, requestRematch } from '../net/online';
 import { ROSTER, skillLabel } from '../data/roster';
 import { TXT } from '../data/text';
 import { $ } from '../core/util';
@@ -145,7 +145,6 @@ export function initMenus() {
   };
   $('mOn').onclick = () => { unlock(); void veil(() => { $('menu').hidden = true; $('online').hidden = false; $('oWait').hidden = true; $('oCreate').hidden = false; $('oErr').hidden = true; S.state = 'online'; }); };
   $('oBack').onclick = () => { leaveNet(); void veil(() => { $('online').hidden = true; $('menu').hidden = false; S.state = 'menu'; }); };
-  $('oCreate').onclick = async () => { unlock(); const c = code4(); $('oCode').textContent = c; $('oCreate').hidden = true; $('oWait').hidden = false; $('oErr').hidden = true; await onlineStart(true, c); };
   $('oJoin').onclick = async () => {
     unlock(); const c = $<HTMLInputElement>('code').value.trim().toUpperCase();
     if (c.length !== 4) { $('oErr').hidden = false; $('oErr').textContent = TXT.online.badCode; return; }

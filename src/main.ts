@@ -15,6 +15,7 @@ import { initQuality } from './render/quality';
 import { initInput } from './input/input';
 import { initMenus, buildRoster } from './ui/menus';
 import { initSettingsUI } from './ui/settingsUI';
+import { initInvite, readInvite, showInvite } from './ui/invite';
 import { checkForUpdate } from './ui/update';
 import { initTraining } from './game/training';
 import { startLoop } from './game/loop';
@@ -40,7 +41,7 @@ async function boot() {
   resize();
   addEventListener('resize', resize);
   initInput();
-  initMenus();
+  initMenus(); initInvite();
   initSettingsUI(); initTraining();
   const bar = $('bar').firstElementChild as HTMLElement, pct = $('pct');
   onDownloadProgress((l, t) => {
@@ -56,7 +57,9 @@ async function boot() {
     // Let the opening splash (CSS, ~2.4 s from page start) finish before the title replaces the loading screen.
     const splashLeft = matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 2400 - performance.now();
     if (splashLeft > 0) await new Promise(r => setTimeout(r, splashLeft));
-    $('load').hidden = true; $('title').hidden = false;
+    $('load').hidden = true;
+    // Opened from an invitation: straight to choosing a wizard, with the invitation bar.
+    if (readInvite()) showInvite(); else $('title').hidden = false;
     startLoop();
     void checkForUpdate();
     // ?debug&shot=<arena>[&edge]: jump straight into a frozen duel there (for headless screenshots of arenas).
